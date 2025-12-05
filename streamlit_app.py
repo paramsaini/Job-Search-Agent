@@ -26,7 +26,7 @@ def generate_job_strategy_from_gemini(cv_text):
     if not API_KEY:
         return "Error: Gemini API Key not configured. Please set your GEMINI_API_KEY in Streamlit Cloud secrets or locally in a .env file.", []
         
-    # 1. Define the System Instruction (ENHANCED FOR LINKS AND STRUCTURE)
+    # 1. Define the System Instruction
     system_prompt = (
         "You are a World-Class Job Search Consultant and Visa Immigration Analyst. "
         "Your task is to analyze the provided CV content and generate a highly detailed, "
@@ -105,9 +105,12 @@ def generate_job_strategy_from_gemini(cv_text):
 
 # Function to reset the input fields
 def reset_inputs():
+    # Resetting the session states tied to the input widgets and process flow
     st.session_state['cv_input_paste'] = ""
-    st.session_state['cv_input_upload'] = None
+    st.session_state['cv_input_upload'] = None # Clear file uploader
     st.session_state['run_search'] = False
+    st.session_state['results_displayed'] = False
+    st.session_state['cv_text_to_process'] = ""
 
 def main():
     st.set_page_config(
@@ -123,12 +126,12 @@ def main():
     .stApp {
         background-color: #f8faff; /* Very light, professional off-white */
         color: #1c2541; /* Dark professional text */
+        font-family: 'Inter', sans-serif;
     }
     
     /* Headers */
     h1, h2, h3, h4, .main-header {
         color: #007bff; /* Bright, vibrant blue */
-        font-family: 'Inter', sans-serif;
     }
     .main-header {
         text-align: center;
@@ -143,17 +146,17 @@ def main():
         background-color: #ffffff;
         color: #1c2541; 
         border-radius: 1rem;
-        border: 1px solid #cce5ff; /* Light blue border */
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); /* Stronger but cleaner shadow */
+        border: 2px solid #007bff; /* Prominent blue border */
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15); 
         padding: 1rem;
     }
     .stFileUploader>div>div {
         background-color: #ffffff;
-        border: 2px dashed #007bff; /* Vibrant dashed border */
+        border: 3px dashed #007bff; /* Even more prominent dashed border */
         color: #1c2541;
         border-radius: 1rem;
         padding: 1.5rem;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
     
     /* Tabs (Paste/Upload) Styling */
@@ -167,7 +170,7 @@ def main():
     .stButton>button {
         background-color: #28a745; /* VIBRANT GREEN for Go/Generate */
         color: white;
-        font-weight: 800;
+        font-weight: 900;
         border-radius: 9999px; 
         padding: 1.2rem 3.5rem;
         transition: all 0.4s ease-in-out;
@@ -187,6 +190,26 @@ def main():
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* Max depth shadow */
         border: 1px solid #f0f0f0;
     }
+    
+    /* Fix for warning/info strips (yellow/blue) to match theme */
+    .stAlert {
+        border-radius: 10px;
+        font-size: 1.05rem;
+        font-weight: 500;
+    }
+    /* Yellow/Warning Strip Fix */
+    .stAlert[data-baseweb="notification"] > div:first-child[style*="rgb(255, 240, 209)"] {
+        background-color: #fff3cd !important; 
+        color: #856404 !important; /* Dark text on yellow */
+        border: 1px solid #ffeeba !important;
+    }
+     /* Blue/Info Strip Fix */
+    .stAlert[data-baseweb="notification"] > div:first-child[style*="rgb(230, 242, 255)"] {
+        background-color: #cce5ff !important;
+        color: #004085 !important; /* Dark text on blue */
+        border: 1px solid #b8daff !important;
+    }
+    
     /* Markdown Links (Website URLs) in Results */
     .results-card a {
         color: #007bff; /* Bright blue for clickable links */
