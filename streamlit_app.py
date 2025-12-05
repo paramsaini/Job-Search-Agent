@@ -129,7 +129,7 @@ def main():
         initial_sidebar_state="collapsed"
     )
 
-    # --- FINAL, ULTIMATE VISUALIZATION OVERHAUL (NEON BLUE / HIGH CONTRAST) ---
+    # --- FINAL, ULTIMATE VISUALIZATION OVERHAUL (STRICTLY HIGH-CONTRAST) ---
     st.markdown("""
     <style>
     /* Overall Background and Font - Studio Light (Bright and Clean) */
@@ -161,32 +161,36 @@ def main():
         padding: 1.5rem;
     }
     
-    /* FILE UPLOADER VISIBILITY FIX */
+    /* FILE UPLOADER FIXES (Targeting visibility of text inside the widget) */
     .stFileUploader>div>div {
         background-color: #ffffff;
         border: 4px dashed #007bff; 
-        color: #1c2541;
+        color: #1c2541; /* Default text color in dropzone area */
         border-radius: 1.2rem;
         padding: 2rem;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     }
     
-    /* FIX 1: Ensure uploaded file name and status is highly visible (Targeting the internal text) */
+    /* FIX 1: Ensure uploaded file name and status text is legible inside the status box */
     .stFileUploader span[data-testid="stFileUploaderFile"] {
-        color: #007bff !important; /* Force NEON BLUE text */
+        color: #007bff !important; /* Force NEON BLUE text for visibility */
         font-weight: 800;
         font-size: 1.1rem;
-        /* Increase padding/margin to separate it from surrounding elements */
         padding-left: 10px;
     }
     
-    /* FIX 2: Eliminate dark strip and ensure full visibility of all Uploader text */
-    /* Target the container that holds the file name and the X button */
-    .stFileUploader div[data-testid="stFileUploaderFileName"] {
-        /* This is the area containing the file name, which often appears dark */
-        background-color: #f8faff !important; /* Match app background */
-        border: none !important;
-        color: #004c99 !important; /* Ensure surrounding text is legible */
+    /* FIX 2 & 3: Targeting the text of the "Browse files" button and file name area */
+    /* For the "Browse files" button */
+    .stFileUploader button {
+        background-color: #007bff !important;
+        color: white !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Target the text in the dropzone (Drag and drop file here, Limit 200MB) */
+    .stFileUploader > div > div > div > p {
+        color: #1c2541 !important; /* Ensure main instruction text is dark and legible */
+        font-weight: 600;
     }
     
     /* Tabs (Paste/Upload) Styling */
@@ -195,7 +199,7 @@ def main():
         font-weight: 900;
         color: #007bff; 
     }
-    
+
     /* Main Action Button - VIBRANT */
     .stButton>button {
         background-color: #28a745; 
@@ -226,7 +230,7 @@ def main():
     /* Yellow/Warning Strip Fix */
     div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(255, 240, 209)"] {
         background-color: #ffc107 !important; 
-        color: #343a40 !important; 
+        color: #343a40 !important; /* DARK TEXT FOR VISIBILITY */
         border: 2px solid #ff9800 !important;
         font-weight: 700;
         padding: 18px;
@@ -236,7 +240,7 @@ def main():
     /* Blue/Info Strip Fix */
     div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(230, 242, 255)"] {
         background-color: #007bff !important; 
-        color: #ffffff !important; 
+        color: #ffffff !important; /* WHITE TEXT FOR VISIBILITY */
         border: 2px solid #0056b3 !important;
         font-weight: 700;
         padding: 18px;
