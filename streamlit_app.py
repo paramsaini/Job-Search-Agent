@@ -4,6 +4,7 @@ import json
 import time
 import os
 from dotenv import load_dotenv
+import io # Import for file handling
 
 # Load environment variables from .env file for local development
 load_dotenv() 
@@ -158,15 +159,43 @@ def main():
     # --- Input Area (Clear Tab/Section) ---
     st.container()
     st.subheader("📝 Step 1: Input Your Professional Profile")
-    st.markdown("Enter the full content of your CV or Resume below for high-accuracy analysis.")
+    
+    # Dual input for flexibility: Upload or Paste
+    tab_paste, tab_upload = st.tabs(["Paste CV Content (Recommended)", "Upload CV File (.txt / .pdf)"])
+    
+    cv_text = ""
+    
+    with tab_paste:
+        st.markdown("**If pasting is blocked, please use Ctrl+Shift+V (Windows) or Cmd+Shift+V (Mac) or use the 'Upload CV File' tab.**")
+        cv_text = st.text_area(
+            "Paste CV Content Here",
+            height=300,
+            placeholder="Paste your resume content here...",
+            key="cv_input_paste",
+            label_visibility="hidden"
+        )
 
-    cv_text = st.text_area(
-        "CV/Resume Content",
-        height=300,
-        placeholder="Example: John Doe | Senior Software Engineer | Skills: Python, AWS, Fintech, etc.",
-        key="cv_input",
-        label_visibility="hidden"
-    )
+    with tab_upload:
+        uploaded_file = st.file_uploader(
+            "Upload CV or Resume",
+            type=["txt", "pdf"],
+            key="cv_input_upload"
+        )
+        if uploaded_file is not None:
+            # Simple handling for text and PDF (PDFs require extra libraries for parsing, but for simple text extraction we handle the read)
+            if uploaded_file.type == "application/pdf":
+                 # NOTE: Full PDF parsing requires packages like 'PyPDF2' or 'pypdf' which need to be added to requirements.txt
+                 # For simplicity and to avoid complex dependency management, we advise users to use plain text.
+                 st.warning("For PDF files, the app will attempt to read plain text, but formatting may be lost. Please ensure your PDF is selectable text. Using .txt is recommended.")
+                 
+            try:
+                # Read file content as string
+                string_data = uploaded_file.read().decode('utf-8')
+                cv_text = string_data
+            except Exception as e:
+                st.error(f"Error reading file: {e}")
+                cv_text = ""
+                
 
     st.markdown("---")
     
@@ -175,7 +204,7 @@ def main():
     with col2:
         if st.button("Generate Comprehensive Job Strategy", use_container_width=True):
             if not cv_text.strip():
-                st.error("Please paste your CV content into the text area to start the analysis.")
+                st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
             else:
                 # Set a session state flag to trigger the search on next run
                 st.session_state['run_search'] = True
