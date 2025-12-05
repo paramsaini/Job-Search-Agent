@@ -131,7 +131,11 @@ def load_3d_data():
         'Score': np.random.randint(60, 100, n_points),
         'Skill_Type': np.random.choice(['Python', 'SQL', 'AWS', 'Soft Skill'], n_points)
     })
-    df_skills = df_skills.clip(0, 100) # Ensure scores are within 0-100 range
+    
+    # --- FIX START: Apply clipping only to numeric columns ---
+    numeric_cols = ['X_Tech', 'Y_Leader', 'Z_Domain', 'Score']
+    df_skills[numeric_cols] = df_skills[numeric_cols].clip(0, 100) # Ensure scores are within 0-100 range
+    # --- FIX END ---
     
     return df_skills
 
