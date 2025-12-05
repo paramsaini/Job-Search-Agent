@@ -19,7 +19,6 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}
 def extract_text_from_pdf(uploaded_file):
     """Uses pypdf to extract text from a PDF file stream."""
     try:
-        # Reset the file pointer to ensure pypdf reads from the beginning
         uploaded_file.seek(0)
         pdf_reader = pypdf.PdfReader(uploaded_file)
         text = ""
@@ -113,7 +112,6 @@ def generate_job_strategy_from_gemini(cv_text):
 # Function to execute when the reset button is pressed
 def handle_reset_click():
     # STRICT FIX: Increment the reset counter to force the file_uploader to be recreated.
-    # This addresses the StreamlitValueAssignmentNotAllowedError.
     st.session_state['reset_key_counter'] += 1
     
     # Reset input values and flow control flags
@@ -131,7 +129,7 @@ def main():
         initial_sidebar_state="collapsed"
     )
 
-    # --- ABSOLUTE VISUALIZATION OVERHAUL (NEON BLUE / HIGH CONTRAST) ---
+    # --- FINAL, ULTIMATE VISUALIZATION OVERHAUL (NEON BLUE / HIGH CONTRAST) ---
     st.markdown("""
     <style>
     /* Overall Background and Font - Studio Light (Bright and Clean) */
@@ -143,14 +141,14 @@ def main():
     
     /* Headers */
     h1, h2, h3, h4, .main-header {
-        color: #007bff; /* Bright, vibrant blue */
+        color: #004c99; /* Deep Blue for contrast */
     }
     .main-header {
         text-align: center;
         font-size: 3.5rem; 
         font-weight: 900;
         margin-bottom: 3rem;
-        text-shadow: 0 5px 10px rgba(0, 123, 255, 0.4); 
+        text-shadow: 0 5px 10px rgba(0, 76, 153, 0.4); 
     }
     
     /* Input Fields (Text Area) - Ultra Crisp */
@@ -173,19 +171,24 @@ def main():
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     }
     
-    /* FIX: Ensure uploaded file name and status is highly visible */
+    /* FIX 1: Ensure uploaded file name and status is highly visible (Targeting the internal text) */
     .stFileUploader span[data-testid="stFileUploaderFile"] {
-        color: #007bff !important; 
+        color: #007bff !important; /* Force NEON BLUE text */
         font-weight: 800;
         font-size: 1.1rem;
+        /* Increase padding/margin to separate it from surrounding elements */
+        padding-left: 10px;
     }
-    /* FIX: Eliminate dark strip (often caused by dropzone rendering) */
-    .stFileUploader div[data-testid="stFileUploaderDropzone"] {
-        background-color: #f8faff !important; 
+    
+    /* FIX 2: Eliminate dark strip and ensure full visibility of all Uploader text */
+    /* Target the container that holds the file name and the X button */
+    .stFileUploader div[data-testid="stFileUploaderFileName"] {
+        /* This is the area containing the file name, which often appears dark */
+        background-color: #f8faff !important; /* Match app background */
         border: none !important;
-        padding: 0 !important;
+        color: #004c99 !important; /* Ensure surrounding text is legible */
     }
-
+    
     /* Tabs (Paste/Upload) Styling */
     .stTabs [data-baseweb="tab"] {
         font-size: 1.3rem;
@@ -219,7 +222,8 @@ def main():
         border: 2px solid #e0e0e0;
     }
     
-    /* STRICT FIX FOR VISIBILITY OF WARNING/INFO STRIPS */
+    /* STRICT FIX FOR VISIBILITY OF WARNING/INFO STRIPS (Maximum Contrast) */
+    /* Yellow/Warning Strip Fix */
     div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(255, 240, 209)"] {
         background-color: #ffc107 !important; 
         color: #343a40 !important; 
@@ -229,6 +233,7 @@ def main():
         margin-bottom: 15px;
         border-radius: 10px;
     }
+    /* Blue/Info Strip Fix */
     div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(230, 242, 255)"] {
         background-color: #007bff !important; 
         color: #ffffff !important; 
@@ -382,7 +387,7 @@ def main():
 
 
 if __name__ == '__main__':
-    # --- STRICT SESSION STATE INITIALIZATION (Including Reset Counter) ---
+    # --- STRICT SESSION STATE INITIALIZATION ---
     if 'cv_input_paste' not in st.session_state:
         st.session_state['cv_input_paste'] = ""
     if 'run_search' not in st.session_state:
@@ -391,7 +396,6 @@ if __name__ == '__main__':
         st.session_state['results_displayed'] = False
     if 'cv_text_to_process' not in st.session_state:
         st.session_state['cv_text_to_process'] = ""
-    # NEW: Reset counter initialization
     if 'reset_key_counter' not in st.session_state:
         st.session_state['reset_key_counter'] = 0
         
