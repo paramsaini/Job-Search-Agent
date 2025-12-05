@@ -6,13 +6,10 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file for local development
-# This line does nothing on Streamlit Cloud but is useful for local testing
 load_dotenv() 
 
 # --- Gemini API Configuration ---
 # Priority: 1. Streamlit Secrets (for cloud) 2. OS Environment (for local)
-# This uses st.secrets.get for Streamlit Cloud and os.environ.get for local testing.
-# The third argument is an empty string if neither is found.
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 MODEL_NAME = "gemini-2.5-flash-preview-09-2025"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={API_KEY}"
@@ -24,30 +21,25 @@ def generate_job_strategy_from_gemini(cv_text):
     """
     Analyzes CV text, performs a grounded search for jobs, and generates
     a professional, detailed application strategy including visa requirements.
-    This function is wrapped in Streamlit's cache for efficiency if the same 
-    input is provided multiple times.
     """
     if not API_KEY:
-        # Check if key is available for API call
         return "Error: Gemini API Key not configured. Please set your GEMINI_API_KEY in Streamlit Cloud secrets or locally in a .env file.", []
         
-    # 1. Define the System Instruction
+    # 1. Define the System Instruction (ENHANCED FOR LINKS AND STRUCTURE)
     system_prompt = (
         "You are a World-Class Job Search Consultant and Visa Immigration Analyst. "
         "Your task is to analyze the provided CV content and generate a highly detailed, "
         "professionally formatted job search strategy. You must use the Google Search tool "
         "to find current, relevant job openings, application procedures, and up-to-date visa/immigration "
         "requirements for the specified roles/regions. "
-        "Your response MUST be formatted strictly as a single Markdown document with three main sections: "
-        "'Top Matched Employers (High-Accuracy)', 'Domestic Job Strategy', and 'International Job Strategy'.\n\n"
+        "Your response MUST be formatted strictly as a single Markdown document with four main sections. "
+        "For all employer details, you MUST include a direct website link using Markdown syntax [Employer Name](URL).\n\n"
         "MANDATORY OUTPUT REQUIREMENTS:\n"
-        "1. TOP MATCHED EMPLOYERS (High-Accuracy): List 5 specific, high-profile employers (company names) "
-        "that match the user's CV content (90%-100% suitability based on skills like AWS, Python, Fintech). "
-        "For each employer, provide a brief rationale (1-2 sentences) for the high match and their primary location (e.g., London, NYC, Remote).\n"
-        "2. DOMESTIC JOB STRATEGY: Provide 3 specific job titles matching the CV. For each title, give a "
-        "step-by-step guide on how to apply (e.g., where to search, keywords, required documents).\n"
-        "3. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles matching the CV. "
-        "Focus on the US, UK, and Canada/EU region (if applicable). For each region, you MUST include: "
+        "1. HIGH-ACCURACY DOMESTIC EMPLOYERS: List 5 specific, high-profile employers in the user's current domestic location "
+        "(or related domestic hubs) that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.\n"
+        "2. HIGH-ACCURACY INTERNATIONAL EMPLOYERS: List 5 specific, high-profile employers globally, focusing on key immigration countries (US, UK, Canada, EU), that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.\n"
+        "3. DOMESTIC JOB STRATEGY: Provide 3 specific job titles matching the CV. For each title, give a step-by-step guide on how to apply.\n"
+        "4. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles matching the CV. For each title/region, you MUST include: "
         "    a. The typical application steps (including necessary foreign credential evaluations). "
         "    b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). "
         "    c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source."
@@ -117,69 +109,108 @@ def main():
         initial_sidebar_state="collapsed"
     )
 
-    # Custom styling for a professional look (using Streamlit's native components)
+    # --- Charming Professional Styling ---
     st.markdown("""
     <style>
     .stApp {
-        background-color: #f7f9fb;
+        background: linear-gradient(135deg, #f0f4f8 0%, #e0e6ed 100%); /* Light, charming gradient background */
+        color: #1f2937;
     }
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        border-radius: 0.5rem;
-        border: 1px solid #d1d5db;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        background-color: #ffffff;
+        border-radius: 0.75rem;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     .stButton>button {
-        background-color: #3b82f6;
+        background-color: #0b50b7; /* Deep Blue */
         color: white;
-        font-weight: 600;
-        border-radius: 9999px; /* full rounded */
-        padding: 0.75rem 1.5rem;
-        transition: all 0.2s ease-in-out;
-        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+        font-weight: 700;
+        border-radius: 9999px; 
+        padding: 0.75rem 2rem;
+        transition: all 0.3s ease-in-out;
+        box-shadow: 0 6px 15px -3px rgba(11, 80, 183, 0.4);
     }
     .stButton>button:hover {
-        background-color: #2563eb;
-        transform: translateY(-1px);
+        background-color: #1e40af; /* Darker Blue on hover */
+        transform: scale(1.02);
+    }
+    .main-header {
+        text-align: center;
+        color: #1e3a8a; /* Darker Blue for header */
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+    }
+    .results-card {
+        background-color: #ffffff;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
     </style>
     """, unsafe_allow_html=True)
 
 
-    st.title("💼 Professional CV-to-Job Strategy Generator")
-    st.markdown("Paste your CV content below to receive a hyper-accurate, **Gemini-grounded** job search and visa strategy.")
+    st.markdown('<div class="main-header">✨ AI Job Search Consultant</div>', unsafe_allow_html=True)
+    st.markdown("---")
 
-    # Input Area
+    # --- Input Area (Clear Tab/Section) ---
+    st.container()
+    st.subheader("📝 Step 1: Input Your Professional Profile")
+    st.markdown("Enter the full content of your CV or Resume below for high-accuracy analysis.")
+
     cv_text = st.text_area(
-        "Paste CV Content Here (Required)",
+        "CV/Resume Content",
         height=300,
         placeholder="Example: John Doe | Senior Software Engineer | Skills: Python, AWS, Fintech, etc.",
-        key="cv_input"
+        key="cv_input",
+        label_visibility="hidden"
     )
 
-    # Button
-    if st.button("Generate Job Strategy (Grounding Search Active)"):
-        if not cv_text.strip():
-            st.error("Please paste your CV content into the text area to start the analysis.")
-        else:
-            with st.spinner("Analyzing CV and Performing Real-Time Job Search (This may take up to 20 seconds for in-depth analysis and grounding)..."):
+    st.markdown("---")
+    
+    # Button in the center
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("Generate Comprehensive Job Strategy", use_container_width=True):
+            if not cv_text.strip():
+                st.error("Please paste your CV content into the text area to start the analysis.")
+            else:
+                # Set a session state flag to trigger the search on next run
+                st.session_state['run_search'] = True
+                
+    # --- Output Area (Clear Tab/Section) ---
+    st.markdown("---")
+    st.subheader("🚀 Step 2: High-Definition Generated Strategy")
+    
+    # Check the flag to see if the search should be executed
+    if st.session_state.get('run_search'):
+        with st.container():
+            st.markdown('<div class="results-card">', unsafe_allow_html=True)
+            
+            with st.spinner("Analyzing CV and Performing Real-Time Grounded Search (This may take up to 20 seconds for in-depth analysis and visa checks)..."):
                 # Call the core Gemini function
                 markdown_output, citations = generate_job_strategy_from_gemini(cv_text)
 
-            st.subheader("Generated Professional Strategy")
-            
-            # Display the result (Streamlit renders Markdown natively)
+            # Display the result (Streamlit renders Markdown natively, including the newly requested HTML links)
             st.markdown(markdown_output)
 
             # Display citations
             if citations:
-                st.subheader("Grounding Sources (For Verification)")
+                st.markdown("---")
+                st.markdown("#### 🔗 Grounding Sources (For Verification)")
                 for i, source in enumerate(citations):
                     st.markdown(f"**[{i+1}]** [{source.get('title')}]({source.get('uri')})")
-            elif "Error" in markdown_output:
-                st.error("An error occurred during the API call. Please check your API key configuration or try again.")
             else:
-                st.info("No explicit grounding sources were returned for the generated strategy.")
-
+                st.info("No explicit grounding sources were returned. Output is based on broad knowledge and specific prompt instructions.")
+            
+            # Clear the flag to prevent re-running until the button is clicked again
+            st.session_state['run_search'] = False 
+            st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == '__main__':
+    # Initialize the run flag
+    if 'run_search' not in st.session_state:
+        st.session_state['run_search'] = False
     main()
