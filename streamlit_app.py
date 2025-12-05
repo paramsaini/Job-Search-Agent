@@ -4,16 +4,30 @@ import json
 import time
 import os
 from dotenv import load_dotenv
-import io # Import for file handling
+import io
+import pypdf # NEW: Import pypdf for robust PDF reading
 
 # Load environment variables from .env file for local development
 load_dotenv() 
 
 # --- Gemini API Configuration ---
-# Priority: 1. Streamlit Secrets (for cloud) 2. OS Environment (for local)
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 MODEL_NAME = "gemini-2.5-flash-preview-09-2025"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={API_KEY}"
+
+# --- PDF Extraction Function ---
+def extract_text_from_pdf(uploaded_file):
+    """Uses pypdf to extract text from a PDF file stream."""
+    try:
+        # Create a BytesIO buffer to read the uploaded file bytes
+        pdf_reader = pypdf.PdfReader(uploaded_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() or ""
+        return text
+    except Exception as e:
+        st.error(f"Failed to process PDF with pypdf. Error: {e}")
+        return ""
 
 # --- Core Gemini API Call Function ---
 
@@ -26,9 +40,10 @@ def generate_job_strategy_from_gemini(cv_text):
     if not API_KEY:
         return "Error: Gemini API Key not configured. Please set your GEMINI_API_KEY in Streamlit Cloud secrets or locally in a .env file.", []
         
-    # 1. Define the System Instruction
+    # 1. Define the System Instruction (Strictly emphasize accurate content analysis)
     system_prompt = (
         "You are a World-Class Job Search Consultant and Visa Immigration Analyst. "
+        "Your PRIMARY directive is to strictly and accurately analyze the provided CV content. "
         "Your task is to analyze the provided CV content and generate a highly detailed, "
         "professionally formatted job search strategy. You must use the Google Search tool "
         "to find current, relevant job openings, application procedures, and up-to-date visa/immigration "
@@ -107,7 +122,8 @@ def generate_job_strategy_from_gemini(cv_text):
 def reset_inputs():
     # Resetting the session states tied to the input widgets and process flow
     st.session_state['cv_input_paste'] = ""
-    st.session_state['cv_input_upload'] = None # Clear file uploader
+    # Setting the uploader to None will clear the widget
+    st.session_state['cv_input_upload'] = None 
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
     st.session_state['cv_text_to_process'] = ""
@@ -138,7 +154,7 @@ def main():
         font-size: 3.2rem;
         font-weight: 900;
         margin-bottom: 2.5rem;
-        text-shadow: 0 4px 8px rgba(0, 123, 255, 0.2); /* Soft blue shadow */
+        text-shadow: 0 4px 8px rgba(0, 123, 255, 0.2); 
     }
     
     /* Input Fields (Text Area, File Uploader) - Crisp and Shadowed */
@@ -152,7 +168,7 @@ def main():
     }
     .stFileUploader>div>div {
         background-color: #ffffff;
-        border: 3px dashed #007bff; /* Even more prominent dashed border */
+        border: 3px dashed #007bff; 
         color: #1c2541;
         border-radius: 1rem;
         padding: 1.5rem;
@@ -174,7 +190,7 @@ def main():
         border-radius: 9999px; 
         padding: 1.2rem 3.5rem;
         transition: all 0.4s ease-in-out;
-        box-shadow: 0 12px 30px rgba(40, 167, 69, 0.5); /* Glowing green shadow */
+        box-shadow: 0 12px 30px rgba(40, 167, 69, 0.5); 
         border: none;
     }
     .stButton>button:hover {
@@ -187,32 +203,31 @@ def main():
         background-color: #ffffff;
         border-radius: 1.5rem;
         padding: 3.5rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* Max depth shadow */
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         border: 1px solid #f0f0f0;
     }
     
-    /* Fix for warning/info strips (yellow/blue) to match theme */
-    .stAlert {
-        border-radius: 10px;
-        font-size: 1.05rem;
-        font-weight: 500;
+    /* FIX FOR VISIBILITY OF WARNING/INFO STRIPS */
+    div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(255, 240, 209)"] {
+        background-color: #ffc107 !important; /* Bright, high-contrast yellow */
+        color: #343a40 !important; /* Dark text */
+        border: 1px solid #ffcd39 !important;
+        font-weight: 700;
+        padding: 15px;
+        margin-bottom: 10px;
     }
-    /* Yellow/Warning Strip Fix */
-    .stAlert[data-baseweb="notification"] > div:first-child[style*="rgb(255, 240, 209)"] {
-        background-color: #fff3cd !important; 
-        color: #856404 !important; /* Dark text on yellow */
-        border: 1px solid #ffeeba !important;
-    }
-     /* Blue/Info Strip Fix */
-    .stAlert[data-baseweb="notification"] > div:first-child[style*="rgb(230, 242, 255)"] {
-        background-color: #cce5ff !important;
-        color: #004085 !important; /* Dark text on blue */
-        border: 1px solid #b8daff !important;
+    div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(230, 242, 255)"] {
+        background-color: #007bff !important; /* Bright Blue */
+        color: #ffffff !important; /* White text on blue */
+        border: 1px solid #0056b3 !important;
+        font-weight: 700;
+        padding: 15px;
+        margin-bottom: 10px;
     }
     
     /* Markdown Links (Website URLs) in Results */
     .results-card a {
-        color: #007bff; /* Bright blue for clickable links */
+        color: #007bff; 
         font-weight: 600;
     }
     </style>
@@ -256,26 +271,45 @@ def main():
         )
         if uploaded_file is not None:
             
+            # Reset file pointer to the beginning for reading
+            uploaded_file.seek(0) 
+            
             if uploaded_file.type == "application/pdf":
-                 st.warning("For PDF files, the app will attempt to read plain text, but complex formatting may be lost. Using .txt is recommended.")
-                 
-            try:
-                # Robust Encoding Detection
-                raw_bytes = uploaded_file.read()
+                 # --- NEW ROBUST PDF READING ---
+                 st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust, cross-platform reading. If content remains incorrect, the file's text layer may be corrupted (e.g., image-only PDF).")
+                 try:
+                     cv_text = extract_text_from_pdf(uploaded_file)
+                 except Exception as e:
+                     st.error(f"Failed to read PDF. Ensure text is selectable. Error: {e}")
+                     cv_text = ""
+            
+            else: # Handle TXT file types
                 try:
-                    string_data = raw_bytes.decode('utf-8')
-                except UnicodeDecodeError:
-                    string_data = raw_bytes.decode('windows-1252', errors='replace')
-                    st.info("File was read using a fallback encoding (Windows-1252). Please check for any strange characters.")
-                    
-                cv_text = string_data
-                uploaded_file.seek(0)
+                    raw_bytes = uploaded_file.read()
+                    try:
+                        # Attempt 1: Standard UTF-8
+                        string_data = raw_bytes.decode('utf-8')
+                    except UnicodeDecodeError:
+                        # Attempt 2: Fallback to common legacy encoding
+                        string_data = raw_bytes.decode('windows-1252', errors='replace')
+                        st.info("File encoding resolved using fallback (Windows-1252). Please check characters.")
+                        
+                    cv_text = string_data
+                except Exception as e:
+                    st.error(f"Error reading TXT file: {e}")
+                    cv_text = ""
                 
-            except Exception as e:
-                st.error(f"Error reading file: {e}")
+            # --- Strict Accuracy Check ---
+            if cv_text and len(cv_text.strip()) < 50: 
+                st.error("❌ **Reading Failure:** Extracted text is too short or empty. This will cause the AI to generate completely false information. Please ensure the file contains readable text.")
                 cv_text = ""
                 
-
+    # --- Strict Error Fix: Resetting State if Input Failed ---
+    if not cv_text.strip() and st.session_state.get('run_search'):
+        st.session_state['run_search'] = False
+        st.session_state['cv_text_to_process'] = ""
+        st.warning("Input cancelled due to empty CV content.")
+        
     st.markdown("---")
     
     # Button in the center
@@ -286,14 +320,13 @@ def main():
         if not cv_text.strip():
             st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
         else:
-            st.session_state['cv_text_to_process'] = cv_text # Store content for processing
+            st.session_state['cv_text_to_process'] = cv_text 
             st.session_state['run_search'] = True
             
     # Conditional Reset Button
-    if st.session_state.get('results_displayed') and st.session_state['results_displayed']:
+    if st.session_state.get('results_displayed'):
         if st.button("Start New Search (Reset)", type="secondary"):
             reset_inputs()
-            # Must rerun to clear the main output area
             st.rerun()
 
     # --- Output Area ---
@@ -323,10 +356,9 @@ def main():
             st.session_state['run_search'] = False 
             st.markdown('</div>', unsafe_allow_html=True)
     elif st.session_state.get('results_displayed'):
-        # Keep output visible until explicitly reset
+        # Output is kept visible until explicitly reset
         pass 
     else:
-        # Initial state message
         st.info("Your comprehensive job search strategy will appear here after analysis. Click 'Generate' to begin.")
 
 
