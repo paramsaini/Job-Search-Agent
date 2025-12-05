@@ -19,6 +19,8 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}
 def extract_text_from_pdf(uploaded_file):
     """Uses pypdf to extract text from a PDF file stream."""
     try:
+        # Reset the file pointer to ensure pypdf reads from the beginning
+        uploaded_file.seek(0)
         pdf_reader = pypdf.PdfReader(uploaded_file)
         text = ""
         for page in pdf_reader.pages:
@@ -108,21 +110,19 @@ def generate_job_strategy_from_gemini(cv_text):
 
 # --- Streamlit UI and Execution ---
 
-# Function to clear the state keys used by the input widgets
-def clear_input_widgets_state():
-    # Resetting input keys is the most critical part
-    st.session_state['cv_input_paste'] = ""
-    st.session_state['cv_input_upload'] = None 
+# Function to execute when the reset button is pressed
+def handle_reset_click():
+    # STRICT FIX: Increment the reset counter to force the file_uploader to be recreated.
+    # This addresses the StreamlitValueAssignmentNotAllowedError.
+    st.session_state['reset_key_counter'] += 1
     
-    # Reset flow control flags
+    # Reset input values and flow control flags
+    st.session_state['cv_input_paste'] = ""
     st.session_state['cv_text_to_process'] = ""
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
-
-# Function to execute when the reset button is pressed
-def handle_reset_click():
-    # This function should only modify state, which triggers a full rerun
-    clear_input_widgets_state()
+    
+    # st.rerun() is implicitly called by the state change
 
 def main():
     st.set_page_config(
@@ -147,10 +147,10 @@ def main():
     }
     .main-header {
         text-align: center;
-        font-size: 3.5rem; /* Larger Title */
+        font-size: 3.5rem; 
         font-weight: 900;
         margin-bottom: 3rem;
-        text-shadow: 0 5px 10px rgba(0, 123, 255, 0.4); /* Stronger blue glow */
+        text-shadow: 0 5px 10px rgba(0, 123, 255, 0.4); 
     }
     
     /* Input Fields (Text Area) - Ultra Crisp */
@@ -163,7 +163,7 @@ def main():
         padding: 1.5rem;
     }
     
-    /* FILE UPLOADER VISIBILITY FIX (Targets the file name/status display) */
+    /* FILE UPLOADER VISIBILITY FIX */
     .stFileUploader>div>div {
         background-color: #ffffff;
         border: 4px dashed #007bff; 
@@ -258,7 +258,6 @@ def main():
     # Dual input for flexibility: Upload or Paste
     tab_paste, tab_upload = st.tabs(["Paste CV Content", "Upload CV File"])
     
-    # Initialize cv_text here. It will be overwritten by the active input source.
     cv_text = ""
     
     with tab_paste:
@@ -271,30 +270,33 @@ def main():
             """, unsafe_allow_html=True
         )
         
-        # --- FIX: Define widget and rely on key for state ---
+        # 1. Define Paste Widget (Safe state setting)
         st.text_area(
             "Paste CV Content Here",
             value=st.session_state['cv_input_paste'], 
             height=300,
             placeholder="Paste your resume content here...",
-            key="cv_input_paste", # The key manages the state internally
+            key="cv_input_paste", 
             label_visibility="hidden"
         )
         
-        # Read the input content directly from the state AFTER widget definition
+        # Read Paste input from state
         cv_text = st.session_state.get('cv_input_paste', "")
 
     with tab_upload:
-        # --- FIX: Define widget and rely on key for state ---
+        # 2. Define Upload Widget (Safe state setting using dynamic key)
         st.file_uploader(
             "Upload CV or Resume",
             type=["txt", "pdf"],
-            key="cv_input_upload" # The key manages the state internally
+            # Use dynamic key for graceful reset
+            key=f"cv_input_upload_{st.session_state['reset_key_counter']}" 
         )
-        uploaded_file = st.session_state.get('cv_input_upload', None)
+        
+        # Read Upload input from state
+        uploaded_file = st.session_state.get(f"cv_input_upload_{st.session_state['reset_key_counter']}", None)
 
         if uploaded_file is not None:
-            uploaded_file.seek(0) 
+            # If a file is uploaded, process it and overwrite cv_text
             
             if uploaded_file.type == "application/pdf":
                  st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust, cross-platform reading. If content remains incorrect, the file's text layer may be corrupted (e.g., image-only PDF).")
@@ -306,6 +308,7 @@ def main():
             
             else: # Handle TXT file types
                 try:
+                    uploaded_file.seek(0)
                     raw_bytes = uploaded_file.read()
                     try:
                         string_data = raw_bytes.decode('utf-8')
@@ -345,7 +348,7 @@ def main():
     if st.session_state.get('results_displayed'):
         # Pass the callback function directly to on_click
         if st.button("Start New Search (Reset)", type="secondary", on_click=handle_reset_click):
-            pass 
+            pass
 
     # --- Output Area ---
     st.markdown("---")
@@ -379,16 +382,17 @@ def main():
 
 
 if __name__ == '__main__':
-    # --- STRICT SESSION STATE INITIALIZATION ---
+    # --- STRICT SESSION STATE INITIALIZATION (Including Reset Counter) ---
     if 'cv_input_paste' not in st.session_state:
         st.session_state['cv_input_paste'] = ""
-    if 'cv_input_upload' not in st.session_state:
-        st.session_state['cv_input_upload'] = None
     if 'run_search' not in st.session_state:
         st.session_state['run_search'] = False
     if 'results_displayed' not in st.session_state:
         st.session_state['results_displayed'] = False
     if 'cv_text_to_process' not in st.session_state:
         st.session_state['cv_text_to_process'] = ""
+    # NEW: Reset counter initialization
+    if 'reset_key_counter' not in st.session_state:
+        st.session_state['reset_key_counter'] = 0
         
     main()
