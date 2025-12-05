@@ -103,6 +103,12 @@ def generate_job_strategy_from_gemini(cv_text):
 
 # --- Streamlit UI and Execution ---
 
+# Function to reset the input fields
+def reset_inputs():
+    st.session_state['cv_input_paste'] = ""
+    st.session_state['cv_input_upload'] = None
+    st.session_state['run_search'] = False
+
 def main():
     st.set_page_config(
         page_title="Gemini CV Job Strategy Generator",
@@ -110,66 +116,81 @@ def main():
         initial_sidebar_state="collapsed"
     )
 
-    # --- BOLDER, MORE PROFESSIONAL STYLING ---
+    # --- FINAL, STRICT VISUAL STYLING (STUDIO LIGHT / 8K LOOK) ---
     st.markdown("""
     <style>
-    /* Overall Background and Font */
+    /* Overall Background and Font - Studio Light (Bright and Clean) */
     .stApp {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); /* Lighter, but brighter blue gradient */
-        color: #1a237e; /* Dark Blue Text */
+        background-color: #f8faff; /* Very light, professional off-white */
+        color: #1c2541; /* Dark professional text */
     }
     
-    /* Input Fields (Text Area, Upload Button) */
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stFileUploader>div>div {
+    /* Headers */
+    h1, h2, h3, h4, .main-header {
+        color: #007bff; /* Bright, vibrant blue */
+        font-family: 'Inter', sans-serif;
+    }
+    .main-header {
+        text-align: center;
+        font-size: 3.2rem;
+        font-weight: 900;
+        margin-bottom: 2.5rem;
+        text-shadow: 0 4px 8px rgba(0, 123, 255, 0.2); /* Soft blue shadow */
+    }
+    
+    /* Input Fields (Text Area, File Uploader) - Crisp and Shadowed */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         background-color: #ffffff;
-        border-radius: 0.75rem;
-        border: 2px solid #64b5f6; /* Visible Blue Border */
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); /* Stronger Shadow */
-        color: #263238; /* Dark text for clarity */
+        color: #1c2541; 
+        border-radius: 1rem;
+        border: 1px solid #cce5ff; /* Light blue border */
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); /* Stronger but cleaner shadow */
+        padding: 1rem;
+    }
+    .stFileUploader>div>div {
+        background-color: #ffffff;
+        border: 2px dashed #007bff; /* Vibrant dashed border */
+        color: #1c2541;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     }
     
-    /* Tabs (Paste/Upload) Styling for better visibility */
+    /* Tabs (Paste/Upload) Styling */
     .stTabs [data-baseweb="tab"] {
-        font-size: 1.1rem;
+        font-size: 1.25rem;
         font-weight: 700;
-        color: #1a237e;
+        color: #5a5a5a;
     }
 
-    /* Main Action Button */
+    /* Main Action Button - VIBRANT */
     .stButton>button {
-        background-color: #0b50b7; /* Deep Blue */
+        background-color: #28a745; /* VIBRANT GREEN for Go/Generate */
         color: white;
         font-weight: 800;
         border-radius: 9999px; 
-        padding: 0.8rem 2.5rem;
-        transition: all 0.3s ease-in-out;
-        box-shadow: 0 8px 20px -5px rgba(11, 80, 183, 0.6); /* Bolder Shadow */
+        padding: 1.2rem 3.5rem;
+        transition: all 0.4s ease-in-out;
+        box-shadow: 0 12px 30px rgba(40, 167, 69, 0.5); /* Glowing green shadow */
+        border: none;
     }
     .stButton>button:hover {
-        background-color: #1e40af; /* Darker Blue on hover */
-        transform: scale(1.05); /* Slightly bigger effect */
+        background-color: #218838; 
+        transform: scale(1.1); 
     }
     
-    /* Header and Card Styling */
-    .main-header {
-        text-align: center;
-        color: #0d47a1; /* Even darker blue for emphasis */
-        font-size: 2.8rem;
-        font-weight: 900;
-        margin-bottom: 1.5rem;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    }
+    /* Results Card - Ultra Clean and Structured */
     .results-card {
         background-color: #ffffff;
-        border-radius: 1.2rem;
-        padding: 2.5rem;
-        box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.2); /* Very prominent shadow */
+        border-radius: 1.5rem;
+        padding: 3.5rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* Max depth shadow */
+        border: 1px solid #f0f0f0;
     }
-    /* Subheaders for generated content */
-    .results-card h4 {
-        color: #1a237e;
-        border-bottom: 2px solid #e3f2fd;
-        padding-bottom: 0.5rem;
+    /* Markdown Links (Website URLs) in Results */
+    .results-card a {
+        color: #007bff; /* Bright blue for clickable links */
+        font-weight: 600;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -178,21 +199,23 @@ def main():
     st.markdown('<div class="main-header">✨ AI Job Search Consultant</div>', unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- Input Area (Clear Tab/Section) ---
+    # --- Input Area ---
     st.container()
     st.subheader("📝 Step 1: Input Your Professional Profile")
     
     # Dual input for flexibility: Upload or Paste
-    tab_paste, tab_upload = st.tabs(["Paste CV Content (Recommended)", "Upload CV File (.txt / .pdf)"])
+    tab_paste, tab_upload = st.tabs(["Paste CV Content", "Upload CV File"])
     
     cv_text = ""
     
     with tab_paste:
         st.markdown(
             """
+            <p style="color: #007bff;">
             **Pasting Tip:** If direct pasting is blocked, please try right-clicking the text box
             or use **Ctrl+Shift+V** (Windows) / **Cmd+Shift+V** (Mac).
-            """
+            </p>
+            """, unsafe_allow_html=True
         )
         cv_text = st.text_area(
             "Paste CV Content Here",
@@ -234,23 +257,33 @@ def main():
     
     # Button in the center
     col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("Generate Comprehensive Job Strategy", use_container_width=True):
-            if not cv_text.strip():
-                st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
-            else:
-                st.session_state['run_search'] = True
-                
-    # --- Output Area (Clear Tab/Section) ---
+    
+    # Use a common placeholder button for generation
+    if col2.button("Generate Comprehensive Job Strategy", use_container_width=True):
+        if not cv_text.strip():
+            st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
+        else:
+            st.session_state['cv_text_to_process'] = cv_text # Store content for processing
+            st.session_state['run_search'] = True
+            
+    # Conditional Reset Button
+    if st.session_state.get('results_displayed') and st.session_state['results_displayed']:
+        if st.button("Start New Search (Reset)", type="secondary"):
+            reset_inputs()
+            # Must rerun to clear the main output area
+            st.rerun()
+
+    # --- Output Area ---
     st.markdown("---")
     st.subheader("🚀 Step 2: High-Definition Generated Strategy")
     
-    if st.session_state.get('run_search'):
+    # --- Processing and Output Logic ---
+    if st.session_state.get('run_search') and st.session_state.get('cv_text_to_process'):
         with st.container():
             st.markdown('<div class="results-card">', unsafe_allow_html=True)
             
             with st.spinner("Analyzing CV and Performing Real-Time Grounded Search (This may take up to 20 seconds for in-depth analysis and visa checks)..."):
-                markdown_output, citations = generate_job_strategy_from_gemini(cv_text)
+                markdown_output, citations = generate_job_strategy_from_gemini(st.session_state['cv_text_to_process'])
 
             st.markdown(markdown_output)
 
@@ -262,10 +295,25 @@ def main():
             else:
                 st.info("No explicit grounding sources were returned. Output is based on broad knowledge and specific prompt instructions.")
             
+            # Set flag to display reset button after successful generation
+            st.session_state['results_displayed'] = True
             st.session_state['run_search'] = False 
             st.markdown('</div>', unsafe_allow_html=True)
+    elif st.session_state.get('results_displayed'):
+        # Keep output visible until explicitly reset
+        pass 
+    else:
+        # Initial state message
+        st.info("Your comprehensive job search strategy will appear here after analysis. Click 'Generate' to begin.")
+
 
 if __name__ == '__main__':
+    # Initialize session state variables
     if 'run_search' not in st.session_state:
         st.session_state['run_search'] = False
+    if 'results_displayed' not in st.session_state:
+        st.session_state['results_displayed'] = False
+    if 'cv_text_to_process' not in st.session_state:
+        st.session_state['cv_text_to_process'] = ""
+        
     main()
