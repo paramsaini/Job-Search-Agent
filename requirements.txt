@@ -2,3 +2,6 @@ streamlit
 requests
 python-dotenv
 pypdf
+pandas
+numpy
+plotly
