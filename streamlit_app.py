@@ -110,44 +110,66 @@ def main():
         initial_sidebar_state="collapsed"
     )
 
-    # --- Charming Professional Styling ---
+    # --- BOLDER, MORE PROFESSIONAL STYLING ---
     st.markdown("""
     <style>
+    /* Overall Background and Font */
     .stApp {
-        background: linear-gradient(135deg, #f0f4f8 0%, #e0e6ed 100%); /* Light, charming gradient background */
-        color: #1f2937;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); /* Lighter, but brighter blue gradient */
+        color: #1a237e; /* Dark Blue Text */
     }
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+    
+    /* Input Fields (Text Area, Upload Button) */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stFileUploader>div>div {
         background-color: #ffffff;
         border-radius: 0.75rem;
-        border: 1px solid #cbd5e1;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 2px solid #64b5f6; /* Visible Blue Border */
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); /* Stronger Shadow */
+        color: #263238; /* Dark text for clarity */
     }
+    
+    /* Tabs (Paste/Upload) Styling for better visibility */
+    .stTabs [data-baseweb="tab"] {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1a237e;
+    }
+
+    /* Main Action Button */
     .stButton>button {
         background-color: #0b50b7; /* Deep Blue */
         color: white;
-        font-weight: 700;
+        font-weight: 800;
         border-radius: 9999px; 
-        padding: 0.75rem 2rem;
+        padding: 0.8rem 2.5rem;
         transition: all 0.3s ease-in-out;
-        box-shadow: 0 6px 15px -3px rgba(11, 80, 183, 0.4);
+        box-shadow: 0 8px 20px -5px rgba(11, 80, 183, 0.6); /* Bolder Shadow */
     }
     .stButton>button:hover {
         background-color: #1e40af; /* Darker Blue on hover */
-        transform: scale(1.02);
+        transform: scale(1.05); /* Slightly bigger effect */
     }
+    
+    /* Header and Card Styling */
     .main-header {
         text-align: center;
-        color: #1e3a8a; /* Darker Blue for header */
-        font-size: 2.5rem;
-        font-weight: 800;
-        margin-bottom: 1rem;
+        color: #0d47a1; /* Even darker blue for emphasis */
+        font-size: 2.8rem;
+        font-weight: 900;
+        margin-bottom: 1.5rem;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
     }
     .results-card {
         background-color: #ffffff;
-        border-radius: 1rem;
-        padding: 2rem;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border-radius: 1.2rem;
+        padding: 2.5rem;
+        box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.2); /* Very prominent shadow */
+    }
+    /* Subheaders for generated content */
+    .results-card h4 {
+        color: #1a237e;
+        border-bottom: 2px solid #e3f2fd;
+        padding-bottom: 0.5rem;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -166,7 +188,12 @@ def main():
     cv_text = ""
     
     with tab_paste:
-        st.markdown("**If pasting is blocked, please use Ctrl+Shift+V (Windows) or Cmd+Shift+V (Mac) or use the 'Upload CV File' tab.**")
+        st.markdown(
+            """
+            **Pasting Tip:** If direct pasting is blocked, please try right-clicking the text box
+            or use **Ctrl+Shift+V** (Windows) / **Cmd+Shift+V** (Mac).
+            """
+        )
         cv_text = st.text_area(
             "Paste CV Content Here",
             height=300,
@@ -182,16 +209,22 @@ def main():
             key="cv_input_upload"
         )
         if uploaded_file is not None:
-            # Simple handling for text and PDF (PDFs require extra libraries for parsing, but for simple text extraction we handle the read)
+            
             if uploaded_file.type == "application/pdf":
-                 # NOTE: Full PDF parsing requires packages like 'PyPDF2' or 'pypdf' which need to be added to requirements.txt
-                 # For simplicity and to avoid complex dependency management, we advise users to use plain text.
-                 st.warning("For PDF files, the app will attempt to read plain text, but formatting may be lost. Please ensure your PDF is selectable text. Using .txt is recommended.")
+                 st.warning("For PDF files, the app will attempt to read plain text, but complex formatting may be lost. Using .txt is recommended.")
                  
             try:
-                # Read file content as string
-                string_data = uploaded_file.read().decode('utf-8')
+                # Robust Encoding Detection
+                raw_bytes = uploaded_file.read()
+                try:
+                    string_data = raw_bytes.decode('utf-8')
+                except UnicodeDecodeError:
+                    string_data = raw_bytes.decode('windows-1252', errors='replace')
+                    st.info("File was read using a fallback encoding (Windows-1252). Please check for any strange characters.")
+                    
                 cv_text = string_data
+                uploaded_file.seek(0)
+                
             except Exception as e:
                 st.error(f"Error reading file: {e}")
                 cv_text = ""
@@ -206,26 +239,21 @@ def main():
             if not cv_text.strip():
                 st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
             else:
-                # Set a session state flag to trigger the search on next run
                 st.session_state['run_search'] = True
                 
     # --- Output Area (Clear Tab/Section) ---
     st.markdown("---")
     st.subheader("🚀 Step 2: High-Definition Generated Strategy")
     
-    # Check the flag to see if the search should be executed
     if st.session_state.get('run_search'):
         with st.container():
             st.markdown('<div class="results-card">', unsafe_allow_html=True)
             
             with st.spinner("Analyzing CV and Performing Real-Time Grounded Search (This may take up to 20 seconds for in-depth analysis and visa checks)..."):
-                # Call the core Gemini function
                 markdown_output, citations = generate_job_strategy_from_gemini(cv_text)
 
-            # Display the result (Streamlit renders Markdown natively, including the newly requested HTML links)
             st.markdown(markdown_output)
 
-            # Display citations
             if citations:
                 st.markdown("---")
                 st.markdown("#### 🔗 Grounding Sources (For Verification)")
@@ -234,12 +262,10 @@ def main():
             else:
                 st.info("No explicit grounding sources were returned. Output is based on broad knowledge and specific prompt instructions.")
             
-            # Clear the flag to prevent re-running until the button is clicked again
             st.session_state['run_search'] = False 
             st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == '__main__':
-    # Initialize the run flag
     if 'run_search' not in st.session_state:
         st.session_state['run_search'] = False
     main()
