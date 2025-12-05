@@ -10,7 +10,6 @@ import pypdf
 # Load environment variables from .env file for local development
 load_dotenv() 
 
-# ---  😊😊😊😊😊😊😁😁😁😁 ---
 # --- Gemini API Configuration ---
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 MODEL_NAME = "gemini-2.5-flash-preview-09-2025"
@@ -33,7 +32,6 @@ def extract_text_from_pdf(uploaded_file):
 
 @st.cache_data(show_spinner=False)
 def generate_job_strategy_from_gemini(cv_text):
-    # (API call logic remains the same)
     if not API_KEY:
         return "Error: Gemini API Key not configured. Please set your GEMINI_API_KEY in Streamlit Cloud secrets or locally in a .env file.", []
         
@@ -112,16 +110,19 @@ def generate_job_strategy_from_gemini(cv_text):
 
 # Function to clear the state keys used by the input widgets
 def clear_input_widgets_state():
+    # Resetting input keys is the most critical part
     st.session_state['cv_input_paste'] = ""
     st.session_state['cv_input_upload'] = None 
+    
+    # Reset flow control flags
     st.session_state['cv_text_to_process'] = ""
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
 
 # Function to execute when the reset button is pressed
 def handle_reset_click():
+    # This function should only modify state, which triggers a full rerun
     clear_input_widgets_state()
-    st.rerun()
 
 def main():
     st.set_page_config(
@@ -156,9 +157,9 @@ def main():
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         background-color: #ffffff;
         color: #1c2541; 
-        border-radius: 1.2rem; /* More rounded */
+        border-radius: 1.2rem; 
         border: 4px solid #007bff; /* Thick, pronounced blue border */
-        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25); /* Max shadow */
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25); 
         padding: 1.5rem;
     }
     
@@ -174,13 +175,13 @@ def main():
     
     /* FIX: Ensure uploaded file name and status is highly visible */
     .stFileUploader span[data-testid="stFileUploaderFile"] {
-        color: #007bff !important; /* Force NEON BLUE text */
+        color: #007bff !important; 
         font-weight: 800;
         font-size: 1.1rem;
     }
     /* FIX: Eliminate dark strip (often caused by dropzone rendering) */
     .stFileUploader div[data-testid="stFileUploaderDropzone"] {
-        background-color: #f8faff !important; /* Match app background */
+        background-color: #f8faff !important; 
         border: none !important;
         padding: 0 !important;
     }
@@ -189,7 +190,7 @@ def main():
     .stTabs [data-baseweb="tab"] {
         font-size: 1.3rem;
         font-weight: 900;
-        color: #007bff; /* Make tabs bright */
+        color: #007bff; 
     }
     
     /* Main Action Button - VIBRANT */
@@ -198,9 +199,9 @@ def main():
         color: white;
         font-weight: 900;
         border-radius: 9999px; 
-        padding: 1.5rem 4rem; /* Massive padding */
+        padding: 1.5rem 4rem; 
         transition: all 0.4s ease-in-out;
-        box-shadow: 0 15px 40px rgba(40, 167, 69, 0.6); /* Maximum glow */
+        box-shadow: 0 15px 40px rgba(40, 167, 69, 0.6); 
         border: none;
         font-size: 1.3rem;
     }
@@ -212,9 +213,9 @@ def main():
     /* Results Card - Ultra Clean and Structured */
     .results-card {
         background-color: #ffffff;
-        border-radius: 2rem; /* Extreme rounding */
+        border-radius: 2rem; 
         padding: 4rem;
-        box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.3); /* The ultimate shadow */
+        box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.3); 
         border: 2px solid #e0e0e0;
     }
     
@@ -237,6 +238,12 @@ def main():
         margin-bottom: 15px;
         border-radius: 10px;
     }
+    
+    /* Markdown Links (Website URLs) in Results */
+    .results-card a {
+        color: #007bff; 
+        font-weight: 600;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -251,6 +258,7 @@ def main():
     # Dual input for flexibility: Upload or Paste
     tab_paste, tab_upload = st.tabs(["Paste CV Content", "Upload CV File"])
     
+    # Initialize cv_text here. It will be overwritten by the active input source.
     cv_text = ""
     
     with tab_paste:
@@ -262,23 +270,28 @@ def main():
             </p>
             """, unsafe_allow_html=True
         )
-        st.session_state['cv_input_paste'] = st.text_area(
+        
+        # --- FIX: Define widget and rely on key for state ---
+        st.text_area(
             "Paste CV Content Here",
             value=st.session_state['cv_input_paste'], 
             height=300,
             placeholder="Paste your resume content here...",
-            key="cv_input_paste",
+            key="cv_input_paste", # The key manages the state internally
             label_visibility="hidden"
         )
-        cv_text = st.session_state['cv_input_paste']
+        
+        # Read the input content directly from the state AFTER widget definition
+        cv_text = st.session_state.get('cv_input_paste', "")
 
     with tab_upload:
-        st.session_state['cv_input_upload'] = st.file_uploader(
+        # --- FIX: Define widget and rely on key for state ---
+        st.file_uploader(
             "Upload CV or Resume",
             type=["txt", "pdf"],
-            key="cv_input_upload"
+            key="cv_input_upload" # The key manages the state internally
         )
-        uploaded_file = st.session_state['cv_input_upload']
+        uploaded_file = st.session_state.get('cv_input_upload', None)
 
         if uploaded_file is not None:
             uploaded_file.seek(0) 
@@ -330,8 +343,9 @@ def main():
             
     # Conditional Reset Button
     if st.session_state.get('results_displayed'):
+        # Pass the callback function directly to on_click
         if st.button("Start New Search (Reset)", type="secondary", on_click=handle_reset_click):
-            pass
+            pass 
 
     # --- Output Area ---
     st.markdown("---")
