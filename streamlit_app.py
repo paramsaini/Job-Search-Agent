@@ -5,7 +5,7 @@ import time
 import os
 from dotenv import load_dotenv
 import io
-import pypdf # NEW: Import pypdf for robust PDF reading
+import pypdf
 
 # Load environment variables from .env file for local development
 load_dotenv() 
@@ -19,7 +19,6 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}
 def extract_text_from_pdf(uploaded_file):
     """Uses pypdf to extract text from a PDF file stream."""
     try:
-        # Create a BytesIO buffer to read the uploaded file bytes
         pdf_reader = pypdf.PdfReader(uploaded_file)
         text = ""
         for page in pdf_reader.pages:
@@ -33,14 +32,10 @@ def extract_text_from_pdf(uploaded_file):
 
 @st.cache_data(show_spinner=False)
 def generate_job_strategy_from_gemini(cv_text):
-    """
-    Analyzes CV text, performs a grounded search for jobs, and generates
-    a professional, detailed application strategy including visa requirements.
-    """
+    # (API call logic remains the same)
     if not API_KEY:
         return "Error: Gemini API Key not configured. Please set your GEMINI_API_KEY in Streamlit Cloud secrets or locally in a .env file.", []
         
-    # 1. Define the System Instruction (Strictly emphasize accurate content analysis)
     system_prompt = (
         "You are a World-Class Job Search Consultant and Visa Immigration Analyst. "
         "Your PRIMARY directive is to strictly and accurately analyze the provided CV content. "
@@ -61,10 +56,7 @@ def generate_job_strategy_from_gemini(cv_text):
         "    c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source."
     )
 
-    # 2. Define the User Query
     user_query = f"Analyze this CV and generate the requested professional job strategy. The CV content is:\n\n---\n{cv_text}\n---"
-
-    # 3. Construct the API Payload with Grounding and System Instruction
     payload = {
         "contents": [{ "parts": [{ "text": user_query }] }],
         "tools": [{ "google_search": {} }],
@@ -73,7 +65,6 @@ def generate_job_strategy_from_gemini(cv_text):
         },
     }
 
-    # Implement Exponential Backoff
     max_retries = 5
     for attempt in range(max_retries):
         try:
@@ -118,15 +109,18 @@ def generate_job_strategy_from_gemini(cv_text):
 
 # --- Streamlit UI and Execution ---
 
-# Function to reset the input fields
-def reset_inputs():
-    # Resetting the session states tied to the input widgets and process flow
+# Function to clear the state keys used by the input widgets
+def clear_input_widgets_state():
     st.session_state['cv_input_paste'] = ""
-    # Setting the uploader to None will clear the widget
     st.session_state['cv_input_upload'] = None 
+    st.session_state['cv_text_to_process'] = ""
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
-    st.session_state['cv_text_to_process'] = ""
+
+# Function to execute when the reset button is pressed
+def handle_reset_click():
+    clear_input_widgets_state()
+    st.rerun()
 
 def main():
     st.set_page_config(
@@ -135,7 +129,7 @@ def main():
         initial_sidebar_state="collapsed"
     )
 
-    # --- FINAL, STRICT VISUAL STYLING (STUDIO LIGHT / 8K LOOK) ---
+    # --- ABSOLUTE VISUALIZATION OVERHAUL (NEON BLUE / HIGH CONTRAST) ---
     st.markdown("""
     <style>
     /* Overall Background and Font - Studio Light (Bright and Clean) */
@@ -151,47 +145,63 @@ def main():
     }
     .main-header {
         text-align: center;
-        font-size: 3.2rem;
+        font-size: 3.5rem; /* Larger Title */
         font-weight: 900;
-        margin-bottom: 2.5rem;
-        text-shadow: 0 4px 8px rgba(0, 123, 255, 0.2); 
+        margin-bottom: 3rem;
+        text-shadow: 0 5px 10px rgba(0, 123, 255, 0.4); /* Stronger blue glow */
     }
     
-    /* Input Fields (Text Area, File Uploader) - Crisp and Shadowed */
+    /* Input Fields (Text Area) - Ultra Crisp */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         background-color: #ffffff;
         color: #1c2541; 
-        border-radius: 1rem;
-        border: 2px solid #007bff; /* Prominent blue border */
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15); 
-        padding: 1rem;
-    }
-    .stFileUploader>div>div {
-        background-color: #ffffff;
-        border: 3px dashed #007bff; 
-        color: #1c2541;
-        border-radius: 1rem;
+        border-radius: 1.2rem; /* More rounded */
+        border: 4px solid #007bff; /* Thick, pronounced blue border */
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25); /* Max shadow */
         padding: 1.5rem;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
     
-    /* Tabs (Paste/Upload) Styling */
-    .stTabs [data-baseweb="tab"] {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #5a5a5a;
+    /* FILE UPLOADER VISIBILITY FIX (Targets the file name/status display) */
+    .stFileUploader>div>div {
+        background-color: #ffffff;
+        border: 4px dashed #007bff; 
+        color: #1c2541;
+        border-radius: 1.2rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* FIX: Ensure uploaded file name and status is highly visible */
+    .stFileUploader span[data-testid="stFileUploaderFile"] {
+        color: #007bff !important; /* Force NEON BLUE text */
+        font-weight: 800;
+        font-size: 1.1rem;
+    }
+    /* FIX: Eliminate dark strip (often caused by dropzone rendering) */
+    .stFileUploader div[data-testid="stFileUploaderDropzone"] {
+        background-color: #f8faff !important; /* Match app background */
+        border: none !important;
+        padding: 0 !important;
     }
 
+    /* Tabs (Paste/Upload) Styling */
+    .stTabs [data-baseweb="tab"] {
+        font-size: 1.3rem;
+        font-weight: 900;
+        color: #007bff; /* Make tabs bright */
+    }
+    
     /* Main Action Button - VIBRANT */
     .stButton>button {
-        background-color: #28a745; /* VIBRANT GREEN for Go/Generate */
+        background-color: #28a745; 
         color: white;
         font-weight: 900;
         border-radius: 9999px; 
-        padding: 1.2rem 3.5rem;
+        padding: 1.5rem 4rem; /* Massive padding */
         transition: all 0.4s ease-in-out;
-        box-shadow: 0 12px 30px rgba(40, 167, 69, 0.5); 
+        box-shadow: 0 15px 40px rgba(40, 167, 69, 0.6); /* Maximum glow */
         border: none;
+        font-size: 1.3rem;
     }
     .stButton>button:hover {
         background-color: #218838; 
@@ -201,34 +211,30 @@ def main():
     /* Results Card - Ultra Clean and Structured */
     .results-card {
         background-color: #ffffff;
-        border-radius: 1.5rem;
-        padding: 3.5rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        border: 1px solid #f0f0f0;
+        border-radius: 2rem; /* Extreme rounding */
+        padding: 4rem;
+        box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.3); /* The ultimate shadow */
+        border: 2px solid #e0e0e0;
     }
     
-    /* FIX FOR VISIBILITY OF WARNING/INFO STRIPS */
+    /* STRICT FIX FOR VISIBILITY OF WARNING/INFO STRIPS */
     div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(255, 240, 209)"] {
-        background-color: #ffc107 !important; /* Bright, high-contrast yellow */
-        color: #343a40 !important; /* Dark text */
-        border: 1px solid #ffcd39 !important;
+        background-color: #ffc107 !important; 
+        color: #343a40 !important; 
+        border: 2px solid #ff9800 !important;
         font-weight: 700;
-        padding: 15px;
-        margin-bottom: 10px;
+        padding: 18px;
+        margin-bottom: 15px;
+        border-radius: 10px;
     }
     div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(230, 242, 255)"] {
-        background-color: #007bff !important; /* Bright Blue */
-        color: #ffffff !important; /* White text on blue */
-        border: 1px solid #0056b3 !important;
+        background-color: #007bff !important; 
+        color: #ffffff !important; 
+        border: 2px solid #0056b3 !important;
         font-weight: 700;
-        padding: 15px;
-        margin-bottom: 10px;
-    }
-    
-    /* Markdown Links (Website URLs) in Results */
-    .results-card a {
-        color: #007bff; 
-        font-weight: 600;
+        padding: 18px;
+        margin-bottom: 15px;
+        border-radius: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -255,27 +261,28 @@ def main():
             </p>
             """, unsafe_allow_html=True
         )
-        cv_text = st.text_area(
+        st.session_state['cv_input_paste'] = st.text_area(
             "Paste CV Content Here",
+            value=st.session_state['cv_input_paste'], 
             height=300,
             placeholder="Paste your resume content here...",
             key="cv_input_paste",
             label_visibility="hidden"
         )
+        cv_text = st.session_state['cv_input_paste']
 
     with tab_upload:
-        uploaded_file = st.file_uploader(
+        st.session_state['cv_input_upload'] = st.file_uploader(
             "Upload CV or Resume",
             type=["txt", "pdf"],
             key="cv_input_upload"
         )
+        uploaded_file = st.session_state['cv_input_upload']
+
         if uploaded_file is not None:
-            
-            # Reset file pointer to the beginning for reading
             uploaded_file.seek(0) 
             
             if uploaded_file.type == "application/pdf":
-                 # --- NEW ROBUST PDF READING ---
                  st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust, cross-platform reading. If content remains incorrect, the file's text layer may be corrupted (e.g., image-only PDF).")
                  try:
                      cv_text = extract_text_from_pdf(uploaded_file)
@@ -287,10 +294,8 @@ def main():
                 try:
                     raw_bytes = uploaded_file.read()
                     try:
-                        # Attempt 1: Standard UTF-8
                         string_data = raw_bytes.decode('utf-8')
                     except UnicodeDecodeError:
-                        # Attempt 2: Fallback to common legacy encoding
                         string_data = raw_bytes.decode('windows-1252', errors='replace')
                         st.info("File encoding resolved using fallback (Windows-1252). Please check characters.")
                         
@@ -315,7 +320,6 @@ def main():
     # Button in the center
     col1, col2, col3 = st.columns([1, 2, 1])
     
-    # Use a common placeholder button for generation
     if col2.button("Generate Comprehensive Job Strategy", use_container_width=True):
         if not cv_text.strip():
             st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
@@ -325,9 +329,8 @@ def main():
             
     # Conditional Reset Button
     if st.session_state.get('results_displayed'):
-        if st.button("Start New Search (Reset)", type="secondary"):
-            reset_inputs()
-            st.rerun()
+        if st.button("Start New Search (Reset)", type="secondary", on_click=handle_reset_click):
+            pass
 
     # --- Output Area ---
     st.markdown("---")
@@ -351,19 +354,21 @@ def main():
             else:
                 st.info("No explicit grounding sources were returned. Output is based on broad knowledge and specific prompt instructions.")
             
-            # Set flag to display reset button after successful generation
             st.session_state['results_displayed'] = True
             st.session_state['run_search'] = False 
             st.markdown('</div>', unsafe_allow_html=True)
     elif st.session_state.get('results_displayed'):
-        # Output is kept visible until explicitly reset
         pass 
     else:
         st.info("Your comprehensive job search strategy will appear here after analysis. Click 'Generate' to begin.")
 
 
 if __name__ == '__main__':
-    # Initialize session state variables
+    # --- STRICT SESSION STATE INITIALIZATION ---
+    if 'cv_input_paste' not in st.session_state:
+        st.session_state['cv_input_paste'] = ""
+    if 'cv_input_upload' not in st.session_state:
+        st.session_state['cv_input_upload'] = None
     if 'run_search' not in st.session_state:
         st.session_state['run_search'] = False
     if 'results_displayed' not in st.session_state:
