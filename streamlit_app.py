@@ -10,6 +10,7 @@ import pypdf
 # Load environment variables from .env file for local development
 load_dotenv() 
 
+# ---  😊😊😊😊😊😊😁😁😁😁 ---
 # --- Gemini API Configuration ---
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 MODEL_NAME = "gemini-2.5-flash-preview-09-2025"
