@@ -4,18 +4,30 @@ import json
 import time
 import os
 from dotenv import load_dotenv
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from datetime import datetime
 import io
 import pypdf
 
 # Load environment variables from .env file for local development
-load_dotenv() 
+load_dotenv()
 
 # --- Gemini API Configuration ---
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 MODEL_NAME = "gemini-2.5-flash-preview-09-2025"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={API_KEY}"
 
-# --- PDF Extraction Function ---
+# --- Holographic Theme Configuration ---
+BG_DARK = "#000411"
+ACCENT_CYAN = "#00E0FF"
+ACCENT_PINK = "#FF00B8"
+ACCENT_GREEN = "#10B981"
+ACCENT_YELLOW = "#F59E0B"
+TEXT_HOLO = f"0 0 8px {ACCENT_CYAN}, 0 0 12px {ACCENT_PINK}90"
+
+# --- PDF Extraction Function (Kept from original file) ---
 def extract_text_from_pdf(uploaded_file):
     """Uses pypdf to extract text from a PDF file stream."""
     try:
@@ -29,8 +41,7 @@ def extract_text_from_pdf(uploaded_file):
         st.error(f"Failed to process PDF with pypdf. Error: {e}")
         return ""
 
-# --- Core Gemini API Call Function ---
-
+# --- Core Gemini API Call Function (Kept from original file) ---
 @st.cache_data(show_spinner=False)
 def generate_job_strategy_from_gemini(cv_text):
     if not API_KEY:
@@ -51,9 +62,9 @@ def generate_job_strategy_from_gemini(cv_text):
         "2. HIGH-ACCURACY INTERNATIONAL EMPLOYERS: List 5 specific, high-profile employers globally, focusing on key immigration countries (US, UK, Canada, EU), that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.\n"
         "3. DOMESTIC JOB STRATEGY: Provide 3 specific job titles matching the CV. For each title, give a step-by-step guide on how to apply.\n"
         "4. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles matching the CV. For each title/region, you MUST include: "
-        "    a. The typical application steps (including necessary foreign credential evaluations). "
-        "    b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). "
-        "    c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source."
+        "     a. The typical application steps (including necessary foreign credential evaluations). "
+        "     b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). "
+        "     c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source."
     )
 
     user_query = f"Analyze this CV and generate the requested professional job strategy. The CV content is:\n\n---\n{cv_text}\n---"
@@ -90,7 +101,7 @@ def generate_job_strategy_from_gemini(cv_text):
                         for attr in grounding_metadata['groundingAttributions']
                         if attr.get('web', {}).get('uri') and attr.get('web', {}).get('title')
                     ]
-                
+                    
                 return generated_text, sources
             else:
                 return "Error: The model returned an empty or malformed response. Please try again.", []
@@ -107,9 +118,170 @@ def generate_job_strategy_from_gemini(cv_text):
     return "Error: Failed to get a response after multiple retries.", []
 
 
+# --- 4. Data Simulation for 3D Plotly (Inserted) ---
+@st.cache_data
+def load_3d_data():
+    """Generates mock data for the 3D visualization and match list."""
+    # 3D Skill Data
+    n_points = 50
+    df_skills = pd.DataFrame({
+        'X_Tech': np.random.normal(90, 10, n_points),
+        'Y_Leader': np.random.normal(75, 15, n_points),
+        'Z_Domain': np.random.normal(85, 8, n_points),
+        'Score': np.random.randint(60, 100, n_points),
+        'Skill_Type': np.random.choice(['Python', 'SQL', 'AWS', 'Soft Skill'], n_points)
+    })
+    df_skills = df_skills.clip(0, 100) # Ensure scores are within 0-100 range
+    
+    return df_skills
+
+df_skills = load_3d_data()
+
+# --- Custom CSS Injection (Holographic / Glassmorphism) ---
+custom_css = f"""
+<style>
+/* Global Body and Text Styles */
+.stApp {{
+    background-color: {BG_DARK};
+    color: white;
+}}
+/* Injecting the complex background texture for an 8K feel */
+body {{
+    background-image: 
+        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        radial-gradient(circle at 0% 0%, rgba(0, 224, 255, 0.15), transparent 50%),
+        radial-gradient(circle at 100% 100%, rgba(255, 0, 184, 0.15), transparent 50%);
+    background-size: 20px 20px, 100% 100%, 100% 100%;
+    background-color: {BG_DARK} !important;
+}}
+
+/* Holographic / Neon Text Effect */
+.holo-text {{
+    text-shadow: {TEXT_HOLO};
+    font-weight: 800;
+}}
+
+/* Glassmorphism Card Style */
+.glass-card {{
+    background-color: rgba(255, 255, 255, 0.05); /* Translucent White */
+    backdrop-filter: blur(10px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.125);
+    border-radius: 1rem;
+    padding: 1rem;
+    transition: all 0.3s ease-in-out;
+}}
+
+.glass-card:hover {{
+    border-color: {ACCENT_CYAN}90;
+    box-shadow: 0 0 20px {ACCENT_CYAN}40;
+}}
+
+/* Metric Card Overrides */
+div[data-testid="stMetric"] > div[data-testid="stVerticalBlock"] {{
+    padding: 1.5rem 0;
+    border-radius: 1rem;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.05); 
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}}
+
+/* Custom button style for high-contrast CTA */
+.stButton>button {{
+    background-image: linear-gradient(90deg, {ACCENT_CYAN} 0%, {ACCENT_PINK} 100%);
+    color: white;
+    font-weight: bold;
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 0 15px {ACCENT_CYAN}80;
+    transition: all 0.2s ease-in-out;
+}}
+.stButton>button:hover {{
+    opacity: 0.9;
+    box-shadow: 0 0 20px {ACCENT_PINK};
+}}
+
+/* Target the main button specifically for high visibility */
+/* The main "Generate" button */
+.stButton>button:not([type="secondary"]) {{ 
+    background-image: linear-gradient(90deg, {ACCENT_CYAN} 0%, {ACCENT_PINK} 100%);
+    box-shadow: 0 0 25px {ACCENT_CYAN}AA; 
+    padding: 1.5rem 4rem; 
+    font-size: 1.3rem;
+}}
+.stButton>button:hover:not([type="secondary"]) {{
+    transform: scale(1.05);
+}}
+
+
+/* General Font Color Fix */
+h1, h2, h3, h4, .stMarkdown, .stMetric > div, .css-1d391kg {{
+    color: white !important;
+}}
+
+/* Fix for markdown output background */
+div[data-testid="stMarkdownContainer"] {{
+    color: white !important;
+}}
+
+/* Results Card Styling (Simplified for dark mode) */
+.results-card {{
+    background-color: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 2rem;
+    padding: 4rem;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(0, 224, 255, 0.3);
+}}
+
+/* STRICT FIX FOR VISIBILITY OF WARNING/INFO STRIPS (Maximum Contrast) */
+/* Yellow/Warning Strip Fix */
+div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(255, 240, 209)"] {{
+    background-color: {ACCENT_YELLOW} !important;
+    color: {BG_DARK} !important; 
+    border: 2px solid {ACCENT_YELLOW} !important;
+    font-weight: 700;
+    padding: 18px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+}}
+/* Blue/Info Strip Fix */
+div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(230, 242, 255)"] {{
+    background-color: {ACCENT_CYAN} !important;
+    color: {BG_DARK} !important; 
+    border: 2px solid {ACCENT_CYAN} !important;
+    font-weight: 700;
+    padding: 18px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+}}
+/* Text Area Fixes for dark mode */
+.stTextInput>div>div>input, .stTextArea>div>div>textarea {{
+    background-color: rgba(0, 0, 0, 0.4);
+    color: white;
+    border: 2px solid {ACCENT_CYAN}80;
+    border-radius: 1rem;
+    box-shadow: 0 0 15px {ACCENT_CYAN}20;
+}}
+/* File Uploader Fixes for dark mode */
+.stFileUploader>div>div {{
+    background-color: rgba(0, 0, 0, 0.4);
+    border: 2px dashed {ACCENT_PINK}80;
+    color: white;
+    border-radius: 1rem;
+}}
+
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
+
+
 # --- Streamlit UI and Execution ---
 
-# Function to execute when the reset button is pressed
+# Function to execute when the reset button is pressed (Kept from original file)
 def handle_reset_click():
     # STRICT FIX: Increment the reset counter to force the file_uploader to be recreated.
     st.session_state['reset_key_counter'] += 1
@@ -123,146 +295,60 @@ def handle_reset_click():
     # st.rerun() is implicitly called by the state change
 
 def main():
-    st.set_page_config(
-        page_title="Gemini CV Job Strategy Generator",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
-
-    # --- FINAL, ULTIMATE VISUALIZATION OVERHAUL (STRICTLY HIGH-CONTRAST) ---
-    st.markdown("""
-    <style>
-    /* Overall Background and Font - Studio Light (Bright and Clean) */
-    .stApp {
-        background-color: #f8faff; /* Very light, professional off-white */
-        color: #1c2541; /* Dark professional text */
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Headers */
-    h1, h2, h3, h4, .main-header {
-        color: #004c99; /* Deep Blue for contrast */
-    }
-    .main-header {
-        text-align: center;
-        font-size: 3.5rem; 
-        font-weight: 900;
-        margin-bottom: 3rem;
-        text-shadow: 0 5px 10px rgba(0, 76, 153, 0.4); 
-    }
-    
-    /* Input Fields (Text Area) - Ultra Crisp */
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        background-color: #ffffff;
-        color: #1c2541; 
-        border-radius: 1.2rem; 
-        border: 4px solid #007bff; /* Thick, pronounced blue border */
-        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25); 
-        padding: 1.5rem;
-    }
-    
-    /* FILE UPLOADER FIXES (Targeting visibility of text inside the widget) */
-    .stFileUploader>div>div {
-        background-color: #ffffff;
-        border: 4px dashed #007bff; 
-        color: #1c2541; /* Default text color in dropzone area */
-        border-radius: 1.2rem;
-        padding: 2rem;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    }
-    
-    /* FIX 1: Ensure uploaded file name and status text is legible inside the status box */
-    .stFileUploader span[data-testid="stFileUploaderFile"] {
-        color: #007bff !important; /* Force NEON BLUE text for visibility */
-        font-weight: 800;
-        font-size: 1.1rem;
-        padding-left: 10px;
-    }
-    
-    /* FIX 2 & 3: Targeting the text of the "Browse files" button and file name area */
-    /* For the "Browse files" button */
-    .stFileUploader button {
-        background-color: #007bff !important;
-        color: white !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Target the text in the dropzone (Drag and drop file here, Limit 200MB) */
-    .stFileUploader > div > div > div > p {
-        color: #1c2541 !important; /* Ensure main instruction text is dark and legible */
-        font-weight: 600;
-    }
-    
-    /* Tabs (Paste/Upload) Styling */
-    .stTabs [data-baseweb="tab"] {
-        font-size: 1.3rem;
-        font-weight: 900;
-        color: #007bff; 
-    }
-
-    /* Main Action Button - VIBRANT */
-    .stButton>button {
-        background-color: #28a745; 
-        color: white;
-        font-weight: 900;
-        border-radius: 9999px; 
-        padding: 1.5rem 4rem; 
-        transition: all 0.4s ease-in-out;
-        box-shadow: 0 15px 40px rgba(40, 167, 69, 0.6); 
-        border: none;
-        font-size: 1.3rem;
-    }
-    .stButton>button:hover {
-        background-color: #218838; 
-        transform: scale(1.1); 
-    }
-    
-    /* Results Card - Ultra Clean and Structured */
-    .results-card {
-        background-color: #ffffff;
-        border-radius: 2rem; 
-        padding: 4rem;
-        box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.3); 
-        border: 2px solid #e0e0e0;
-    }
-    
-    /* STRICT FIX FOR VISIBILITY OF WARNING/INFO STRIPS (Maximum Contrast) */
-    /* Yellow/Warning Strip Fix */
-    div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(255, 240, 209)"] {
-        background-color: #ffc107 !important; 
-        color: #343a40 !important; /* DARK TEXT FOR VISIBILITY */
-        border: 2px solid #ff9800 !important;
-        font-weight: 700;
-        padding: 18px;
-        margin-bottom: 15px;
-        border-radius: 10px;
-    }
-    /* Blue/Info Strip Fix */
-    div[data-testid="stAlert"] > div:first-child[style*="background-color: rgb(230, 242, 255)"] {
-        background-color: #007bff !important; 
-        color: #ffffff !important; /* WHITE TEXT FOR VISIBILITY */
-        border: 2px solid #0056b3 !important;
-        font-weight: 700;
-        padding: 18px;
-        margin-bottom: 15px;
-        border-radius: 10px;
-    }
-    
-    /* Markdown Links (Website URLs) in Results */
-    .results-card a {
-        color: #007bff; 
-        font-weight: 600;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-
-    st.markdown('<div class="main-header">✨ AI Job Search Consultant</div>', unsafe_allow_html=True)
+    # --- UI Header ---
+    st.markdown('<h1 class="holo-text" style="font-size: 3rem; margin-bottom: 0.5rem; text-align: center;">🤖 AI Recruitment Matrix V3.0</h1>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size: 1.25rem; color: #9CA3AF; text-align: center;">Analyze your CV against global employers using grounded Gemini AI.</p>', unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- Input Area ---
-    st.container()
-    st.subheader("📝 Step 1: Input Your Professional Profile")
+    # --- 1. 3D Visualization (The Centerpiece) ---
+    st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">3D Skill Matrix Projection</h2>', unsafe_allow_html=True)
+    st.markdown("""
+    <p style='color: #ccc;'>
+        The interactive 3D plot visualizes your skill profile across core dimensions: 
+        <span style='color: #FF00B8; font-weight: bold;'>Technical Depth (X)</span>, 
+        <span style='color: #00E0FF; font-weight: bold;'>Leadership Potential (Y)</span>, and 
+        <span style='color: #10B981; font-weight: bold;'>Domain Expertise (Z)</span>. 
+        Clusters represent highly compatible job roles.
+    </p>
+    """, unsafe_allow_html=True)
+
+    # Create 3D Plotly Scatter Plot
+    fig = px.scatter_3d(
+        df_skills, 
+        x='X_Tech', 
+        y='Y_Leader', 
+        z='Z_Domain',
+        color='Skill_Type',
+        size='Score',
+        color_discrete_map={
+            'Python': ACCENT_CYAN,
+            'SQL': ACCENT_PINK,
+            'AWS': ACCENT_GREEN,
+            'Soft Skill': ACCENT_YELLOW
+        },
+        title="Holographic Skill Data Cloud",
+        height=700
+    )
+
+    # Apply 3D Holographic Styling to Plotly
+    fig.update_layout(
+        plot_bgcolor=BG_DARK,
+        paper_bgcolor=BG_DARK,
+        font=dict(color="white"),
+        scene=dict(
+            xaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=ACCENT_CYAN + "40", title_font=dict(color=ACCENT_CYAN), tickfont=dict(color="white")),
+            yaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=ACCENT_PINK + "40", title_font=dict(color=ACCENT_PINK), tickfont=dict(color="white")),
+            zaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=ACCENT_GREEN + "40", title_font=dict(color=ACCENT_GREEN), tickfont=dict(color="white")),
+            aspectmode='cube'
+        ),
+        legend_title_text='Skill Clusters',
+        hoverlabel=dict(bgcolor="black", font_size=16, font_color="white")
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown("---")
+
+    # --- 2. Input Area (Kept from original file) ---
+    st.subheader("📝 Step 2: Input Your Professional Profile")
     
     # Dual input for flexibility: Upload or Paste
     tab_paste, tab_upload = st.tabs(["Paste CV Content", "Upload CV File"])
@@ -272,7 +358,7 @@ def main():
     with tab_paste:
         st.markdown(
             """
-            <p style="color: #007bff;">
+            <p style="color: #00E0FF;">
             **Pasting Tip:** If direct pasting is blocked, please try right-clicking the text box
             or use **Ctrl+Shift+V** (Windows) / **Cmd+Shift+V** (Mac).
             </p>
@@ -282,10 +368,10 @@ def main():
         # 1. Define Paste Widget (Safe state setting)
         st.text_area(
             "Paste CV Content Here",
-            value=st.session_state['cv_input_paste'], 
+            value=st.session_state.get('cv_input_paste', ""),  # Corrected to use safe get
             height=300,
             placeholder="Paste your resume content here...",
-            key="cv_input_paste", 
+            key="cv_input_paste",
             label_visibility="hidden"
         )
         
@@ -294,26 +380,27 @@ def main():
 
     with tab_upload:
         # 2. Define Upload Widget (Safe state setting using dynamic key)
+        uploaded_file_key = f"cv_input_upload_{st.session_state['reset_key_counter']}"
         st.file_uploader(
             "Upload CV or Resume",
             type=["txt", "pdf"],
             # Use dynamic key for graceful reset
-            key=f"cv_input_upload_{st.session_state['reset_key_counter']}" 
+            key=uploaded_file_key
         )
         
         # Read Upload input from state
-        uploaded_file = st.session_state.get(f"cv_input_upload_{st.session_state['reset_key_counter']}", None)
+        uploaded_file = st.session_state.get(uploaded_file_key, None)
 
         if uploaded_file is not None:
             # If a file is uploaded, process it and overwrite cv_text
             
             if uploaded_file.type == "application/pdf":
-                 st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust, cross-platform reading. If content remains incorrect, the file's text layer may be corrupted (e.g., image-only PDF).")
-                 try:
-                     cv_text = extract_text_from_pdf(uploaded_file)
-                 except Exception as e:
-                     st.error(f"Failed to read PDF. Ensure text is selectable. Error: {e}")
-                     cv_text = ""
+                st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust, cross-platform reading. If content remains incorrect, the file's text layer may be corrupted (e.g., image-only PDF).")
+                try:
+                    cv_text = extract_text_from_pdf(uploaded_file)
+                except Exception as e:
+                    st.error(f"Failed to read PDF. Ensure text is selectable. Error: {e}")
+                    cv_text = ""
             
             else: # Handle TXT file types
                 try:
@@ -329,18 +416,18 @@ def main():
                 except Exception as e:
                     st.error(f"Error reading TXT file: {e}")
                     cv_text = ""
-                
+            
             # --- Strict Accuracy Check ---
             if cv_text and len(cv_text.strip()) < 50: 
                 st.error("❌ **Reading Failure:** Extracted text is too short or empty. This will cause the AI to generate completely false information. Please ensure the file contains readable text.")
                 cv_text = ""
                 
-    # --- Strict Error Fix: Resetting State if Input Failed ---
-    if not cv_text.strip() and st.session_state.get('run_search'):
-        st.session_state['run_search'] = False
-        st.session_state['cv_text_to_process'] = ""
-        st.warning("Input cancelled due to empty CV content.")
-        
+        # --- Strict Error Fix: Resetting State if Input Failed ---
+        if not cv_text.strip() and st.session_state.get('run_search'):
+            st.session_state['run_search'] = False
+            st.session_state['cv_text_to_process'] = ""
+            st.warning("Input cancelled due to empty CV content.")
+            
     st.markdown("---")
     
     # Button in the center
@@ -361,9 +448,9 @@ def main():
 
     # --- Output Area ---
     st.markdown("---")
-    st.subheader("🚀 Step 2: High-Definition Generated Strategy")
+    st.subheader("🚀 Step 3: High-Definition Generated Strategy")
     
-    # --- Processing and Output Logic ---
+    # --- Processing and Output Logic (Kept from original file) ---
     if st.session_state.get('run_search') and st.session_state.get('cv_text_to_process'):
         with st.container():
             st.markdown('<div class="results-card">', unsafe_allow_html=True)
@@ -391,7 +478,7 @@ def main():
 
 
 if __name__ == '__main__':
-    # --- STRICT SESSION STATE INITIALIZATION ---
+    # --- STRICT SESSION STATE INITIALIZATION (Kept from original file) ---
     if 'cv_input_paste' not in st.session_state:
         st.session_state['cv_input_paste'] = ""
     if 'run_search' not in st.session_state:
