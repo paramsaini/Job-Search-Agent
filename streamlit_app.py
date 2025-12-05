@@ -27,6 +27,13 @@ ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
 TEXT_HOLO = f"0 0 8px {ACCENT_CYAN}, 0 0 12px {ACCENT_PINK}90"
 
+# --- Plotly Grid Color Fix (New Variables) ---
+# Using RGBA format for reliable transparency in Plotly 3D gridlines
+GRID_CYAN = "rgba(0, 224, 255, 0.4)"
+GRID_PINK = "rgba(255, 0, 184, 0.4)"
+GRID_GREEN = "rgba(16, 185, 129, 0.4)"
+
+
 # --- PDF Extraction Function (Kept from original file) ---
 def extract_text_from_pdf(uploaded_file):
     """Uses pypdf to extract text from a PDF file stream."""
@@ -340,9 +347,10 @@ def main():
         paper_bgcolor=BG_DARK,
         font=dict(color="white"),
         scene=dict(
-            xaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=ACCENT_CYAN + "40", title_font=dict(color=ACCENT_CYAN), tickfont=dict(color="white")),
-            yaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=ACCENT_PINK + "40", title_font=dict(color=ACCENT_PINK), tickfont=dict(color="white")),
-            zaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=ACCENT_GREEN + "40", title_font=dict(color=ACCENT_GREEN), tickfont=dict(color="white")),
+            # FIX: Use rgba variables defined at the top
+            xaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_CYAN, title_font=dict(color=ACCENT_CYAN), tickfont=dict(color="white")),
+            yaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_PINK, title_font=dict(color=ACCENT_PINK), tickfont=dict(color="white")),
+            zaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_GREEN, title_font=dict(color=ACCENT_GREEN), tickfont=dict(color="white")),
             aspectmode='cube'
         ),
         legend_title_text='Skill Clusters',
