@@ -125,7 +125,7 @@ def generate_job_strategy_from_gemini(cv_text):
     return "Error: Failed to get a response after multiple retries.", []
 
 
-# --- 4. Dynamic 3D Data Generation (UPDATED FOR EMPLOYERS) ---
+# --- 4. Dynamic 3D Data Generation (FIXED FOR PARSING ROBUSTNESS) ---
 
 def generate_dynamic_3d_data(markdown_output):
     """
@@ -135,20 +135,31 @@ def generate_dynamic_3d_data(markdown_output):
     
     employers_data = []
     
-    # Regex to capture employer name and its link structure (used as a proxy for the name/link combo)
-    # This assumes the name is inside brackets [] followed immediately by a link in parenthesis ()
-    # Example: [Employer Name](http://link)
-    employer_pattern = r'\[([^\]]+)\]\((https?:\/\/[^\)]+)\)'
+    # NEW ROBUST REGEX:
+    # 1. Matches employer name and link (e.g., [Name](http://link))
+    employer_link_pattern = r'\[([^\]]+)\]\((https?:\/\/[^\)]+)\)'
     
-    # 1. Capture Domestic Employers (High Match Zone)
-    domestic_section = re.search(r'HIGH-ACCURACY DOMESTIC EMPLOYERS:(.*?)(?=\d\.)', markdown_output, re.DOTALL)
-    if domestic_section:
-        matches = re.findall(employer_pattern, domestic_section.group(1))
-        for name, link in matches:
-            # Simple heuristic for domestic location simulation (e.g., US)
-            # Find the country mentioned closest to the employer name (e.g., from the rationale text)
-            location = re.search(r'(US|USA|Canada|UK|France|Germany|Japan|Singapore|EU)', name + domestic_section.group(1).split(name, 1)[-1], re.IGNORECASE)
-            country = location.group(0).replace('United States', 'USA') if location else 'Domestic Hub'
+    # 2. Broader pattern to capture the text surrounding the employer for location
+    # This assumes the line item starts with a number (1., 2., ...)
+    line_item_pattern = r'^\d+\.\s*(.*?)(?=\n\d+\.|\Z)'
+    
+    country_keywords = r'(US|USA|United States|UK|United Kingdom|Canada|Germany|France|Japan|Singapore|EU)'
+
+    # --- 1. Capture Domestic Employers (High Match Zone) ---
+    domestic_section_match = re.search(r'HIGH-ACCURACY DOMESTIC EMPLOYERS:(.*?)(?=HIGH-ACCURACY INTERNATIONAL EMPLOYERS:)', markdown_output, re.DOTALL)
+    domestic_text = domestic_section_match.group(1) if domestic_section_match else ""
+    
+    for item_match in re.finditer(line_item_pattern, domestic_text, re.DOTALL | re.MULTILINE):
+        item_content = item_match.group(1)
+        
+        # Try to extract Name and Link
+        link_match = re.search(employer_link_pattern, item_content)
+        if link_match:
+            name = link_match.group(1).strip()
+            
+            # Extract Country from the remaining text in the line item
+            location_match = re.search(country_keywords, item_content, re.IGNORECASE)
+            country = location_match.group(0).replace('United States', 'USA').replace('United Kingdom', 'UK') if location_match else 'Domestic Hub'
             
             # Domestic: High Match (90-100)
             base_score = np.random.randint(90, 100)
@@ -162,14 +173,22 @@ def generate_dynamic_3d_data(markdown_output):
                 'Overall_Match': base_score
             })
 
-    # 2. Capture International Employers (Global Match Zone)
-    international_section = re.search(r'HIGH-ACCURACY INTERNATIONAL EMPLOYERS:(.*?)(?=\d\.)', markdown_output, re.DOTALL)
-    if international_section:
-        matches = re.findall(employer_pattern, international_section.group(1))
-        for name, link in matches:
-            # Simple heuristic for international location simulation
-            location = re.search(r'(US|USA|UK|Canada|Germany|France|Japan|Singapore|EU)', name + international_section.group(1).split(name, 1)[-1], re.IGNORECASE)
-            country = location.group(0) if location else 'International Market'
+
+    # --- 2. Capture International Employers (Global Match Zone) ---
+    international_section_match = re.search(r'HIGH-ACCURACY INTERNATIONAL EMPLOYERS:(.*?)(?=DOMESTIC JOB STRATEGY:)', markdown_output, re.DOTALL)
+    international_text = international_section_match.group(1) if international_section_match else ""
+    
+    for item_match in re.finditer(line_item_pattern, international_text, re.DOTALL | re.MULTILINE):
+        item_content = item_match.group(1)
+        
+        # Try to extract Name and Link
+        link_match = re.search(employer_link_pattern, item_content)
+        if link_match:
+            name = link_match.group(1).strip()
+            
+            # Extract Country from the remaining text in the line item
+            location_match = re.search(country_keywords, item_content, re.IGNORECASE)
+            country = location_match.group(0) if location_match else 'International Market'
             
             # International: Medium-High Match (80-95)
             base_score = np.random.randint(80, 95)
@@ -185,7 +204,7 @@ def generate_dynamic_3d_data(markdown_output):
             
     if not employers_data:
         # Fallback if parsing fails to find anything
-        employers_data.append({'Employer': 'Data Not Parsed', 'Country': 'N/A', 'Type': 'Fallback', 'X_Tech': 60, 'Y_Leader': 60, 'Z_Domain': 60, 'Overall_Match': 60})
+        employers_data.append({'Employer': 'Parsing Failed', 'Country': 'N/A', 'Type': 'Fallback', 'X_Tech': 60, 'Y_Leader': 60, 'Z_Domain': 60, 'Overall_Match': 60})
 
 
     df = pd.DataFrame(employers_data)
@@ -215,6 +234,11 @@ def render_3d_skill_match_plot(df_skills):
     </p>
     """, unsafe_allow_html=True)
     
+    # Check if we only have fallback data before rendering
+    if len(df_skills) == 1 and df_skills['Type'].iloc[0] == 'Fallback':
+         st.error("❌ **3D Data Parsing Failed:** Could not extract employer data from the Gemini output. Please ensure the CV content is substantial and the model output follows the required Markdown link format: `[Employer Name](URL)`.")
+         return
+
     fig = px.scatter_3d(
         df_skills, 
         x='X_Tech', 
