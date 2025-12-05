@@ -1,0 +1,150 @@
+import requests
+import json
+import time
+
+# --- Configuration ---
+# NOTE: In a real web application (e.g., Flask/Django), the API key should be
+# loaded securely from environment variables, not hardcoded.
+API_KEY = "" # Your API Key. Leave as "" for the canvas environment.
+MODEL_NAME = "gemini-2.5-flash-preview-09-2025"
+API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={API_KEY}"
+
+# --- Core Logic for In-Depth Job Search ---
+
+def generate_job_strategy(cv_text):
+    """
+    Analyzes CV text, performs a grounded search for jobs, and generates
+    a professional, detailed application strategy including visa requirements.
+
+    Args:
+        cv_text (str): The full text content of the user's CV/Resume.
+    """
+    print("--- Starting Gemini Job Search Analysis (Grounded Search) ---")
+
+    # 1. Define the System Instruction (The professional prompt)
+    # UPDATED: Added a mandatory requirement for listing 5 highly-matched employers.
+    system_prompt = (
+        "You are a World-Class Job Search Consultant and Visa Immigration Analyst. "
+        "Your task is to analyze the provided CV content and generate a highly detailed, "
+        "professionally formatted job search strategy. You must use the Google Search tool "
+        "to find current, relevant job openings, application procedures, and up-to-date visa/immigration "
+        "requirements for the specified roles/regions. "
+        "Your response MUST be formatted strictly as a single Markdown document with three main sections: "
+        "'Top Matched Employers (High-Accuracy)', 'Domestic Job Strategy', and 'International Job Strategy'.\n\n"
+        "MANDATORY OUTPUT REQUIREMENTS:\n"
+        "1. TOP MATCHED EMPLOYERS (High-Accuracy): List 5 specific, high-profile employers (company names) "
+        "that match the user's CV content (90%-100% suitability based on skills like AWS, Python, Fintech). "
+        "For each employer, provide a brief rationale (1-2 sentences) for the high match and their primary location (e.g., London, NYC, Remote).\n"
+        "2. DOMESTIC JOB STRATEGY: Provide 3 specific job titles matching the CV. For each title, give a "
+        "step-by-step guide on how to apply (e.g., where to search, keywords, required documents).\n"
+        "3. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles matching the CV. "
+        "Focus on the US, UK, and Canada/EU region (if applicable). For each region, you MUST include: "
+        "    a. The typical application steps (including necessary foreign credential evaluations). "
+        "    b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). "
+        "    c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source."
+    )
+
+    # 2. Define the User Query (The input for the model)
+    user_query = f"Analyze this CV and generate the requested professional job strategy. The CV content is:\n\n---\n{cv_text}\n---"
+
+    # 3. Construct the API Payload with Grounding and System Instruction
+    payload = {
+        "contents": [{ "parts": [{ "text": user_query }] }],
+        # Enable Google Search grounding for accurate, real-time data
+        "tools": [{ "google_search": {} }],
+        "systemInstruction": {
+            "parts": [{ "text": system_prompt }]
+        },
+    }
+
+    # Implement Exponential Backoff for Robust API Calls
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                API_URL,
+                headers={'Content-Type': 'application/json'},
+                data=json.dumps(payload)
+            )
+
+            # Check if the API call was successful
+            response.raise_for_status()
+            result = response.json()
+            candidate = result.get('candidates', [{}])[0]
+
+            if candidate and candidate.get('content') and candidate['content'].get('parts'):
+                # Extract generated text
+                generated_text = candidate['content']['parts'][0]['text']
+
+                # Extract grounding sources (for citation/verification)
+                sources = []
+                grounding_metadata = candidate.get('groundingMetadata')
+                if grounding_metadata and grounding_metadata.get('groundingAttributions'):
+                    sources = [
+                        {
+                            "uri": attr.get('web', {}).get('uri'),
+                            "title": attr.get('web', {}).get('title')
+                        }
+                        for attr in grounding_metadata['groundingAttributions']
+                        if attr.get('web', {}).get('uri') and attr.get('web', {}).get('title')
+                    ]
+                
+                return generated_text, sources
+            else:
+                print("Gemini response was empty or malformed.")
+                return "Error: Could not process the request. The model returned an empty response.", []
+
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 429 and attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                print(f"Rate limit exceeded. Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+            else:
+                print(f"HTTP Error: {e}")
+                return f"An error occurred during the API call: {e}", []
+        except requests.exceptions.RequestException as e:
+            print(f"Request Error: {e}")
+            return f"A network error occurred: {e}", []
+
+    return "Error: Failed to get a response after multiple retries.", []
+
+# --- Example Usage (Simulating User Input) ---
+# In a real web app, this text would come from a textarea input.
+sample_cv_content = """
+John Doe
+555-123-4567 | john.doe@email.com | London, UK
+
+SUMMARY:
+Highly proficient Senior Software Engineer with 8 years of experience specializing in scalable web services,
+cloud infrastructure (AWS), and Python/Node.js development. Proven track record in building high-performance
+APIs and leading cross-functional teams. Seeking a challenging senior role in a fintech or e-commerce sector.
+
+EXPERIENCE:
+Senior Software Engineer, TechCorp Ltd. (2020 - Present)
+- Led development of microservices platform using Python (Flask/Django) and Docker.
+- Reduced API latency by 40% through optimization of database queries (PostgreSQL).
+- Mentored junior developers and managed deployment pipelines in AWS (EC2, Lambda, RDS).
+
+Software Developer, Innovate Solutions (2017 - 2020)
+- Developed and maintained customer-facing e-commerce features using Node.js and React.
+- Implemented CI/CD workflows using Jenkins.
+
+EDUCATION:
+M.Sc. Computer Science, University of Manchester (2016)
+"""
+
+if __name__ == "__main__":
+    job_strategy_markdown, citations = generate_job_strategy(sample_cv_content)
+
+    print("\n========================================================")
+    print("                PROFESSIONAL JOB STRATEGY               ")
+    print("========================================================\n")
+    print(job_strategy_markdown)
+
+    if citations:
+        print("\n--- Grounding Sources (For Verification) ---")
+        # In a real web app, these would be displayed cleanly as citations.
+        for i, source in enumerate(citations):
+            print(f"[{i+1}] {source.get('title')} - {source.get('uri')}")
+    else:
+        print("\n--- No Grounding Sources Found ---")
