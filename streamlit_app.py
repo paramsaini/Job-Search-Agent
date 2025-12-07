@@ -126,37 +126,3 @@ hr {{
 </style>
 """
 # ------------------------------------------------
-
-# --- PDF Extraction Function (Kept) ---
-def extract_text_from_pdf(uploaded_file):
-    """Uses pypdf to extract text from a PDF file stream."""
-    try:
-        uploaded_file.seek(0)
-        pdf_reader = pypdf.PdfReader(uploaded_file)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text() or ""
-        return text
-    except Exception as e:
-        st.error(f"Failed to process PDF with pypdf. Error: {e}")
-        return ""
-
-# --- RAG Utility: Initialize Qdrant Client ---
-@st.cache_resource
-def get_qdrant_client():
-    """Initializes and returns the Qdrant Client object."""
-    if not QDRANT_API_KEY or not QDRANT_HOST:
-        st.error("Qdrant configuration is missing. Please set QDRANT_HOST and QDRANT_API_KEY in secrets.")
-        return None
-        
-    try:
-        client = QdrantClient(
-            # FIX: Use 'url' instead of 'host' for the full HTTPS protocol
-            url=QDRANT_HOST,
-            api_key=QDRANT_API_KEY,
-            prefer_grpc=True
-        )
-        # Verify collection exists (optional but recommended)
-        client.get_collection(collection_name=COLLECTION_NAME) 
-        return client
-    except Exception
