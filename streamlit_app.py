@@ -61,7 +61,7 @@ GRID_ORANGE = "rgba(255, 140, 0, 0.6)"
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
-# FIX: DEFINITION OF custom_css (Black screen fix included)
+# FIX: DEFINITION OF custom_css (Syntax Error Corrected)
 # ------------------------------------------------
 custom_css = f"""
 <style>
@@ -108,3 +108,136 @@ div.stButton > button {{
     border: 2px solid {ACCENT_CYAN}40;
     background: rgba(16, 185, 129, 0.05);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}}
+
+/* Textarea color fix */
+.stTextArea label, .stFileUploader label, .stMarkdown p {{
+    color: white !important;
+}}
+
+/* Horizontal Rule Fix */
+hr {{
+    border-top: 2px solid {ACCENT_CYAN}50;
+    margin: 1rem 0;
+}}
+
+/* Strategy Funnel CSS */
+.funnel-step {{
+    background-color: {ACCENT_CYAN}10;
+    padding: 10px;
+    margin-bottom: 5px;
+    text-align: center;
+    border-left: 5px solid {ACCENT_CYAN};
+    font-weight: bold;
+    color: {ACCENT_CYAN};
+    border-radius: 4px;
+}}
+/* Custom Progress Bar Styling (to match theme) */
+.stProgress > div > div > div > div {{
+    background-color: {ACCENT_CYAN};
+    animation: gradient 2s ease infinite;
+}}
+@keyframes gradient {{
+    0% {{background-color: {ACCENT_CYAN};}}
+    50% {{background-color: {ACCENT_ORANGE};}}
+    100% {{background-color: {ACCENT_CYAN};}}
+}}
+</style>
+"""
+# ------------------------------------------------
+
+# --- PDF Extraction Function (Kept) ---
+def extract_text_from_pdf(uploaded_file):
+    """Uses pypdf to extract text from a PDF file stream."""
+    try:
+        uploaded_file.seek(0)
+        pdf_reader = pypdf.PdfReader(uploaded_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() or ""
+        return text
+    except Exception as e:
+        st.error(f"Failed to process PDF with pypdf. Error: {e}")
+        return ""
+
+# --- RAG Utility: Initialize Qdrant Client ---
+@st.cache_resource
+def get_qdrant_client():
+    """Initializes and returns the Qdrant Client object."""
+    if not QDRANT_API_KEY or not QDRANT_HOST:
+        st.error("Qdrant configuration is missing. Please set QDRANT_HOST and QDRANT_API_KEY in secrets.")
+        return None
+        
+    try:
+        client = QdrantClient(
+            # FIX: Use 'url' instead of 'host' for the full HTTPS protocol
+            url=QDRANT_HOST,
+            api_key=QDRANT_API_KEY,
+            prefer_grpc=True
+        )
+        # Verify collection exists (optional but recommended)
+        client.get_collection(collection_name=COLLECTION_NAME) 
+        return client
+    except Exception as e:
+        # NOTE: Error text changed to reflect 'url' usage
+        st.error(f"Qdrant Client Error: Ensure host/key are correct and collection '{COLLECTION_NAME}' exists. Error: {e}")
+        return None
+
+# --- RAG Utility: Embed User Query (Kept) ---
+@st.cache_data(ttl=600)
+def get_user_embedding(text):
+    """Calls Gemini API to get a single embedding vector for the user's CV."""
+    if not API_KEY: return None
+    payload = { "model": EMBEDDING_MODEL, "content": { "parts": [{ "text": text }] } }
+    try:
+        response = requests.post(EMBEDDING_API_URL, headers={'Content-Type': 'application/json'}, data=json.dumps(payload))
+        response.raise_for_status()
+        return response.json()['embedding']['values']
+    except requests.exceptions.RequestException as e:
+        st.error(f"Embedding API error during RAG retrieval: {e}")
+        return None
+
+
+# --- Core Gemini API Call Function (MODIFIED FOR RAG) ---
+@st.cache_data(show_spinner=False, max_entries=10)
+def generate_job_strategy_from_gemini(cv_text):
+    if not API_KEY:
+        return "Error: Gemini API Key not configured.", None, []
+        
+    # --- RAG STEP 1: Retrieval from Qdrant ---
+    context_text = "No RAG context available."
+    
+    # FIX: Use a more specific variable name to avoid shadowing and ensure correct object type
+    qdrant_client_instance = get_qdrant_client()
+    
+    if qdrant_client_instance:
+        query_vector = get_user_embedding(cv_text)
+        
+        if query_vector:
+            try:
+                # Use the specific instance name
+                search_result = qdrant_client_instance.search( 
+                    collection_name=COLLECTION_NAME,
+                    query_vector=query_vector, # Pass the vector here
+                    limit=RAG_K,
+                    with_payload=True 
+                )
+                
+                # Format the retrieved documents into a single context string
+                if search_result: # Search results are returned as a list of points
+                    retrieved_docs = [hit.payload['text'] for hit in search_result]
+                    context_text = "\n---\n".join(retrieved_docs)
+                else:
+                    context_text = "No relevant resumes found in the knowledge base."
+            except Exception as e:
+                context_text = f"Qdrant Query Error: {e}"
+                st.error(f"Failed to query Qdrant: {e}")
+
+    # --- RAG STEP 2: Augmented Prompt Construction ---
+    # NEW: Define JSON schema for the predictive skill report
+    json_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "predictive_score": {"type": "INTEGER", "description": "Percentage score (0-100) comparing user
