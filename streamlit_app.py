@@ -45,16 +45,16 @@ EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{E
 COLLECTION_NAME = 'resume_knowledge_base'
 RAG_K = 10 # Number of top documents to retrieve
 
-# --- Holographic Theme Configuration (Kept for UI) ---
-BG_DARK = "#000411"
+# --- Holographic Theme Configuration (UPDATED for maximum effect) ---
+BG_DARK = "#000000" # Pure black background for max contrast
 ACCENT_CYAN = "#00E0FF"
 ACCENT_PINK = "#FF00B8"
 ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
-TEXT_HOLO = f"0 0 8px {ACCENT_CYAN}, 0 0 12px {ACCENT_PINK}90"
-GRID_CYAN = "rgba(0, 224, 255, 0.4)"
-GRID_PINK = "rgba(255, 0, 184, 0.4)"
-GRID_GREEN = "rgba(16, 185, 129, 0.4)"
+TEXT_HOLO = f"0 0 10px {ACCENT_CYAN}, 0 0 20px {ACCENT_PINK}90" # Stronger glow
+GRID_CYAN = "rgba(0, 255, 255, 0.6)" # Brighter grid
+GRID_PINK = "rgba(255, 0, 184, 0.6)" # Brighter grid
+GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 
 # --- PDF Extraction Function (Kept) ---
@@ -331,20 +331,116 @@ def render_3d_skill_match_plot(df_skills):
     )
 
     fig.update_layout(
+        # Set background to pure black and add grid effects
         plot_bgcolor=BG_DARK,
         paper_bgcolor=BG_DARK,
         font=dict(color="white"),
+        # Enhanced Scene/Axis Configuration
         scene=dict(
-            xaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_CYAN, title="Technical Depth (X)", title_font=dict(color=ACCENT_CYAN), tickfont=dict(color="white"), range=[50, 100]),
-            yaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_PINK, title="Leadership Potential (Y)", title_font=dict(color=ACCENT_PINK), tickfont=dict(color="white"), range=[50, 100]),
-            zaxis=dict(backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_GREEN, title="Domain Expertise (Z)", title_font=dict(color=ACCENT_GREEN), tickfont=dict(color="white"), range=[50, 100]),
-            aspectmode='cube'
+            xaxis=dict(
+                backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_CYAN, 
+                title="Technical Depth (X)", title_font=dict(color=ACCENT_CYAN), 
+                tickfont=dict(color="white"), range=[50, 100], 
+                # Add depth/projection lines
+                showbackground=False, showgrid=True, zeroline=True,
+                gridwidth=2 
+            ),
+            yaxis=dict(
+                backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_PINK, 
+                title="Leadership Potential (Y)", title_font=dict(color=ACCENT_PINK), 
+                tickfont=dict(color="white"), range=[50, 100],
+                showbackground=False, showgrid=True, zeroline=True,
+                gridwidth=2
+            ),
+            zaxis=dict(
+                backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_GREEN, 
+                title="Domain Expertise (Z)", title_font=dict(color=ACCENT_GREEN), 
+                tickfont=dict(color="white"), range=[50, 100],
+                showbackground=False, showgrid=True, zeroline=True,
+                gridwidth=2
+            ),
+            aspectmode='cube',
+            # Set initial camera view for better 3D depth
+            camera=dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=1.5, y=1.5, z=0.5)
+            )
         ),
         legend_title_text='Match Type',
-        hoverlabel=dict(bgcolor="black", font_size=16, font_color="white")
+        # Ensure hover is sharp and high-contrast
+        hoverlabel=dict(bgcolor="#111111", font_size=14, font_color=ACCENT_CYAN, bordercolor=ACCENT_PINK)
     )
     
     st.plotly_chart(fig, use_container_width=True)
+
+# --- Custom CSS Injection (UPDATED for Matrix Effect) ---
+custom_css = f"""
+<style>
+/* 1. Global Background (Pure Black + Digital Rain Effect) */
+@keyframes matrix-rain {{
+    from {{ background-position: 0 0; }}
+    to {{ background-position: 100% 100%; }}
+}}
+.stApp {{
+    background-color: {BG_DARK};
+    color: white;
+    /* Add subtle animated texture */
+    background-image: 
+        repeating-linear-gradient(
+            0deg, 
+            rgba(0, 224, 255, 0.05), 
+            rgba(255, 0, 184, 0.05) 500px, 
+            transparent 1000px
+        );
+    background-size: 200% 200%;
+    animation: matrix-rain 60s linear infinite; /* Slow, continuous movement */
+}}
+
+/* 2. Holographic / Neon Text Effect */
+.holo-text {{
+    text-shadow: {TEXT_HOLO};
+    font-weight: 800;
+}}
+
+/* 3. Glassmorphism Card Style (Adjusted for pure black BG) */
+.glass-card {{
+    background-color: rgba(255, 255, 255, 0.03); /* More transparent */
+    backdrop-filter: blur(15px) saturate(180%); /* Stronger blur */
+    -webkit-backdrop-filter: blur(15px) saturate(180%);
+    border: 1px solid rgba(0, 224, 255, 0.2); /* Cyan border for projection effect */
+    border-radius: 1.5rem; /* Smoother corners */
+    padding: 1.5rem;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+    transition: all 0.3s ease-in-out;
+}}
+
+.glass-card:hover {{
+    border-color: {ACCENT_PINK}90; /* Pink hover effect */
+    box-shadow: 0 0 25px {ACCENT_PINK}40;
+}}
+
+/* 4. Input Fields (for visibility) */
+.stTextInput>div>div>input, .stTextArea>div>div>textarea {{
+    background-color: rgba(0, 0, 0, 0.6); /* Darker input background */
+    color: {ACCENT_CYAN}; /* Input text color */
+    border: 2px solid {ACCENT_CYAN}80;
+    border-radius: 1rem;
+    box-shadow: 0 0 10px {ACCENT_CYAN}20;
+}}
+/* General Font Color Fix */
+h1, h2, h3, h4, .stMarkdown, .stMetric > div, .css-1d391kg {{
+    color: white !important;
+}}
+
+/* Ensure the main button is the most vibrant element */
+.stButton>button:not([type="secondary"]) {{ 
+    box-shadow: 0 0 35px {ACCENT_CYAN}FF, 0 0 15px {ACCENT_PINK}FF !important; 
+    border: 1px solid {ACCENT_CYAN} !important;
+}}
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
 
 
 # --- Main Application Logic (Unchanged) ---
