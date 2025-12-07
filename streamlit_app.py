@@ -61,7 +61,7 @@ GRID_ORANGE = "rgba(255, 140, 0, 0.6)"
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
-# FIX: DEFINITION OF custom_css
+# FIX: DEFINITION OF custom_css (Syntax Error Corrected)
 # ------------------------------------------------
 custom_css = f"""
 <style>
@@ -368,49 +368,73 @@ def render_strategy_visualizations(report):
     score = report.get('predictive_score', 0)
     score_float = float(score) / 100.0 if score is not None else 0.0
     
-    # --- 1. Progress Meter Dashboard (Replaces Radar Chart) ---
-    with col_chart:
-        st.markdown('<h4 style="color:#00E0FF;">Goal Readiness Meter </h4>', unsafe_allow_html=True)
-        
+    # Determine KPI color based on score
+    score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_ORANGE)
+
+    # --- 1. KPI Metrics (Professional Look) ---
+    col_kpi_1, col_kpi_2, col_kpi_3 = st.columns(3)
+    
+    # KPI 1: Overall Match Score
+    with col_kpi_1:
+        st.markdown(f'<p style="color: {ACCENT_CYAN}; font-weight: bold; margin-bottom: 0;">Overall Predictive Match</p>', unsafe_allow_html=True)
         st.markdown(f"""
-        <div class="glass-card" style="border: 2px solid {ACCENT_CYAN}40; padding: 15px;">
-            <p style="color: {ACCENT_CYAN}; font-size: 1rem; margin-bottom: 0;">Goal: **Reach Elite Profile Status (95%)**</p>
-            <p style="color: white; font-size: 2.5rem; font-weight: bold; margin: 0 0 10px 0; text-shadow: 0 0 5px {ACCENT_ORANGE}50;">
-                {score}% Complete
-            </p>
+        <div style="font-size: 2.5rem; font-weight: bold; color: {score_color}; text-shadow: 0 0 8px {score_color}50;">
+            {score}%
         </div>
         """, unsafe_allow_html=True)
-        
-        # Streamlit Progress Bar (Gauge visual)
         st.progress(score_float)
+    
+    # KPI 2: Weakest Link / Mitigation Focus
+    with col_kpi_2:
+        weak_link = report.get('weakest_link_skill', 'N/A')
+        st.markdown(f'<p style="color: {ACCENT_ORANGE}; font-weight: bold; margin-bottom: 0;">Targeted Mitigation Focus</p>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style="font-size: 1.5rem; font-weight: bold; color: white;">
+            {weak_link}
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f'<p style="color: {ACCENT_YELLOW}; font-size: 0.8rem; margin-top: -10px;">Highest priority for CV optimization.</p>', unsafe_allow_html=True)
         
+    # KPI 3: Next Action Step
+    with col_kpi_3:
+        st.markdown(f'<p style="color: {ACCENT_GREEN}; font-weight: bold; margin-bottom: 0;">Immediate Tactical Goal</p>', unsafe_allow_html=True)
         st.markdown(f"""
-        <div style="color: {ACCENT_GREEN}; font-size: 0.9rem; margin-top: 10px;">
-            Target Threshold: **95%** | Current Status: **{score}%**
+        <div style="font-size: 1.5rem; font-weight: bold; color: white;">
+            Optimize CV in Compiler
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f'<p style="color: #ccc; font-size: 0.8rem; margin-top: -10px;">Test against a specific Job Description.</p>', unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # --- 2. Action Strategy Flow (Integrated Funnel Text) ---
+    st.subheader("Action Strategy Pipeline")
+    
+    col_flow_1, col_flow_2, col_flow_3 = st.columns(3)
+    
+    with col_flow_1:
+        st.markdown(f"""
+        <div class="glass-card" style="border-left: 5px solid {ACCENT_CYAN};">
+            <p style="color:{ACCENT_CYAN}; font-weight: bold;">1. ANALYSIS</p>
+            <p style="font-size: 0.9rem; color: #ccc;">CV scanned against 1,000 elite profiles. Match Score established.</p>
         </div>
         """, unsafe_allow_html=True)
 
-
-    # --- 2. Strategy Funnel (uses custom CSS/Markdown) ---
-    with col_funnel:
-        st.markdown('<h4 style="color:#FF8C00;">Action Strategy Funnel </h4>', unsafe_allow_html=True)
+    with col_flow_2:
         st.markdown(f"""
-        <div class="glass-card" style="border: 2px solid {ACCENT_ORANGE}40;">
-            <div class="funnel-step" style="background-color: {ACCENT_ORANGE}10; border-left-color: {ACCENT_ORANGE}; color: {ACCENT_ORANGE};">
-                1. CV ANALYZE ({report.get('predictive_score', 0)}%)
-            </div>
-            <div class="funnel-step">
-                2. EMPLOYER TARGET (Domestic & Global)
-            </div>
-            <div class="funnel-step" style="border-left: 5px solid {ACCENT_GREEN}; color: {ACCENT_GREEN};">
-                3. VISA ACTION PLAN
-            </div>
-            <div style="text-align: center; color: #ccc; font-size: 0.8rem; margin-top: 10px;">
-                Outputs Grounded by RAG/Google
-            </div>
+        <div class="glass-card" style="border-left: 5px solid {ACCENT_ORANGE};">
+            <p style="color:{ACCENT_ORANGE}; font-weight: bold;">2. OPTIMIZATION</p>
+            <p style="font-size: 0.9rem; color: #ccc;">Use Compiler to eliminate the Weakest Link and pass the ATS/Recruiter filters.</p>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown(f'<p style="color: {ACCENT_YELLOW}; font-size: 0.9rem;">Weakest Link: <b>{report.get("weakest_link_skill", "N/A")}</b></p>', unsafe_allow_html=True)
+
+    with col_flow_3:
+        st.markdown(f"""
+        <div class="glass-card" style="border-left: 5px solid {ACCENT_GREEN};">
+            <p style="color:{ACCENT_GREEN}; font-weight: bold;">3. EXECUTION</p>
+            <p style="font-size: 0.9rem; color: #ccc;">Target employers and initiate the Visa Action Plan (see report below).</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # --- Main Application Logic (Unchanged) ---
