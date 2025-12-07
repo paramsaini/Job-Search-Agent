@@ -43,7 +43,6 @@ EMBEDDING_MODEL = "text-embedding-004"
 EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBEDDING_MODEL}:embedContent?key={API_KEY}"
 
 # --- Configuration Placeholder ---
-# FIX: Define system_prompt as an empty string to avoid NameError issues in the global scope.
 system_prompt = "" 
 
 # --- RAG Configuration ---
@@ -53,12 +52,12 @@ RAG_K = 10 # Number of top documents to retrieve
 # --- Holographic Theme Configuration (UPDATED for maximum effect and new colors) ---
 BG_DARK = "#000000" # Pure black background for max contrast
 ACCENT_CYAN = "#00E0FF"
-ACCENT_ORANGE = "#FF8C00" # REPLACED PINK with ORANGE
+ACCENT_ORANGE = "#FF8C00" 
 ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
-TEXT_HOLO = f"0 0 10px {ACCENT_CYAN}, 0 0 20px {ACCENT_ORANGE}90" # Stronger glow using new color
-GRID_CYAN = "rgba(0, 255, 255, 0.6)" # Brighter grid
-GRID_ORANGE = "rgba(255, 140, 0, 0.6)" # NEW: Orange grid for the new plot axis
+TEXT_HOLO = f"0 0 10px {ACCENT_CYAN}, 0 0 20px {ACCENT_ORANGE}90"
+GRID_CYAN = "rgba(0, 255, 255, 0.6)" 
+GRID_ORANGE = "rgba(255, 140, 0, 0.6)" 
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
@@ -245,7 +244,7 @@ def generate_job_strategy_from_gemini(cv_text):
             "weakest_link_skill": {"type": "STRING", "description": "The specific skill or competency (e.g., Data Modeling, Team Leadership) with the largest gap."},
             "learning_resource_1": {"type": "STRING", "description": "Specific, actionable resource to close the weakest link gap."},
             "learning_resource_2": {"type": "STRING", "description": "Second specific resource."},
-            # NOTE: Keeping these dummy scores in the schema, but they are not strictly used by the new visual.
+            # Add placeholders for the Radar Chart data (scores are dummy but derived from main predictive score)
             "tech_score": {"type": "INTEGER", "description": "Simulated Technical Depth Score (0-100)."},
             "leader_score": {"type": "INTEGER", "description": "Simulated Leadership Potential Score (0-100)."},
             "domain_score": {"type": "INTEGER", "description": "Simulated Domain Expertise Score (0-100)."},
@@ -421,20 +420,23 @@ def main():
     st.markdown('<p style="font-size: 1.25rem; color: #9CA3AF; text-align: center;">Analyze your CV against global employers using grounded Gemini AI.</p>', unsafe_allow_html=True)
     st.markdown("---")
 
-    # 👇 NEW: Emotional Tracker Link and Instructions
+    # 👇 NEW: Feature Navigation Links
     st.markdown("""
-    <div style='background-color: #00E0FF1A; padding: 15px; border-radius: 8px; border-left: 5px solid #00E0FF; margin: 20px 0;'>
-        <p style='color: #00E0FF; font-weight: bold; margin: 0;'>
-            🔥 **NEW: EMOTIONAL ENDURANCE CHECK**
-        </p>
-        <p style='color: #ccc; font-size: 0.9rem; margin: 5px 0 0 0;'>
-            The job search is a marathon. Use our Emotional Tracker tool to monitor your resilience score and prevent burnout.
-        </p>
-    </div>
+    <h3 class="holo-text" style="color:#00E0FF; font-size: 1.8rem;">🚀 Feature Navigation Hub</h3>
+    <p style='color: #ccc; font-size: 0.9rem; margin-bottom: 10px;'>Unlock deeper insights by navigating the specialized tools below.</p>
     """, unsafe_allow_html=True)
-    st.page_link("pages/1_Emotional_Tracker.py", label="➡️ Go to Emotional Endurance Tracker", icon="🧘", use_container_width=True)
+    
+    col_nav_1, col_nav_2, col_nav_3 = st.columns(3)
+    
+    with col_nav_1:
+        st.page_link("pages/1_Emotional_Tracker.py", label="🧘 Emotional Endurance", icon="🧘", use_container_width=True)
+    with col_nav_2:
+        st.page_link("pages/2_Feedback_Loop.py", label="🔄 Predictive Feedback Loop", icon="🔄", use_container_width=True)
+    with col_nav_3:
+        st.page_link("pages/3_Skill_Migration.py", label="🌍 Skill Migration Map", icon="🌍", use_container_width=True)
+        
     st.markdown("---")
-    # 👆 END NEW SECTION
+    # 👆 END NEW NAVIGATION SECTION
 
     # --- 0. Predictive Skill Health Card (NEW FEATURE DISPLAY) ---
     if st.session_state.get('skill_gap_report'):
