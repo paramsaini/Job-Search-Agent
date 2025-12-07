@@ -130,7 +130,8 @@ def emotional_tracker_page():
         
         if submitted:
             log_mood_entry(mood, activity, notes)
-            st.experimental_rerun()
+            st.rerun() # <-- FIX: Replaced st.experimental_rerun()
+            
 
     # --- History and Visualization ---
     st.subheader("History & Trends")
