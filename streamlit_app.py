@@ -135,6 +135,17 @@ hr {{
     color: {ACCENT_CYAN};
     border-radius: 4px;
 }}
+
+/* Custom Progress Bar Styling (to match theme) */
+.stProgress > div > div > div > div {{
+    background-color: {ACCENT_CYAN};
+    animation: gradient 2s ease infinite;
+}}
+@keyframes gradient {{
+    0% {{background-color: {ACCENT_CYAN};}}
+    50% {{background-color: {ACCENT_ORANGE};}}
+    100% {{background-color: {ACCENT_CYAN};}}
+}}
 </style>
 """
 # ------------------------------------------------
@@ -235,7 +246,7 @@ def generate_job_strategy_from_gemini(cv_text):
             "weakest_link_skill": {"type": "STRING", "description": "The specific skill or competency (e.g., Data Modeling, Team Leadership) with the largest gap."},
             "learning_resource_1": {"type": "STRING", "description": "Specific, actionable resource to close the weakest link gap."},
             "learning_resource_2": {"type": "STRING", "description": "Second specific resource."},
-            # Add placeholders for the Radar Chart data (scores are dummy but derived from main predictive score)
+            # NOTE: Keeping these dummy scores in the schema, but they are not strictly used by the new visual.
             "tech_score": {"type": "INTEGER", "description": "Simulated Technical Depth Score (0-100)."},
             "leader_score": {"type": "INTEGER", "description": "Simulated Leadership Potential Score (0-100)."},
             "domain_score": {"type": "INTEGER", "description": "Simulated Domain Expertise Score (0-100)."},
@@ -349,53 +360,41 @@ def call_gemini_api(payload, structured=False):
 # ----------------------------------------------------------------------------------
 
 def render_strategy_visualizations(report):
-    """Renders the Strategy Funnel and Skill Radar Chart using data from the report.
-    This replaces the previous Plotly scatter plot."""
+    """Renders the Strategy Funnel and Progress Meter Dashboard using data from the report."""
     
     st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">🧠 Strategic Visualization Suite</h2>', unsafe_allow_html=True)
     
     col_chart, col_funnel = st.columns([2, 1])
-
-    # --- 1. Skill Radar Chart (uses Plotly for advanced visual) ---
+    
+    score = report.get('predictive_score', 0)
+    score_float = float(score) / 100.0 if score is not None else 0.0
+    
+    # --- 1. Progress Meter Dashboard (Replaces Radar Chart) ---
     with col_chart:
-        st.markdown('<h4 style="color:#00E0FF;">Skill Readiness Radar</h4>', unsafe_allow_html=True)
+        st.markdown('<h4 style="color:#00E0FF;">Goal Readiness Meter </h4>', unsafe_allow_html=True)
         
-        # Prepare data for Radar Chart (User vs. Elite Target)
-        df_radar = pd.DataFrame(dict(
-            r=[report.get('tech_score', 0), report.get('leader_score', 0), report.get('domain_score', 0)],
-            theta=['Technical Depth', 'Leadership Potential', 'Domain Expertise'],
-            group=['Your Profile', 'Your Profile', 'Your Profile'] # <-- FIX: Array length now matches r/theta
-        ))
+        st.markdown(f"""
+        <div class="glass-card" style="border: 2px solid {ACCENT_CYAN}40; padding: 15px;">
+            <p style="color: {ACCENT_CYAN}; font-size: 1rem; margin-bottom: 0;">Goal: **Reach Elite Profile Status (95%)**</p>
+            <p style="color: white; font-size: 2.5rem; font-weight: bold; margin: 0 0 10px 0; text-shadow: 0 0 5px {ACCENT_ORANGE}50;">
+                {score}% Complete
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        df_elite = pd.DataFrame(dict(
-            r=[95, 95, 95], # Elite target scores
-            theta=['Technical Depth', 'Leadership Potential', 'Domain Expertise'],
-            group=['Elite Target', 'Elite Target', 'Elite Target']
-        ))
-        df_radar = pd.concat([df_radar, df_elite], ignore_index=True)
-
-        fig = px.line_polar(df_radar, r='r', theta='theta', color='group', line_close=True,
-                            color_discrete_map={'Your Profile': ACCENT_ORANGE, 'Elite Target': ACCENT_CYAN})
+        # Streamlit Progress Bar (Gauge visual)
+        st.progress(score_float)
         
-        fig.update_traces(fill='toself', opacity=0.4, line=dict(width=2))
-        fig.update_layout(
-            polar=dict(
-                radialaxis=dict(visible=True, range=[0, 100], gridcolor=GRID_CYAN, linecolor='white'),
-                angularaxis=dict(linecolor='white', gridcolor=GRID_CYAN)
-            ),
-            plot_bgcolor=BG_DARK,
-            paper_bgcolor=BG_DARK,
-            font=dict(color="white"),
-            showlegend=True,
-            height=400,
-            margin=dict(l=50, r=50, t=50, b=50)
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        st.markdown(f"""
+        <div style="color: {ACCENT_GREEN}; font-size: 0.9rem; margin-top: 10px;">
+            Target Threshold: **95%** | Current Status: **{score}%**
+        </div>
+        """, unsafe_allow_html=True)
 
 
     # --- 2. Strategy Funnel (uses custom CSS/Markdown) ---
     with col_funnel:
-        st.markdown('<h4 style="color:#FF8C00;">Action Strategy Funnel</h4>', unsafe_allow_html=True)
+        st.markdown('<h4 style="color:#FF8C00;">Action Strategy Funnel </h4>', unsafe_allow_html=True)
         st.markdown(f"""
         <div class="glass-card" style="border: 2px solid {ACCENT_ORANGE}40;">
             <div class="funnel-step" style="background-color: {ACCENT_ORANGE}10; border-left-color: {ACCENT_ORANGE}; color: {ACCENT_ORANGE};">
@@ -444,7 +443,7 @@ def main():
                 st.markdown(f"""
                     <div class="glass-card">
                         <p style="color: {ACCENT_ORANGE}; font-weight: bold; margin-bottom: 0.5rem;">Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}</p>
-                        <p style="color: #ccc; margin-bottom: 0.5rem; font-size: 0.9rem;">Recommended Action Plan (Informed by RAG):</p>
+                        <p style="color: {ACCENT_CYAN}; margin-bottom: 0.5rem; font-size: 0.9rem;">Recommended Action Plan (Informed by RAG):</p>
                         <ul style="color: {ACCENT_CYAN}; padding-left: 20px;">
                             <li>{report.get('learning_resource_1', 'Check report below.')}</li>
                             <li>{report.get('learning_resource_2', 'Check report below.')}</li>
