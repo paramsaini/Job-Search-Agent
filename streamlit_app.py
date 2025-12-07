@@ -125,8 +125,8 @@ def generate_job_strategy_from_gemini(cv_text):
         
         if query_vector:
             try:
-                # Search the Qdrant Collection
-                search_result = qdrant.search(
+                # FINAL FIX: The 'query' method is used for similarity search. 
+                search_result = qdrant.query( 
                     collection_name=COLLECTION_NAME,
                     query_vector=query_vector,
                     limit=RAG_K,
@@ -134,13 +134,13 @@ def generate_job_strategy_from_gemini(cv_text):
                 )
                 
                 # Format the retrieved documents into a single context string
-                if search_result:
-                    retrieved_docs = [hit.payload['text'] for hit in search_result]
+                if search_result.points: # Check for points in the query response
+                    retrieved_docs = [hit.payload['text'] for hit in search_result.points]
                     context_text = "\n---\n".join(retrieved_docs)
                 else:
                     context_text = "No relevant resumes found in the knowledge base."
             except Exception as e:
-                context_text = f"Qdrant Search Error: {e}"
+                context_text = f"Qdrant Query Error: {e}"
                 st.error(f"Failed to query Qdrant: {e}")
 
     # --- RAG STEP 2: Augmented Prompt Construction ---
@@ -220,7 +220,7 @@ Analyze the user's CV and generate the requested professional job strategy. The 
     return "Error: Failed to get a response after multiple retries.", []
 
 
-# --- Data Simulation for 3D Plotly (FIXED REGEX) ---
+# --- Data Simulation for 3D Plotly (Final Regex Fix) ---
 @st.cache_data
 def load_3d_data_dummy():
     """Generates mock data for the 3D visualization when no results are available."""
@@ -235,65 +235,59 @@ def generate_dynamic_3d_data(markdown_output):
     
     employers_data = []
     
-    # FIX: Regex is now more flexible to handle variations in the structure.
-    # It looks for an employer name, followed by any characters, then a location, followed by the [Link](URL) structure.
-    # Pattern to capture Employer, Location/Rationale, and the Link structure in one go.
-    employer_info_pattern = r'(\d+\.\s*)(.*?)(?:\n|$)'
-    
-    # Pattern to find the link structure anywhere within the captured item content.
+    # NEW ROBUST REGEX: Finds all [Name](URL) links in the entire output.
+    # We strip out common non-link markdown formatting first.
+    cleaned_output = markdown_output.replace('**', '').replace('*', '')
+
+    # Pattern to find the link structure anywhere in the entire output.
     link_pattern = r'\[([^\]]+)\]\((https?:\/\/[^\)]+)\)'
     
-    # Pattern to capture the country/location from the text preceding the link
+    # Pattern to find country keywords near the link structure to guess location type.
     country_keywords = r'(US|USA|United States|UK|United Kingdom|Canada|Germany|France|Japan|Singapore|EU)'
 
-    # --- 1. Capture Domestic Employers ---
-    domestic_section_match = re.search(r'HIGH-ACCURACY DOMESTIC EMPLOYERS:(.*?)(?=HIGH-ACCURACY INTERNATIONAL EMPLOYERS:)', markdown_output, re.DOTALL)
-    domestic_text = domestic_section_match.group(1) if domestic_section_match else ""
     
-    for item_match in re.finditer(employer_info_pattern, domestic_text, re.DOTALL | re.MULTILINE):
-        item_content = item_match.group(2).strip()
-        link_match = re.search(link_pattern, item_content)
+    # 1. Capture ALL links globally
+    all_links = list(re.finditer(link_pattern, cleaned_output))
+    
+    for link_match in all_links:
+        full_match_text = link_match.group(0)
+        name = link_match.group(1).strip()
+        link_index = link_match.start()
         
-        if link_match:
-            name = link_match.group(1).strip()
-            
-            # Use the content *before* the link structure to find the country
-            pre_link_content = item_content.split(link_match.group(0), 1)[0]
-            location_match = re.search(country_keywords, pre_link_content, re.IGNORECASE)
-            
-            country = location_match.group(0).replace('United States', 'USA').replace('United Kingdom', 'UK') if location_match else 'Domestic Hub'
+        # --- Determine Domestic/International (Type) based on position ---
+        
+        # Check if the link falls within the "HIGH-ACCURACY DOMESTIC EMPLOYERS" section
+        is_domestic = bool(re.search(r'HIGH-ACCURACY DOMESTIC EMPLOYERS:(.*?)(?=\d+\.|\Z)', cleaned_output[:link_index], re.DOTALL | re.IGNORECASE))
+        
+        if is_domestic:
+            type_label = 'Domestic (High Match)'
             base_score = np.random.randint(90, 100)
-            
-            employers_data.append({'Employer': name, 'Country': country, 'Type': 'Domestic (High Match)',
-                'X_Tech': base_score + np.random.normal(0, 3), 'Y_Leader': base_score + np.random.normal(0, 3), 
-                'Z_Domain': base_score + np.random.normal(0, 3), 'Overall_Match': base_score
-            })
-
-    # --- 2. Capture International Employers ---
-    international_section_match = re.search(r'HIGH-ACCURACY INTERNATIONAL EMPLOYERS:(.*?)(?=DOMESTIC JOB STRATEGY:)', markdown_output, re.DOTALL)
-    international_text = international_section_match.group(1) if international_section_match else ""
-    
-    for item_match in re.finditer(employer_info_pattern, international_text, re.DOTALL | re.MULTILINE):
-        item_content = item_match.group(2).strip()
-        link_match = re.search(link_pattern, item_content)
-        
-        if link_match:
-            name = link_match.group(1).strip()
-            
-            # Use the content *before* the link structure to find the country
-            pre_link_content = item_content.split(link_match.group(0), 1)[0]
-            location_match = re.search(country_keywords, pre_link_content, re.IGNORECASE)
-            
-            country = location_match.group(0) if location_match else 'International Market'
+        else:
+            type_label = 'International (Key Market)'
             base_score = np.random.randint(80, 95)
             
-            employers_data.append({'Employer': name, 'Country': country, 'Type': 'International (Key Market)',
-                'X_Tech': base_score + np.random.normal(0, 5), 'Y_Leader': base_score + np.random.normal(0, 5), 
-                'Z_Domain': base_score + np.random.normal(0, 5), 'Overall_Match': base_score
-            })
+        # --- Determine Country ---
+        # Look for the country keyword in the 200 characters *before* the link for context
+        context_start = max(0, link_index - 200)
+        context = cleaned_output[context_start:link_index]
+        
+        location_match = re.search(country_keywords, context, re.IGNORECASE)
+        
+        if location_match:
+            country = location_match.group(0).replace('United States', 'USA').replace('United Kingdom', 'UK')
+        else:
+            country = 'Domestic Hub' if is_domestic else 'International Market'
             
-    if not employers_data:
-        # Fallback will only trigger if NO links were successfully parsed across both sections
+        
+        employers_data.append({'Employer': name, 'Country': country, 'Type': type_label,
+            'X_Tech': base_score + np.random.normal(0, 4), 
+            'Y_Leader': base_score + np.random.normal(0, 4), 
+            'Z_Domain': base_score + np.random.normal(0, 4), 
+            'Overall_Match': base_score
+        })
+            
+    if len(employers_data) < 5:
+        # Fallback will only trigger if less than 5 valid links were successfully parsed.
         return load_3d_data_dummy()
 
     df = pd.DataFrame(employers_data)
