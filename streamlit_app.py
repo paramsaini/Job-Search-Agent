@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
-import plotly.express as px # Keeping the import, but only for the Radar Chart example
+import plotly.express as px
 from datetime import datetime
 import io
 import pypdf
@@ -149,7 +149,7 @@ def extract_text_from_pdf(uploaded_file):
         for page in pdf_reader.pages:
             text += page.extract_text() or ""
         return text
-    except Exception as e: # <-- Corrected SyntaxError
+    except Exception as e:
         st.error(f"Failed to process PDF with pypdf. Error: {e}")
         return ""
 
@@ -345,11 +345,12 @@ def call_gemini_api(payload, structured=False):
     return ("Error: Failed after retries.", []) if not structured else {"error": "Failed after retries."}
 
 # ----------------------------------------------------------------------------------
-# 👇 REMOVED: load_3d_data_dummy, generate_dynamic_3d_data, render_2d_skill_match_plot
+# ALL 3D/2D PLOTLY FUNCTIONS REMOVED.
 # ----------------------------------------------------------------------------------
 
 def render_strategy_visualizations(report):
-    """Renders the Strategy Funnel and Skill Radar Chart using data from the report."""
+    """Renders the Strategy Funnel and Skill Radar Chart using data from the report.
+    This replaces the previous Plotly scatter plot."""
     
     st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">🧠 Strategic Visualization Suite</h2>', unsafe_allow_html=True)
     
@@ -363,12 +364,13 @@ def render_strategy_visualizations(report):
         df_radar = pd.DataFrame(dict(
             r=[report.get('tech_score', 0), report.get('leader_score', 0), report.get('domain_score', 0)],
             theta=['Technical Depth', 'Leadership Potential', 'Domain Expertise'],
-            group=['Your Profile']
+            group=['Your Profile', 'Your Profile', 'Your Profile'] # <-- FIX: Array length now matches r/theta
         ))
+        
         df_elite = pd.DataFrame(dict(
             r=[95, 95, 95], # Elite target scores
             theta=['Technical Depth', 'Leadership Potential', 'Domain Expertise'],
-            group=['Elite Target']
+            group=['Elite Target', 'Elite Target', 'Elite Target']
         ))
         df_radar = pd.concat([df_radar, df_elite], ignore_index=True)
 
@@ -536,7 +538,7 @@ def main():
             
     elif st.session_state.get('results_displayed'):
         with st.container():
-            st.markdown('<div class="results-card">', unsafe_allow_allow_html=True)
+            st.markdown('<div class="results-card">', unsafe_allow_html=True)
             st.markdown(st.session_state.get('markdown_output', 'Results not loaded.'), unsafe_allow_html=False)
             st.markdown('</div>', unsafe_allow_html=True)
 
