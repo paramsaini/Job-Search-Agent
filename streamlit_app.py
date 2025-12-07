@@ -16,6 +16,20 @@ from qdrant_client import QdrantClient, models # <-- Qdrant Client Import
 # Load environment variables (for local testing)
 load_dotenv()
 
+# --- RAG Specific Function (FIXED: Defined in global scope) ---
+
+def handle_reset_click():
+    """Resets session state variables to restart the search process."""
+    # Increment the reset counter to force the file_uploader to be recreated.
+    st.session_state['reset_key_counter'] = st.session_state.get('reset_key_counter', 0) + 1
+    
+    # Reset input values and flow control flags
+    st.session_state['cv_input_paste'] = ""
+    st.session_state['cv_text_to_process'] = ""
+    st.session_state['run_search'] = False
+    st.session_state['results_displayed'] = False
+    st.session_state['markdown_output'] = "" # Clear previous output
+    
 # --- Gemini & Qdrant Configuration ---
 # Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
