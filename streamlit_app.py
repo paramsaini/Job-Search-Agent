@@ -58,7 +58,7 @@ GRID_PINK = "rgba(255, 0, 184, 0.6)" # Brighter grid
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
-# 👇 FIX: DEFINITION OF custom_css
+# FIX: DEFINITION OF custom_css (Resolved NameError)
 # ------------------------------------------------
 custom_css = f"""
 <style>
@@ -113,7 +113,6 @@ hr {{
 }}
 </style>
 """
-# ------------------------------------------------
 # ------------------------------------------------
 
 # --- PDF Extraction Function (Kept) ---
@@ -177,15 +176,16 @@ def generate_job_strategy_from_gemini(cv_text):
     # --- RAG STEP 1: Retrieval from Qdrant ---
     context_text = "No RAG context available."
     
-    qdrant = get_qdrant_client()
+    # FIX: Use a more specific variable name to avoid shadowing and ensure correct object type
+    qdrant_client_instance = get_qdrant_client()
     
-    if qdrant:
+    if qdrant_client_instance:
         query_vector = get_user_embedding(cv_text)
         
         if query_vector:
             try:
-                # FINAL FIX: Using the reliable 'search' method which takes 'query_vector' and not 'query_text'.
-                search_result = qdrant.search( 
+                # Use the specific instance name
+                search_result = qdrant_client_instance.search( 
                     collection_name=COLLECTION_NAME,
                     query_vector=query_vector, # Pass the vector here
                     limit=RAG_K,
@@ -262,13 +262,31 @@ def generate_job_strategy_from_gemini(cv_text):
     skill_gap_report = call_gemini_api(json_payload, structured=True)
     
     # CALL 2: Markdown Strategy (Text + Search Grounding)
+    # The 'system_prompt' variable is not defined anywhere, so I will comment out the line that uses it.
+    # It seems to be related to a previous implementation or a missing definition.
+    # If the system prompt is missing, the default Gemini system instructions will apply.
+    
+    # systemInstruction_part = {}
+    # try:
+    #     systemInstruction_part = {
+    #         "parts": [{ "text": system_prompt.replace('You MUST also **USE THE RETRIEVED KNOWLEDGE BASE CONTEXT (1000 Resumes)**', '') }]
+    #     }
+    # except NameError:
+    #     # If system_prompt is undefined, skip the systemInstruction part.
+    #     pass
+
     markdown_payload = {
         "contents": [{ "parts": [{ "text": markdown_prompt }] }],
         "tools": [{ "google_search": {} }],
-        "systemInstruction": {
-            "parts": [{ "text": system_prompt.replace('You MUST also **USE THE RETRIEVED KNOWLEDGE BASE CONTEXT (1000 Resumes)**', '') }]
-        },
+        # "systemInstruction": systemInstruction_part, # Keeping the original line commented out due to missing definition
     }
+    
+    # Since system_prompt is undefined, I will use a safe payload structure:
+    markdown_payload = {
+        "contents": [{ "parts": [{ "text": markdown_prompt }] }],
+        "tools": [{ "google_search": {} }],
+    }
+    
     markdown_output, sources = call_gemini_api(markdown_payload, structured=False)
     
     return markdown_output, skill_gap_report, sources
