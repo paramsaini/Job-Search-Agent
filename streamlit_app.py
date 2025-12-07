@@ -46,19 +46,19 @@ EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{E
 COLLECTION_NAME = 'resume_knowledge_base'
 RAG_K = 10 # Number of top documents to retrieve
 
-# --- Holographic Theme Configuration (UPDATED for maximum effect) ---
+# --- Holographic Theme Configuration (UPDATED for maximum effect and new colors) ---
 BG_DARK = "#000000" # Pure black background for max contrast
 ACCENT_CYAN = "#00E0FF"
-ACCENT_PINK = "#FF00B8"
+ACCENT_ORANGE = "#FF8C00" # REPLACED PINK with ORANGE
 ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
-TEXT_HOLO = f"0 0 10px {ACCENT_CYAN}, 0 0 20px {ACCENT_PINK}90" # Stronger glow
+TEXT_HOLO = f"0 0 10px {ACCENT_CYAN}, 0 0 20px {ACCENT_ORANGE}90" # Stronger glow using new color
 GRID_CYAN = "rgba(0, 255, 255, 0.6)" # Brighter grid
-GRID_PINK = "rgba(255, 0, 184, 0.6)" # Brighter grid
+GRID_ORANGE = "rgba(255, 140, 0, 0.6)" # NEW: Orange grid for the new plot axis
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
-# FIX: DEFINITION OF custom_css (Resolved NameError)
+# FIX: DEFINITION OF custom_css
 # ------------------------------------------------
 custom_css = f"""
 <style>
@@ -81,11 +81,11 @@ header {{visibility: hidden;}}
 /* Custom Button Styling */
 div.stButton > button {{
     color: {BG_DARK};
-    background-color: {ACCENT_PINK};
-    border: 2px solid {ACCENT_PINK};
+    background-color: {ACCENT_ORANGE}; /* REPLACED PINK */
+    border: 2px solid {ACCENT_ORANGE}; /* REPLACED PINK */
     border-radius: 12px;
     font-weight: bold;
-    box-shadow: 0 0 10px {ACCENT_PINK}50, 0 0 20px {ACCENT_PINK}30;
+    box-shadow: 0 0 10px {ACCENT_ORANGE}50, 0 0 20px {ACCENT_ORANGE}30; /* REPLACED PINK */
     transition: all 0.3s ease-in-out;
 }}
 
@@ -262,26 +262,6 @@ def generate_job_strategy_from_gemini(cv_text):
     skill_gap_report = call_gemini_api(json_payload, structured=True)
     
     # CALL 2: Markdown Strategy (Text + Search Grounding)
-    # The 'system_prompt' variable is not defined anywhere, so I will comment out the line that uses it.
-    # It seems to be related to a previous implementation or a missing definition.
-    # If the system prompt is missing, the default Gemini system instructions will apply.
-    
-    # systemInstruction_part = {}
-    # try:
-    #     systemInstruction_part = {
-    #         "parts": [{ "text": system_prompt.replace('You MUST also **USE THE RETRIEVED KNOWLEDGE BASE CONTEXT (1000 Resumes)**', '') }]
-    #     }
-    # except NameError:
-    #     # If system_prompt is undefined, skip the systemInstruction part.
-    #     pass
-
-    markdown_payload = {
-        "contents": [{ "parts": [{ "text": markdown_prompt }] }],
-        "tools": [{ "google_search": {} }],
-        # "systemInstruction": systemInstruction_part, # Keeping the original line commented out due to missing definition
-    }
-    
-    # Since system_prompt is undefined, I will use a safe payload structure:
     markdown_payload = {
         "contents": [{ "parts": [{ "text": markdown_prompt }] }],
         "tools": [{ "google_search": {} }],
@@ -411,80 +391,62 @@ def generate_dynamic_3d_data(markdown_output):
     
     return df
 
-def render_3d_skill_match_plot(df_skills):
-    """Renders the 3D Plotly Skill Matrix based on dynamic data."""
+# --- NEW 2D RENDER FUNCTION ---
+def render_2d_skill_match_plot(df_skills):
+    """Renders a 2D Plotly Scatter Plot showing Technical Depth vs. Leadership Potential."""
     
     color_map = {
         'Domestic (High Match)': ACCENT_CYAN,
-        'International (Key Market)': ACCENT_PINK,
+        'International (Key Market)': ACCENT_ORANGE, # Using new color
         'Fallback': ACCENT_YELLOW
     }
 
-    st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">3D Employer Match Projection</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">2D Skill-Match Scatter Plot</h2>', unsafe_allow_html=True)
     st.markdown("""
     <p style='color: #ccc;'>
-    The interactive 3D plot visualizes your **top matched employers** (points). Proximity to the 100-point corner indicates a high skill match across all dimensions (Tech, Leadership, Domain).
+    The plot visualizes your **top matched employers**. The X-axis represents **Technical Depth**, the Y-axis represents **Leadership Potential**. Point size indicates **Domain Expertise** (Overall Fit).
     </p>
     """, unsafe_allow_html=True)
     
     if len(df_skills) == 1 and df_skills['Type'].iloc[0] == 'Fallback':
-          st.error("❌ **3D Data Parsing Failed:** Ensure the Gemini output includes at least 5 employers with the required Markdown link format: `[Employer Name](URL)`.")
+          st.error("❌ **Data Parsing Failed:** Ensure the Gemini output includes at least 5 employers with the required Markdown link format: `[Employer Name](URL)`.")
           return
 
-    fig = px.scatter_3d(
+    # Use X_Tech and Y_Leader for 2D plot, use Z_Domain for size
+    fig = px.scatter(
         df_skills, 
         x='X_Tech', 
         y='Y_Leader', 
-        z='Z_Domain',
         color='Type', 
         hover_name='Employer', 
         text='Country', 
-        size='Overall_Match', 
+        size='Z_Domain', # Use Domain Expertise for size to represent the third dimension
+        size_max=30,
         color_discrete_map=color_map,
-        title="Holographic Employer Data Cloud",
-        height=700
+        title="Technical vs. Leadership Match",
+        height=600
     )
 
     fig.update_layout(
-        # Set background to pure black and add grid effects
         plot_bgcolor=BG_DARK,
         paper_bgcolor=BG_DARK,
         font=dict(color="white"),
-        # Enhanced Scene/Axis Configuration
-        scene=dict(
-            xaxis=dict(
-                backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_CYAN, 
-                title="Technical Depth (X)", title_font=dict(color=ACCENT_CYAN), 
-                tickfont=dict(color="white"), range=[50, 100], 
-                # Add depth/projection lines
-                showbackground=False, showgrid=True, zeroline=True,
-                gridwidth=2 
-            ),
-            yaxis=dict(
-                backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_PINK, 
-                title="Leadership Potential (Y)", title_font=dict(color=ACCENT_PINK), 
-                tickfont=dict(color="white"), range=[50, 100],
-                showbackground=False, showgrid=True, zeroline=True,
-                gridwidth=2
-            ),
-            zaxis=dict(
-                backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_GREEN, 
-                title="Domain Expertise (Z)", title_font=dict(color=ACCENT_GREEN), 
-                tickfont=dict(color="white"), range=[50, 100],
-                showbackground=False, showgrid=True, zeroline=True,
-                gridwidth=2
-            ),
-            aspectmode='cube',
-            # Set initial camera view for better 3D depth
-            camera=dict(
-                up=dict(x=0, y=0, z=1),
-                center=dict(x=0, y=0, z=0),
-                eye=dict(x=1.5, y=1.5, z=0.5)
-            )
+        # X-Axis configuration
+        xaxis=dict(
+            backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_CYAN, 
+            title="Technical Depth (%)", title_font=dict(color=ACCENT_CYAN), 
+            tickfont=dict(color="white"), range=[50, 100], 
+            showbackground=False, showgrid=True, zeroline=True, gridwidth=2 
+        ),
+        # Y-Axis configuration
+        yaxis=dict(
+            backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_ORANGE, # Using new color
+            title="Leadership Potential (%)", title_font=dict(color=ACCENT_ORANGE), # Using new color
+            tickfont=dict(color="white"), range=[50, 100],
+            showbackground=False, showgrid=True, zeroline=True, gridwidth=2
         ),
         legend_title_text='Match Type',
-        # Ensure hover is sharp and high-contrast
-        hoverlabel=dict(bgcolor="#111111", font_size=14, font_color=ACCENT_CYAN, bordercolor=ACCENT_PINK)
+        hoverlabel=dict(bgcolor="#111111", font_size=14, font_color=ACCENT_CYAN, bordercolor=ACCENT_ORANGE) # Using new color
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -502,12 +464,12 @@ def main():
     if st.session_state.get('skill_gap_report'):
         report = st.session_state['skill_gap_report']
         if not report.get('error'):
-            st.markdown('<h2 class="holo-text" style="color:#FF00B8;">✨ Predictive Skill Health Score</h2>', unsafe_allow_html=True)
+            st.markdown(f'<h2 class="holo-text" style="color:{ACCENT_ORANGE};">✨ Predictive Skill Health Score</h2>', unsafe_allow_html=True) # Changed color
             col_score, col_gap = st.columns([1, 2])
             
             with col_score:
                 score = report.get('predictive_score', 0)
-                score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_PINK)
+                score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_ORANGE) # Changed color
                 st.markdown(f"""
                     <div class="glass-card" style="border: 2px solid {score_color}; text-align: center; height: 100%;">
                         <p style="color: {score_color}; font-size: 1rem; margin-bottom: 0;">Trajectory Match</p>
@@ -518,9 +480,9 @@ def main():
             with col_gap:
                 st.markdown(f"""
                     <div class="glass-card">
-                        <p style="color: {ACCENT_PINK}; font-weight: bold; margin-bottom: 0.5rem;">Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}</p>
+                        <p style="color: {ACCENT_ORANGE}; font-weight: bold; margin-bottom: 0.5rem;">Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}</p>
                         <p style="color: #ccc; margin-bottom: 0.5rem; font-size: 0.9rem;">Recommended Action Plan (Informed by RAG):</p>
-                        <ul style="color: #00E0FF; padding-left: 20px;">
+                        <ul style="color: {ACCENT_CYAN}; padding-left: 20px;">
                             <li>{report.get('learning_resource_1', 'Check report below.')}</li>
                             <li>{report.get('learning_resource_2', 'Check report below.')}</li>
                         </ul>
@@ -528,10 +490,10 @@ def main():
                 """, unsafe_allow_html=True)
             st.markdown("---")
 
-    # --- 1. Conditional 3D Visualization ---
+    # --- 1. Conditional 2D Visualization (Updated) ---
     if st.session_state.get('results_displayed'):
         df_match = generate_dynamic_3d_data(st.session_state.get('markdown_output', ''))
-        render_3d_skill_match_plot(df_match)
+        render_2d_skill_match_plot(df_match) # <-- NEW FUNCTION CALL
         st.markdown("---")
     
     st.subheader("📝 Step 2: Input Your Professional Profile")
@@ -616,7 +578,7 @@ def main():
             st.markdown(st.session_state.get('markdown_output', 'Results not loaded.'), unsafe_allow_html=False)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    else: st.info("Your comprehensive job search strategy and dynamic 3D skill-match matrix will appear here after analysis. Click 'Generate' to begin.")
+    else: st.info("Your comprehensive job search strategy and dynamic 2D skill-match matrix will appear here after analysis. Click 'Generate' to begin.")
 
 
 if __name__ == '__main__':
