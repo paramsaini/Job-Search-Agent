@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import re
+from datetime import datetime # Necessary for logging functions if used here
+import numpy as np # <--- FIX: Added missing import
 
 # --- Configuration (Copied from main app for consistency) ---
 BG_DARK = "#000000"
@@ -53,7 +55,7 @@ def analyze_friction(cv_text, jd_text, predictive_score):
         friction_level = "Medium"
         color = ACCENT_YELLOW
         
-    final_score = int(np.clip(friction_score, 40, 100))
+    final_score = int(np.clip(friction_score, 40, 100)) # FIX: np is now defined
     
     return final_score, objection, color, keyword_match_percent
 
@@ -98,13 +100,13 @@ def feedback_loop_page():
         col_gauge, col_objection = st.columns([1, 2])
         
         with col_gauge:
-            st.markdown(f'<p style="color: {st.session_state["friction_color"]}; font-size: 1.1rem; font-weight: bold;">JD Match Score</p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="color: {st.session_state["friction_color"]}; font-weight: bold;">JD Match Score</p>', unsafe_allow_html=True)
             st.metric(label="Match Score (0-100)", 
                       value=f"{st.session_state['friction_score']}%", 
                       delta=f"Keywords: {st.session_state['kw_match']:.1f}%")
             
         with col_objection:
-            st.markdown(f'<p style="color: {ACCENT_CYAN}; font-size: 1.1rem; font-weight: bold;">Recruiter Sentiment (The Truth)</p>', unsafe_allow_html=True)
+            st.markdown(f'<p style="color: {ACCENT_CYAN}; font-weight: bold;">Recruiter Sentiment (The Truth)</p>', unsafe_allow_html=True)
             st.warning(f'**Simulated Objection:** {st.session_state["recruiter_objection"]}')
             
             st.markdown(f"""
