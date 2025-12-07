@@ -1,0 +1,12 @@
+Environment files (never commit secrets)
+
+.env
+
+Python Virtual Environment
+
+venv/
+pycache/
+
+Document and Data Directories (do not commit 2,484 resumes!)
+
+resumes_data/
