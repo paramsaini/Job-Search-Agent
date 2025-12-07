@@ -88,7 +88,7 @@ def skill_migration_page():
                             'Target Cluster: Specialist Architect': '#8888FF',
                             'Target Cluster: Management Track': ACCENT_GREEN,
                             'Target Cluster: Domain Expert/Consultant': ACCENT_CYAN},
-        title="Technical Depth vs. Leadership Potential",
+        title="Technical Depth vs. Leadership Potential (Pivot Pathways)",
         height=600
     )
 
@@ -118,11 +118,14 @@ def skill_migration_page():
     st.markdown(f"""
     <div style='background-color: {ACCENT_ORANGE}10; padding: 15px; border-radius: 8px; border-left: 5px solid {ACCENT_ORANGE};'>
         <p style='color: {ACCENT_ORANGE}; font-size: 1.1rem; font-weight: bold; margin: 0;'>
-            🎯 Your Highest Priority Pivot Target is: {closest_target['Name']} ({closest_target['Type'].split(': ')[1]})
+            🎯 Your Highest Priority Pivot Target is: **{closest_target['Name']}**
+        </p>
+        <p style='color: {ACCENT_CYAN}; margin-top: 5px; font-weight: bold;'>
+            Mitigation Focus: **{st.session_state.get('skill_gap_report', {}).get('weakest_link_skill', 'N/A')}**
         </p>
         <p style='color: #ccc; margin-top: 10px;'>
             The closest path requires mitigating a **Total Skill Gap** of **{closest_target['Gap_Score']:.1f} points**.
-            The current focus should be on shifting your skill profile towards **{closest_target['Name']}** by prioritizing skills in the area(s) where your current score is lower than the target cluster average.
+            The current focus should be on shifting your skill profile by dedicating resources to the area(s) where the gap is largest (the shortest distance is represented by the orange dotted line).
         </p>
     </div>
     """, unsafe_allow_html=True)
