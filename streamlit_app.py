@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
-import plotly.express as px
+import plotly.express as px # Keeping the import, but only for the Radar Chart example
 from datetime import datetime
 import io
 import pypdf
@@ -123,6 +123,18 @@ hr {{
     border-top: 2px solid {ACCENT_CYAN}50;
     margin: 1rem 0;
 }}
+
+/* Strategy Funnel CSS */
+.funnel-step {{
+    background-color: {ACCENT_CYAN}10;
+    padding: 10px;
+    margin-bottom: 5px;
+    text-align: center;
+    border-left: 5px solid {ACCENT_CYAN};
+    font-weight: bold;
+    color: {ACCENT_CYAN};
+    border-radius: 4px;
+}}
 </style>
 """
 # ------------------------------------------------
@@ -137,8 +149,7 @@ def extract_text_from_pdf(uploaded_file):
         for page in pdf_reader.pages:
             text += page.extract_text() or ""
         return text
-# Line 162: SYNTAX ERROR FIXED HERE
-    except Exception as e: # <-- Colon added to fix the SyntaxError
+    except Exception as e: # <-- Corrected SyntaxError
         st.error(f"Failed to process PDF with pypdf. Error: {e}")
         return ""
 
@@ -224,14 +235,20 @@ def generate_job_strategy_from_gemini(cv_text):
             "weakest_link_skill": {"type": "STRING", "description": "The specific skill or competency (e.g., Data Modeling, Team Leadership) with the largest gap."},
             "learning_resource_1": {"type": "STRING", "description": "Specific, actionable resource to close the weakest link gap."},
             "learning_resource_2": {"type": "STRING", "description": "Second specific resource."},
+            # Add placeholders for the Radar Chart data (scores are dummy but derived from main predictive score)
+            "tech_score": {"type": "INTEGER", "description": "Simulated Technical Depth Score (0-100)."},
+            "leader_score": {"type": "INTEGER", "description": "Simulated Leadership Potential Score (0-100)."},
+            "domain_score": {"type": "INTEGER", "description": "Simulated Domain Expertise Score (0-100)."},
         },
-        "required": ["predictive_score", "weakest_link_skill", "learning_resource_1", "learning_resource_2"]
+        "required": ["predictive_score", "weakest_link_skill", "learning_resource_1", "learning_resource_2", "tech_score", "leader_score", "domain_score"]
     }
     
     # NEW: First call to get the JSON report (Structured response)
     json_prompt = f"""
     Based on the following CV and the RAG Knowledge Base Context (1000 resumes), analyze the user's current professional trajectory relative to the elite profiles found in the context. 
-    Generate a JSON object strictly following the provided schema. The 'predictive_score' should reflect the user's readiness for the next 5 years of market demands as seen in the RAG context.
+    Generate a JSON object strictly following the provided schema. 
+    1. The 'predictive_score' should reflect the user's readiness for the next 5 years of market demands as seen in the RAG context.
+    2. The 'tech_score', 'leader_score', and 'domain_score' should be derived as sub-scores of the predictive score, indicating specific strengths/weaknesses (e.g., if predictive score is 85, scores should be around 85 +/- 5).
 
     --- RETRIEVED KNOWLEDGE BASE CONTEXT ---
     {context_text}
@@ -327,142 +344,73 @@ def call_gemini_api(payload, structured=False):
 
     return ("Error: Failed after retries.", []) if not structured else {"error": "Failed after retries."}
 
+# ----------------------------------------------------------------------------------
+# 👇 REMOVED: load_3d_data_dummy, generate_dynamic_3d_data, render_2d_skill_match_plot
+# ----------------------------------------------------------------------------------
 
-# --- Data Simulation for 3D Plotly (Remains Unchanged) ---
-@st.cache_data
-def load_3d_data_dummy():
-    """Generates mock data for the 3D visualization when no results are available."""
-    df_skills = pd.DataFrame({
-        'X_Tech': [60], 'Y_Leader': [60], 'Z_Domain': [60], 'Overall_Match': [60],
-        'Employer': ['Parsing Failed'], 'Country': ['N/A'], 'Type': ['Fallback']
-    })
-    return df_skills
+def render_strategy_visualizations(report):
+    """Renders the Strategy Funnel and Skill Radar Chart using data from the report."""
+    
+    st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">🧠 Strategic Visualization Suite</h2>', unsafe_allow_html=True)
+    
+    col_chart, col_funnel = st.columns([2, 1])
 
-def generate_dynamic_3d_data(markdown_output):
-    """Parses the Markdown output to find specific employers, their countries, and assigns simulated skill scores."""
-    
-    employers_data = []
-    
-    # NEW ROBUST REGEX: Finds all [Name](URL) links in the entire output.
-    # We strip out common non-link markdown formatting first.
-    cleaned_output = markdown_output.replace('**', '').replace('*', '')
-
-    # Pattern to find the link structure anywhere in the entire output.
-    link_pattern = r'\[([^\]]+)\]\((https?:\/\/[^\)]+)\)'
-    
-    # Pattern to find country keywords near the link structure to guess location type.
-    country_keywords = r'(US|USA|United States|UK|United Kingdom|Canada|Germany|France|Japan|Singapore|EU)'
-
-    
-    # 1. Capture ALL links globally
-    all_links = list(re.finditer(link_pattern, cleaned_output))
-    
-    for link_match in all_links:
-        full_match_text = link_match.group(0)
-        name = link_match.group(1).strip()
-        link_index = link_match.start()
+    # --- 1. Skill Radar Chart (uses Plotly for advanced visual) ---
+    with col_chart:
+        st.markdown('<h4 style="color:#00E0FF;">Skill Readiness Radar</h4>', unsafe_allow_html=True)
         
-        # --- Determine Domestic/International (Type) based on position ---
-        
-        # Check if the link falls within the "HIGH-ACCURACY DOMESTIC EMPLOYERS" section
-        is_domestic = bool(re.search(r'HIGH-ACCURACY DOMESTIC EMPLOYERS:(.*?)(?=\d+\.|\Z)', cleaned_output[:link_index], re.DOTALL | re.IGNORECASE))
-        
-        if is_domestic:
-            type_label = 'Domestic (High Match)'
-            base_score = np.random.randint(90, 100)
-        else:
-            type_label = 'International (Key Market)'
-            base_score = np.random.randint(80, 95)
-            
-        # --- Determine Country ---
-        # Look for the country keyword in the 200 characters *before* the link for context
-        context_start = max(0, link_index - 200)
-        context = cleaned_output[context_start:link_index]
-        
-        location_match = re.search(country_keywords, context, re.IGNORECASE)
-        
-        if location_match:
-            country = location_match.group(0).replace('United States', 'USA').replace('United Kingdom', 'UK')
-        else:
-            country = 'Domestic Hub' if is_domestic else 'International Market'
-            
-        
-        employers_data.append({'Employer': name, 'Country': country, 'Type': type_label,
-            'X_Tech': base_score + np.random.normal(0, 4), 
-            'Y_Leader': base_score + np.random.normal(0, 4), 
-            'Z_Domain': base_score + np.random.normal(0, 4), 
-            'Overall_Match': base_score
-        })
-            
-    if len(employers_data) < 5:
-        # Fallback will only trigger if less than 5 valid links were successfully parsed.
-        return load_3d_data_dummy()
+        # Prepare data for Radar Chart (User vs. Elite Target)
+        df_radar = pd.DataFrame(dict(
+            r=[report.get('tech_score', 0), report.get('leader_score', 0), report.get('domain_score', 0)],
+            theta=['Technical Depth', 'Leadership Potential', 'Domain Expertise'],
+            group=['Your Profile']
+        ))
+        df_elite = pd.DataFrame(dict(
+            r=[95, 95, 95], # Elite target scores
+            theta=['Technical Depth', 'Leadership Potential', 'Domain Expertise'],
+            group=['Elite Target']
+        ))
+        df_radar = pd.concat([df_radar, df_elite], ignore_index=True)
 
-    df = pd.DataFrame(employers_data)
-    numeric_cols = ['X_Tech', 'Y_Leader', 'Z_Domain', 'Overall_Match']
-    df[numeric_cols] = df[numeric_cols].clip(0, 100)
-    
-    return df
+        fig = px.line_polar(df_radar, r='r', theta='theta', color='group', line_close=True,
+                            color_discrete_map={'Your Profile': ACCENT_ORANGE, 'Elite Target': ACCENT_CYAN})
+        
+        fig.update_traces(fill='toself', opacity=0.4, line=dict(width=2))
+        fig.update_layout(
+            polar=dict(
+                radialaxis=dict(visible=True, range=[0, 100], gridcolor=GRID_CYAN, linecolor='white'),
+                angularaxis=dict(linecolor='white', gridcolor=GRID_CYAN)
+            ),
+            plot_bgcolor=BG_DARK,
+            paper_bgcolor=BG_DARK,
+            font=dict(color="white"),
+            showlegend=True,
+            height=400,
+            margin=dict(l=50, r=50, t=50, b=50)
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-# --- NEW 2D RENDER FUNCTION ---
-def render_2d_skill_match_plot(df_skills):
-    """Renders a 2D Plotly Scatter Plot showing Technical Depth vs. Leadership Potential."""
-    
-    color_map = {
-        'Domestic (High Match)': ACCENT_CYAN,
-        'International (Key Market)': ACCENT_ORANGE, # Using new color
-        'Fallback': ACCENT_YELLOW
-    }
 
-    st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">2D Skill-Match Scatter Plot</h2>', unsafe_allow_html=True)
-    st.markdown("""
-    <p style='color: #ccc;'>
-    The plot visualizes your **top matched employers**. The X-axis represents **Technical Depth**, the Y-axis represents **Leadership Potential**. Point size indicates **Domain Expertise** (Overall Fit).
-    </p>
-    """, unsafe_allow_html=True)
-    
-    if len(df_skills) == 1 and df_skills['Type'].iloc[0] == 'Fallback':
-          st.error("❌ **Data Parsing Failed:** Ensure the Gemini output includes at least 5 employers with the required Markdown link format: `[Employer Name](URL)`.")
-          return
-
-    # Use X_Tech and Y_Leader for 2D plot, use Z_Domain for size
-    fig = px.scatter(
-        df_skills, 
-        x='X_Tech', 
-        y='Y_Leader', 
-        color='Type', 
-        hover_name='Employer', 
-        text='Country', 
-        size='Z_Domain', # Use Domain Expertise for size to represent the third dimension
-        size_max=30,
-        color_discrete_map=color_map,
-        title="Technical vs. Leadership Match",
-        height=600
-    )
-
-    fig.update_layout(
-        plot_bgcolor=BG_DARK,
-        paper_bgcolor=BG_DARK,
-        font=dict(color="white"),
-        # X-Axis configuration
-        xaxis=dict(
-            backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_CYAN, 
-            title="Technical Depth (%)", title_font=dict(color=ACCENT_CYAN), 
-            tickfont=dict(color="white"), range=[50, 100], 
-            showbackground=False, showgrid=True, zeroline=True, gridwidth=2 
-        ),
-        # Y-Axis configuration
-        yaxis=dict(
-            backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_ORANGE, # Using new color
-            title="Leadership Potential (%)", title_font=dict(color=ACCENT_ORANGE), # Using new color
-            tickfont=dict(color="white"), range=[50, 100],
-            showbackground=False, showgrid=True, zeroline=True, gridwidth=2
-        ),
-        legend_title_text='Match Type',
-        hoverlabel=dict(bgcolor="#111111", font_size=14, font_color=ACCENT_CYAN, bordercolor=ACCENT_ORANGE) # Using new color
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+    # --- 2. Strategy Funnel (uses custom CSS/Markdown) ---
+    with col_funnel:
+        st.markdown('<h4 style="color:#FF8C00;">Action Strategy Funnel</h4>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="glass-card" style="border: 2px solid {ACCENT_ORANGE}40;">
+            <div class="funnel-step" style="background-color: {ACCENT_ORANGE}10; border-left-color: {ACCENT_ORANGE}; color: {ACCENT_ORANGE};">
+                1. CV ANALYZE ({report.get('predictive_score', 0)}%)
+            </div>
+            <div class="funnel-step">
+                2. EMPLOYER TARGET (Domestic & Global)
+            </div>
+            <div class="funnel-step" style="border-left: 5px solid {ACCENT_GREEN}; color: {ACCENT_GREEN};">
+                3. VISA ACTION PLAN
+            </div>
+            <div style="text-align: center; color: #ccc; font-size: 0.8rem; margin-top: 10px;">
+                Outputs Grounded by RAG/Google
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f'<p style="color: {ACCENT_YELLOW}; font-size: 0.9rem;">Weakest Link: <b>{report.get("weakest_link_skill", "N/A")}</b></p>', unsafe_allow_html=True)
 
 
 # --- Main Application Logic (Unchanged) ---
@@ -503,11 +451,12 @@ def main():
                 """, unsafe_allow_html=True)
             st.markdown("---")
 
-    # --- 1. Conditional 2D Visualization (Updated) ---
-    if st.session_state.get('results_displayed'):
-        df_match = generate_dynamic_3d_data(st.session_state.get('markdown_output', ''))
-        render_2d_skill_match_plot(df_match) # <-- NEW FUNCTION CALL
-        st.markdown("---")
+    # --- 1. Conditional Visualization (Updated to use new function) ---
+    if st.session_state.get('results_displayed') and st.session_state.get('skill_gap_report'):
+        report = st.session_state['skill_gap_report']
+        if not report.get('error'):
+            render_strategy_visualizations(report) # <-- NEW FUNCTION CALL
+            st.markdown("---")
     
     st.subheader("📝 Step 2: Input Your Professional Profile")
     
@@ -587,11 +536,11 @@ def main():
             
     elif st.session_state.get('results_displayed'):
         with st.container():
-            st.markdown('<div class="results-card">', unsafe_allow_html=True)
+            st.markdown('<div class="results-card">', unsafe_allow_allow_html=True)
             st.markdown(st.session_state.get('markdown_output', 'Results not loaded.'), unsafe_allow_html=False)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    else: st.info("Your comprehensive job search strategy and dynamic 2D skill-match matrix will appear here after analysis. Click 'Generate' to begin.")
+    else: st.info("Your comprehensive job search strategy and dynamic skill-match matrix will appear here after analysis. Click 'Generate' to begin.")
 
 
 if __name__ == '__main__':
