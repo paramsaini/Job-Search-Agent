@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import re
 import numpy as np
+from datetime import datetime # <--- FIX: Added missing import
 
 # --- Configuration (Copied from main app for consistency) ---
 BG_DARK = "#000000"
@@ -70,14 +71,30 @@ def get_missing_keywords(cv_text, jd_text):
     jd_words = set(re.findall(r'\b\w{4,}\b', jd_text.lower()))
     cv_words = set(re.findall(r'\b\w{4,}\b', cv_text.lower()))
     
+    # Simple stop word list based on common resume filler
+    stop_words = {'responsible', 'experience', 'ability', 'required', 'years', 'skills', 'level', 'knowledge', 'design', 'must', 'will', 'client', 'work', 'manage', 'team', 'project'}
+    
     missing = list(jd_words - cv_words)
     
     # Filter out stop words and general terms
-    stop_words = {'responsible', 'experience', 'ability', 'required', 'years', 'skills', 'level', 'knowledge', 'design'}
     missing = [w for w in missing if w not in stop_words and w.isalpha()]
     
     # Return top 5, capitalized
     return [w.capitalize() for w in missing[:5]]
+
+
+def log_finalized_application(company, job_id, live_compliance, live_clarity):
+    """Adds the final application version and score to the ledger."""
+    new_entry = pd.DataFrame([{
+        'Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # datetime is now imported
+        'Company': company,
+        'JobID': job_id,
+        'Compliance': live_compliance,
+        'Clarity': live_clarity,
+        'Outcome': 'Pending'
+    }])
+    st.session_state['ledger_data'] = pd.concat([st.session_state['ledger_data'], new_entry], ignore_index=True)
+    st.success(f"Application for '{company}' logged successfully. You can now apply!")
 
 
 # --- Page Render ---
@@ -103,8 +120,9 @@ def compiler_page():
     jd_input = st.text_area("Paste the Job Description (JD) here:", height=200, key="compiler_jd_input")
     
     # --- CALCULATE SCORES ---
-    compliance_score = calculate_compliance(cv_text, jd_input)
-    clarity_score = calculate_clarity(cv_text) # Clarity uses CV text, as JD doesn't affect CV readability
+    # Initial scores based on the master CV text
+    initial_compliance_score = calculate_compliance(cv_text, jd_input)
+    initial_clarity_score = calculate_clarity(cv_text)
     
     # --- Dual Meter Dashboard (Attractive Visualization) ---
     st.markdown("---")
@@ -116,15 +134,15 @@ def compiler_page():
     with col_comp:
         st.markdown(f'<p style="color: {ACCENT_CYAN}; font-weight: bold; margin-bottom: 0;">ATS Compliance</p>', unsafe_allow_html=True)
         st.markdown(f'<p style="color: #ccc; font-size: 0.8em; margin-bottom: 5px;">(Keyword Density)</p>', unsafe_allow_html=True)
-        st.metric(label="Score", value=f"{compliance_score}%", delta="Target: 95%")
-        st.progress(compliance_score / 100.0)
+        st.metric(label="Score", value=f"{initial_compliance_score}%", delta="Target: 95%")
+        st.progress(initial_compliance_score / 100.0)
         
     # 2. Clarity Meter
     with col_clarity:
         st.markdown(f'<p style="color: {ACCENT_ORANGE}; font-weight: bold; margin-bottom: 0;">Human Clarity</p>', unsafe_allow_html=True)
         st.markdown(f'<p style="color: #ccc; font-size: 0.8em; margin-bottom: 5px;">(Readability/Metrics)</p>', unsafe_allow_html=True)
-        st.metric(label="Score", value=f"{clarity_score}%", delta="Target: 75%")
-        st.progress(clarity_score / 100.0)
+        st.metric(label="Score", value=f"{initial_clarity_score}%", delta="Target: 75%")
+        st.progress(initial_clarity_score / 100.0)
 
     # 3. Missing Keywords
     with col_keywords:
@@ -172,16 +190,9 @@ def compiler_page():
     
     if col_log_3.button("Log Finalized Application", type="secondary", use_container_width=True):
         if company and job_id:
-            new_entry = pd.DataFrame([{
-                'Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'Company': company,
-                'JobID': job_id,
-                'Compliance': live_compliance,
-                'Clarity': live_clarity,
-                'Outcome': 'Pending'
-            }])
-            st.session_state['ledger_data'] = pd.concat([st.session_state['ledger_data'], new_entry], ignore_index=True)
-            st.success(f"Application for '{company}' logged successfully. You can now apply!")
+            # Call the separate logging function
+            log_finalized_application(company, job_id, live_compliance, live_clarity)
+            st.rerun()
         else:
             st.warning("Please enter the Company Name and Job ID/Title.")
 
