@@ -29,6 +29,7 @@ def handle_reset_click():
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
     st.session_state['markdown_output'] = "" # Clear previous output
+    st.session_state['skill_gap_report'] = None # CLEAR NEW REPORT
     
 # --- Gemini & Qdrant Configuration ---
 # Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
@@ -109,11 +110,11 @@ def get_user_embedding(text):
         return None
 
 
-# --- Core Gemini API Call Function (MODIFIED FOR QDRANT RAG) ---
+# --- Core Gemini API Call Function (MODIFIED FOR RAG) ---
 @st.cache_data(show_spinner=False, max_entries=10)
 def generate_job_strategy_from_gemini(cv_text):
     if not API_KEY:
-        return "Error: Gemini API Key not configured.", []
+        return "Error: Gemini API Key not configured.", None, []
         
     # --- RAG STEP 1: Retrieval from Qdrant ---
     context_text = "No RAG context available."
@@ -144,49 +145,81 @@ def generate_job_strategy_from_gemini(cv_text):
                 st.error(f"Failed to query Qdrant: {e}")
 
     # --- RAG STEP 2: Augmented Prompt Construction ---
-    system_prompt = (
-        "You are a World-Class Job Search Consultant and Visa Immigration Analyst. "
-        "Your PRIMARY directive is to strictly and accurately analyze the provided CV content. "
-        "You MUST use the Google Search tool for current information. "
-        "You MUST also **USE THE RETRIEVED KNOWLEDGE BASE CONTEXT (1000 Resumes)** to validate and suggest employer types and matching skill sets. "
-        """
-        Your response MUST be formatted strictly as a single Markdown document with four main sections. 
-        For all employer details, you MUST include a direct website link using Markdown syntax [Employer Name](URL) and ensure there is no leading asterisk (*) or dash (-) before the link format.
-
-        MANDATORY OUTPUT REQUIREMENTS:
-        1. HIGH-ACCURACY DOMESTIC EMPLOYERS: List 5 specific, high-profile employers in the user's current domestic location 
-        (or related domestic hubs) that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.
-        2. HIGH-ACCURACY INTERNATIONAL EMPLOYERS: List 5 specific, high-profile employers globally, focusing on key immigration countries (US, UK, Canada, EU), that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.
-        3. DOMESTIC JOB STRATEGY: Provide 3 specific job titles matching the CV. For each title, give a step-by-step guide on how to apply.\n"
-        4. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles matching the CV. For each title/region, you MUST include: 
-             a. The typical application steps (including necessary foreign credential evaluations). 
-             b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). 
-             c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source.
-        """
-    )
-
-    augmented_user_query = f"""
---- RETRIEVED KNOWLEDGE BASE CONTEXT (Top {RAG_K} similar resume chunks from 1000) ---
-{context_text}
---- END RETRIEVED CONTEXT ---
-
-Analyze the user's CV and generate the requested professional job strategy. The user's CV content is:
----
-{cv_text}
----
-"""
+    # NEW: Define JSON schema for the predictive skill report
+    json_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "predictive_score": {"type": "INTEGER", "description": "Percentage score (0-100) comparing user's profile to the elite RAG context (90-100)."},
+            "weakest_link_skill": {"type": "STRING", "description": "The specific skill or competency (e.g., Data Modeling, Team Leadership) with the largest gap."},
+            "learning_resource_1": {"type": "STRING", "description": "Specific, actionable resource to close the weakest link gap."},
+            "learning_resource_2": {"type": "STRING", "description": "Second specific resource."},
+        },
+        "required": ["predictive_score", "weakest_link_skill", "learning_resource_1", "learning_resource_2"]
+    }
     
-    # --- RAG STEP 3: Final API Call ---
-    payload = {
-        "contents": [{ "parts": [{ "text": augmented_user_query }] }],
+    # NEW: First call to get the JSON report (Structured response)
+    json_prompt = f"""
+    Based on the following CV and the RAG Knowledge Base Context (1000 resumes), analyze the user's current professional trajectory relative to the elite profiles found in the context. 
+    Generate a JSON object strictly following the provided schema. The 'predictive_score' should reflect the user's readiness for the next 5 years of market demands as seen in the RAG context.
+
+    --- RETRIEVED KNOWLEDGE BASE CONTEXT ---
+    {context_text}
+    ---
+    User CV: {cv_text}
+    """
+    
+    # NEW: Second call for the main Markdown strategy (Text response)
+    markdown_prompt = f"""
+    You are a World-Class Job Search Consultant and Visa Immigration Analyst. Your primary goal is to generate the professional job strategy using Google Search for current data, and the RETRIEVED KNOWLEDGE BASE CONTEXT for grounding employer types.
+    
+    --- RETRIEVED KNOWLEDGE BASE CONTEXT (1000 Resumes) ---
+    {context_text}
+    --- END RETRIEVED CONTEXT ---
+
+    Analyze the user's CV and generate the requested professional job strategy. The user's CV content is:
+    ---
+    {cv_text}
+    ---
+    MANDATORY OUTPUT REQUIREMENTS:
+    1. HIGH-ACCURACY DOMESTIC EMPLOYERS: List 5 specific, high-profile employers in the user's current domestic location 
+    (or related domestic hubs) that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.
+    2. HIGH-ACCURACY INTERNATIONAL EMPLOYERS: List 5 specific, high-profile employers globally, focusing on key immigration countries (US, UK, Canada, EU), that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.
+    3. DOMESTIC JOB STRATEGY: Provide 3 specific job titles matching the CV. For each title, give a step-by-step guide on how to apply.\n"
+    4. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles matching the CV. For each title/region, you MUST include: 
+         a. The typical application steps (including necessary foreign credential evaluations). 
+         b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). 
+         c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source.
+    """
+    
+    # --- Execute two calls: one for structured data, one for text ---
+    
+    # CALL 1: Structured (JSON) Report
+    json_payload = {
+        "contents": [{ "parts": [{ "text": json_prompt }] }],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": json_schema
+        }
+    }
+    skill_gap_report = call_gemini_api(json_payload, structured=True)
+    
+    # CALL 2: Markdown Strategy (Text + Search Grounding)
+    markdown_payload = {
+        "contents": [{ "parts": [{ "text": markdown_prompt }] }],
         "tools": [{ "google_search": {} }],
         "systemInstruction": {
-            "parts": [{ "text": system_prompt }]
+            "parts": [{ "text": system_prompt.replace('You MUST also **USE THE RETRIEVED KNOWLEDGE BASE CONTEXT (1000 Resumes)**', '') }]
         },
     }
+    markdown_output, sources = call_gemini_api(markdown_payload, structured=False)
+    
+    return markdown_output, skill_gap_report, sources
 
-    # ... (API call logic with retries)
-    for attempt in range(5):
+def call_gemini_api(payload, structured=False):
+    """Handles API calls with retries and response parsing for both JSON and Markdown."""
+    
+    max_retries = 5
+    for attempt in range(max_retries):
         try:
             response = requests.post(API_URL, headers={'Content-Type': 'application/json'}, data=json.dumps(payload))
             response.raise_for_status()
@@ -195,29 +228,35 @@ Analyze the user's CV and generate the requested professional job strategy. The 
             
             if candidate and candidate.get('content') and candidate['content'].get('parts'):
                 generated_text = candidate['content']['parts'][0]['text']
-                sources = [] 
+                
+                if structured:
+                    try:
+                        return json.loads(generated_text)
+                    except json.JSONDecodeError:
+                        return {"error": "Failed to decode JSON report."}
+                
+                # Handle text output and sources
+                sources = []
                 grounding_metadata = candidate.get('groundingMetadata')
                 if grounding_metadata and grounding_metadata.get('groundingAttributions'):
                     sources = [
-                        {
-                            "uri": attr.get('web', {}).get('uri'),
-                            "title": attr.get('web', {}).get('title')
-                        }
+                        {"uri": attr.get('web', {}).get('uri'), "title": attr.get('web', {}).get('title')}
                         for attr in grounding_metadata['groundingAttributions']
                         if attr.get('web', {}).get('uri') and attr.get('web', {}).get('title')
                     ]
                 return generated_text, sources
             else:
-                return "Error: Model returned empty response.", []
+                return ("Error: Model returned empty response.", []) if not structured else {"error": "Empty model response."}
+                
         except requests.exceptions.HTTPError as e:
             if response.status_code == 429 and attempt < 4:
                 time.sleep(2 ** attempt)
             else:
-                return f"An HTTP error occurred: {e}. Status Code: {response.status_code}", []
+                return (f"An HTTP error occurred: {e}", []) if not structured else {"error": str(e)}
         except requests.exceptions.RequestException as e:
-            return f"A network error occurred: {e}", []
+            return (f"A network error occurred: {e}", []) if not structured else {"error": str(e)}
 
-    return "Error: Failed to get a response after multiple retries.", []
+    return ("Error: Failed after retries.", []) if not structured else {"error": "Failed after retries."}
 
 
 # --- Data Simulation for 3D Plotly (Remains Unchanged) ---
@@ -374,81 +413,46 @@ def render_3d_skill_match_plot(df_skills):
     
     st.plotly_chart(fig, use_container_width=True)
 
-# --- Custom CSS Injection (UPDATED for Matrix Effect) ---
-custom_css = f"""
-<style>
-/* 1. Global Background (Pure Black + Digital Rain Effect) */
-@keyframes matrix-rain {{
-    from {{ background-position: 0 0; }}
-    to {{ background-position: 100% 100%; }}
-}}
-.stApp {{
-    background-color: {BG_DARK};
-    color: white;
-    /* Add subtle animated texture */
-    background-image: 
-        repeating-linear-gradient(
-            0deg, 
-            rgba(0, 224, 255, 0.05), 
-            rgba(255, 0, 184, 0.05) 500px, 
-            transparent 1000px
-        );
-    background-size: 200% 200%;
-    animation: matrix-rain 60s linear infinite; /* Slow, continuous movement */
-}}
-
-/* 2. Holographic / Neon Text Effect */
-.holo-text {{
-    text-shadow: {TEXT_HOLO};
-    font-weight: 800;
-}}
-
-/* 3. Glassmorphism Card Style (Adjusted for pure black BG) */
-.glass-card {{
-    background-color: rgba(255, 255, 255, 0.03); /* More transparent */
-    backdrop-filter: blur(15px) saturate(180%); /* Stronger blur */
-    -webkit-backdrop-filter: blur(15px) saturate(180%);
-    border: 1px solid rgba(0, 224, 255, 0.2); /* Cyan border for projection effect */
-    border-radius: 1.5rem; /* Smoother corners */
-    padding: 1.5rem;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
-    transition: all 0.3s ease-in-out;
-}}
-
-.glass-card:hover {{
-    border-color: {ACCENT_PINK}90; /* Pink hover effect */
-    box-shadow: 0 0 25px {ACCENT_PINK}40;
-}}
-
-/* 4. Input Fields (for visibility) */
-.stTextInput>div>div>input, .stTextArea>div>div>textarea {{
-    background-color: rgba(0, 0, 0, 0.6); /* Darker input background */
-    color: {ACCENT_CYAN}; /* Input text color */
-    border: 2px solid {ACCENT_CYAN}80;
-    border-radius: 1rem;
-    box-shadow: 0 0 10px {ACCENT_CYAN}20;
-}}
-/* General Font Color Fix */
-h1, h2, h3, h4, .stMarkdown, .stMetric > div, .css-1d391kg {{
-    color: white !important;
-}}
-
-/* Ensure the main button is the most vibrant element */
-.stButton>button:not([type="secondary"]) {{ 
-    box-shadow: 0 0 35px {ACCENT_CYAN}FF, 0 0 15px {ACCENT_PINK}FF !important; 
-    border: 1px solid {ACCENT_CYAN} !important;
-}}
-</style>
-"""
-st.markdown(custom_css, unsafe_allow_html=True)
-
 
 # --- Main Application Logic (Unchanged) ---
 def main():
+    st.markdown(custom_css, unsafe_allow_html=True) # Apply CSS first
+    
     st.markdown('<h1 class="holo-text" style="font-size: 3rem; margin-bottom: 0.5rem; text-align: center;">🤖 AI Recruitment Matrix V3.0</h1>', unsafe_allow_html=True)
     st.markdown('<p style="font-size: 1.25rem; color: #9CA3AF; text-align: center;">Analyze your CV against global employers using grounded Gemini AI.</p>', unsafe_allow_html=True)
     st.markdown("---")
 
+    # --- 0. Predictive Skill Health Card (NEW FEATURE DISPLAY) ---
+    if st.session_state.get('skill_gap_report'):
+        report = st.session_state['skill_gap_report']
+        if not report.get('error'):
+            st.markdown('<h2 class="holo-text" style="color:#FF00B8;">✨ Predictive Skill Health Score</h2>', unsafe_allow_html=True)
+            col_score, col_gap = st.columns([1, 2])
+            
+            with col_score:
+                score = report.get('predictive_score', 0)
+                score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_PINK)
+                st.markdown(f"""
+                    <div class="glass-card" style="border: 2px solid {score_color}; text-align: center; height: 100%;">
+                        <p style="color: {score_color}; font-size: 1rem; margin-bottom: 0;">Trajectory Match</p>
+                        <p style="color: white; font-size: 3rem; font-weight: bold; margin: 0; text-shadow: 0 0 10px {score_color}50;">{score}%</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+            with col_gap:
+                st.markdown(f"""
+                    <div class="glass-card">
+                        <p style="color: {ACCENT_PINK}; font-weight: bold; margin-bottom: 0.5rem;">Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}</p>
+                        <p style="color: #ccc; margin-bottom: 0.5rem; font-size: 0.9rem;">Recommended Action Plan (Informed by RAG):</p>
+                        <ul style="color: #00E0FF; padding-left: 20px;">
+                            <li>{report.get('learning_resource_1', 'Check report below.')}</li>
+                            <li>{report.get('learning_resource_2', 'Check report below.')}</li>
+                        </ul>
+                    </div>
+                """, unsafe_allow_html=True)
+            st.markdown("---")
+
+    # --- 1. Conditional 3D Visualization ---
     if st.session_state.get('results_displayed'):
         df_match = generate_dynamic_3d_data(st.session_state.get('markdown_output', ''))
         render_3d_skill_match_plot(df_match)
@@ -513,9 +517,12 @@ def main():
         with st.container():
             st.markdown('<div class="results-card">', unsafe_allow_html=True)
             with st.spinner("Analyzing CV and Performing Real-Time Grounded Search..."):
-                markdown_output, citations = generate_job_strategy_from_gemini(st.session_state['cv_text_to_process'])
+                # Call the modified Gemini function that returns three values now
+                markdown_output, skill_gap_report, citations = generate_job_strategy_from_gemini(st.session_state['cv_text_to_process'])
 
             st.session_state['markdown_output'] = markdown_output
+            st.session_state['skill_gap_report'] = skill_gap_report
+            
             st.markdown(markdown_output)
 
             if citations:
@@ -543,5 +550,6 @@ if __name__ == '__main__':
     if 'cv_text_to_process' not in st.session_state: st.session_state['cv_text_to_process'] = ""
     if 'reset_key_counter' not in st.session_state: st.session_state['reset_key_counter'] = 0
     if 'markdown_output' not in st.session_state: st.session_state['markdown_output'] = ""
+    if 'skill_gap_report' not in st.session_state: st.session_state['skill_gap_report'] = None # NEW STATE
         
     main()
