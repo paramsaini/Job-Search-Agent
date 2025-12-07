@@ -135,7 +135,6 @@ hr {{
     color: {ACCENT_CYAN};
     border-radius: 4px;
 }}
-
 /* Custom Progress Bar Styling (to match theme) */
 .stProgress > div > div > div > div {{
     background-color: {ACCENT_CYAN};
@@ -421,6 +420,21 @@ def main():
     st.markdown('<h1 class="holo-text" style="font-size: 3rem; margin-bottom: 0.5rem; text-align: center;">🤖 AI Recruitment Matrix V3.0</h1>', unsafe_allow_html=True)
     st.markdown('<p style="font-size: 1.25rem; color: #9CA3AF; text-align: center;">Analyze your CV against global employers using grounded Gemini AI.</p>', unsafe_allow_html=True)
     st.markdown("---")
+
+    # 👇 NEW: Emotional Tracker Link and Instructions
+    st.markdown("""
+    <div style='background-color: #00E0FF1A; padding: 15px; border-radius: 8px; border-left: 5px solid #00E0FF; margin: 20px 0;'>
+        <p style='color: #00E0FF; font-weight: bold; margin: 0;'>
+            🔥 **NEW: EMOTIONAL ENDURANCE CHECK**
+        </p>
+        <p style='color: #ccc; font-size: 0.9rem; margin: 5px 0 0 0;'>
+            The job search is a marathon. Use our Emotional Tracker tool to monitor your resilience score and prevent burnout.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.page_link("pages/1_Emotional_Tracker.py", label="➡️ Go to Emotional Endurance Tracker", icon="🧘", use_container_width=True)
+    st.markdown("---")
+    # 👆 END NEW SECTION
 
     # --- 0. Predictive Skill Health Card (NEW FEATURE DISPLAY) ---
     if st.session_state.get('skill_gap_report'):
