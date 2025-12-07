@@ -125,17 +125,17 @@ def generate_job_strategy_from_gemini(cv_text):
         
         if query_vector:
             try:
-                # FINAL FIX: The 'query' method is used for similarity search. 
-                search_result = qdrant.query( 
+                # FINAL FIX: Using the reliable 'search' method which takes 'query_vector' and not 'query_text'.
+                search_result = qdrant.search( 
                     collection_name=COLLECTION_NAME,
-                    query_vector=query_vector,
+                    query_vector=query_vector, # Pass the vector here
                     limit=RAG_K,
                     with_payload=True 
                 )
                 
                 # Format the retrieved documents into a single context string
-                if search_result.points: # Check for points in the query response
-                    retrieved_docs = [hit.payload['text'] for hit in search_result.points]
+                if search_result: # Search results are returned as a list of points
+                    retrieved_docs = [hit.payload['text'] for hit in search_result]
                     context_text = "\n---\n".join(retrieved_docs)
                 else:
                     context_text = "No relevant resumes found in the knowledge base."
@@ -220,7 +220,7 @@ Analyze the user's CV and generate the requested professional job strategy. The 
     return "Error: Failed to get a response after multiple retries.", []
 
 
-# --- Data Simulation for 3D Plotly (Final Regex Fix) ---
+# --- Data Simulation for 3D Plotly (Remains Unchanged) ---
 @st.cache_data
 def load_3d_data_dummy():
     """Generates mock data for the 3D visualization when no results are available."""
