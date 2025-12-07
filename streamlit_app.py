@@ -57,6 +57,64 @@ GRID_CYAN = "rgba(0, 255, 255, 0.6)" # Brighter grid
 GRID_PINK = "rgba(255, 0, 184, 0.6)" # Brighter grid
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
+# ------------------------------------------------
+# 👇 FIX: DEFINITION OF custom_css
+# ------------------------------------------------
+custom_css = f"""
+<style>
+/* Streamlit standard cleanup */
+footer {{visibility: hidden;}}
+header {{visibility: hidden;}}
+.stApp {{
+    background-color: {BG_DARK};
+    color: white;
+}}
+
+/* Holographic Text Effect */
+.holo-text {{
+    color: {ACCENT_CYAN};
+    text-shadow: {TEXT_HOLO};
+    font-weight: 700;
+    transition: all 0.3s ease-in-out;
+}}
+
+/* Custom Button Styling */
+div.stButton > button {{
+    color: {BG_DARK};
+    background-color: {ACCENT_PINK};
+    border: 2px solid {ACCENT_PINK};
+    border-radius: 12px;
+    font-weight: bold;
+    box-shadow: 0 0 10px {ACCENT_PINK}50, 0 0 20px {ACCENT_PINK}30;
+    transition: all 0.3s ease-in-out;
+}}
+
+/* Custom Card for Results/Reports */
+.results-card, .glass-card {{
+    padding: 20px;
+    margin: 15px 0;
+    border-radius: 15px;
+    border: 2px solid {ACCENT_CYAN}40;
+    background: rgba(16, 185, 129, 0.05); /* Very light green/glass effect */
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}}
+
+/* Textarea color fix */
+.stTextArea label, .stFileUploader label, .stMarkdown p {{
+    color: white !important;
+}}
+
+/* Horizontal Rule Fix */
+hr {{
+    border-top: 2px solid {ACCENT_CYAN}50;
+    margin: 1rem 0;
+}}
+</style>
+"""
+# ------------------------------------------------
+# ------------------------------------------------
 
 # --- PDF Extraction Function (Kept) ---
 def extract_text_from_pdf(uploaded_file):
@@ -186,9 +244,9 @@ def generate_job_strategy_from_gemini(cv_text):
     2. HIGH-ACCURACY INTERNATIONAL EMPLOYERS: List 5 specific, high-profile employers globally, focusing on key immigration countries (US, UK, Canada, EU), that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.
     3. DOMESTIC JOB STRATEGY: Provide 3 specific job titles matching the CV. For each title, give a step-by-step guide on how to apply.\n"
     4. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles matching the CV. For each title/region, you MUST include: 
-         a. The typical application steps (including necessary foreign credential evaluations). 
-         b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). 
-         c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source.
+        a. The typical application steps (including necessary foreign credential evaluations). 
+        b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). 
+        c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source.
     """
     
     # --- Execute two calls: one for structured data, one for text ---
@@ -291,265 +349,4 @@ def generate_dynamic_3d_data(markdown_output):
     for link_match in all_links:
         full_match_text = link_match.group(0)
         name = link_match.group(1).strip()
-        link_index = link_match.start()
-        
-        # --- Determine Domestic/International (Type) based on position ---
-        
-        # Check if the link falls within the "HIGH-ACCURACY DOMESTIC EMPLOYERS" section
-        is_domestic = bool(re.search(r'HIGH-ACCURACY DOMESTIC EMPLOYERS:(.*?)(?=\d+\.|\Z)', cleaned_output[:link_index], re.DOTALL | re.IGNORECASE))
-        
-        if is_domestic:
-            type_label = 'Domestic (High Match)'
-            base_score = np.random.randint(90, 100)
-        else:
-            type_label = 'International (Key Market)'
-            base_score = np.random.randint(80, 95)
-            
-        # --- Determine Country ---
-        # Look for the country keyword in the 200 characters *before* the link for context
-        context_start = max(0, link_index - 200)
-        context = cleaned_output[context_start:link_index]
-        
-        location_match = re.search(country_keywords, context, re.IGNORECASE)
-        
-        if location_match:
-            country = location_match.group(0).replace('United States', 'USA').replace('United Kingdom', 'UK')
-        else:
-            country = 'Domestic Hub' if is_domestic else 'International Market'
-            
-        
-        employers_data.append({'Employer': name, 'Country': country, 'Type': type_label,
-            'X_Tech': base_score + np.random.normal(0, 4), 
-            'Y_Leader': base_score + np.random.normal(0, 4), 
-            'Z_Domain': base_score + np.random.normal(0, 4), 
-            'Overall_Match': base_score
-        })
-            
-    if len(employers_data) < 5:
-        # Fallback will only trigger if less than 5 valid links were successfully parsed.
-        return load_3d_data_dummy()
-
-    df = pd.DataFrame(employers_data)
-    numeric_cols = ['X_Tech', 'Y_Leader', 'Z_Domain', 'Overall_Match']
-    df[numeric_cols] = df[numeric_cols].clip(0, 100)
-    
-    return df
-
-def render_3d_skill_match_plot(df_skills):
-    """Renders the 3D Plotly Skill Matrix based on dynamic data."""
-    
-    color_map = {
-        'Domestic (High Match)': ACCENT_CYAN,
-        'International (Key Market)': ACCENT_PINK,
-        'Fallback': ACCENT_YELLOW
-    }
-
-    st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">3D Employer Match Projection</h2>', unsafe_allow_html=True)
-    st.markdown("""
-    <p style='color: #ccc;'>
-        The interactive 3D plot visualizes your **top matched employers** (points). Proximity to the 100-point corner indicates a high skill match across all dimensions (Tech, Leadership, Domain).
-    </p>
-    """, unsafe_allow_html=True)
-    
-    if len(df_skills) == 1 and df_skills['Type'].iloc[0] == 'Fallback':
-         st.error("❌ **3D Data Parsing Failed:** Ensure the Gemini output includes at least 5 employers with the required Markdown link format: `[Employer Name](URL)`.")
-         return
-
-    fig = px.scatter_3d(
-        df_skills, 
-        x='X_Tech', 
-        y='Y_Leader', 
-        z='Z_Domain',
-        color='Type', 
-        hover_name='Employer', 
-        text='Country', 
-        size='Overall_Match', 
-        color_discrete_map=color_map,
-        title="Holographic Employer Data Cloud",
-        height=700
-    )
-
-    fig.update_layout(
-        # Set background to pure black and add grid effects
-        plot_bgcolor=BG_DARK,
-        paper_bgcolor=BG_DARK,
-        font=dict(color="white"),
-        # Enhanced Scene/Axis Configuration
-        scene=dict(
-            xaxis=dict(
-                backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_CYAN, 
-                title="Technical Depth (X)", title_font=dict(color=ACCENT_CYAN), 
-                tickfont=dict(color="white"), range=[50, 100], 
-                # Add depth/projection lines
-                showbackground=False, showgrid=True, zeroline=True,
-                gridwidth=2 
-            ),
-            yaxis=dict(
-                backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_PINK, 
-                title="Leadership Potential (Y)", title_font=dict(color=ACCENT_PINK), 
-                tickfont=dict(color="white"), range=[50, 100],
-                showbackground=False, showgrid=True, zeroline=True,
-                gridwidth=2
-            ),
-            zaxis=dict(
-                backgroundcolor="rgba(0,0,0,0)", gridcolor=GRID_GREEN, 
-                title="Domain Expertise (Z)", title_font=dict(color=ACCENT_GREEN), 
-                tickfont=dict(color="white"), range=[50, 100],
-                showbackground=False, showgrid=True, zeroline=True,
-                gridwidth=2
-            ),
-            aspectmode='cube',
-            # Set initial camera view for better 3D depth
-            camera=dict(
-                up=dict(x=0, y=0, z=1),
-                center=dict(x=0, y=0, z=0),
-                eye=dict(x=1.5, y=1.5, z=0.5)
-            )
-        ),
-        legend_title_text='Match Type',
-        # Ensure hover is sharp and high-contrast
-        hoverlabel=dict(bgcolor="#111111", font_size=14, font_color=ACCENT_CYAN, bordercolor=ACCENT_PINK)
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
-
-
-# --- Main Application Logic (Unchanged) ---
-def main():
-    st.markdown(custom_css, unsafe_allow_html=True) # Apply CSS first
-    
-    st.markdown('<h1 class="holo-text" style="font-size: 3rem; margin-bottom: 0.5rem; text-align: center;">🤖 AI Recruitment Matrix V3.0</h1>', unsafe_allow_html=True)
-    st.markdown('<p style="font-size: 1.25rem; color: #9CA3AF; text-align: center;">Analyze your CV against global employers using grounded Gemini AI.</p>', unsafe_allow_html=True)
-    st.markdown("---")
-
-    # --- 0. Predictive Skill Health Card (NEW FEATURE DISPLAY) ---
-    if st.session_state.get('skill_gap_report'):
-        report = st.session_state['skill_gap_report']
-        if not report.get('error'):
-            st.markdown('<h2 class="holo-text" style="color:#FF00B8;">✨ Predictive Skill Health Score</h2>', unsafe_allow_html=True)
-            col_score, col_gap = st.columns([1, 2])
-            
-            with col_score:
-                score = report.get('predictive_score', 0)
-                score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_PINK)
-                st.markdown(f"""
-                    <div class="glass-card" style="border: 2px solid {score_color}; text-align: center; height: 100%;">
-                        <p style="color: {score_color}; font-size: 1rem; margin-bottom: 0;">Trajectory Match</p>
-                        <p style="color: white; font-size: 3rem; font-weight: bold; margin: 0; text-shadow: 0 0 10px {score_color}50;">{score}%</p>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-            with col_gap:
-                st.markdown(f"""
-                    <div class="glass-card">
-                        <p style="color: {ACCENT_PINK}; font-weight: bold; margin-bottom: 0.5rem;">Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}</p>
-                        <p style="color: #ccc; margin-bottom: 0.5rem; font-size: 0.9rem;">Recommended Action Plan (Informed by RAG):</p>
-                        <ul style="color: #00E0FF; padding-left: 20px;">
-                            <li>{report.get('learning_resource_1', 'Check report below.')}</li>
-                            <li>{report.get('learning_resource_2', 'Check report below.')}</li>
-                        </ul>
-                    </div>
-                """, unsafe_allow_html=True)
-            st.markdown("---")
-
-    # --- 1. Conditional 3D Visualization ---
-    if st.session_state.get('results_displayed'):
-        df_match = generate_dynamic_3d_data(st.session_state.get('markdown_output', ''))
-        render_3d_skill_match_plot(df_match)
-        st.markdown("---")
-    
-    st.subheader("📝 Step 2: Input Your Professional Profile")
-    
-    tab_paste, tab_upload = st.tabs(["Paste CV Content", "Upload CV File"])
-    cv_text = ""
-    
-    with tab_paste:
-        st.markdown(
-            """
-            <p style="color: #00E0FF;">
-            **Pasting Tip:** If direct pasting is blocked, please try right-clicking the text box
-            or use **Ctrl+Shift+V** (Windows) / **Cmd+Shift+V** (Mac).
-            </p>
-            """, unsafe_allow_html=True
-        )
-        st.text_area("Paste CV Content Here", value=st.session_state.get('cv_input_paste', ""), height=300,
-            placeholder="Paste your resume content here...", key="cv_input_paste", label_visibility="hidden")
-        cv_text = st.session_state.get('cv_input_paste', "")
-
-    with tab_upload:
-        uploaded_file_key = f"cv_input_upload_{st.session_state['reset_key_counter']}"
-        uploaded_file = st.file_uploader("Upload CV or Resume", type=["txt", "pdf"], key=uploaded_file_key)
-
-        if uploaded_file is not None:
-            if uploaded_file.type == "application/pdf":
-                st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust, cross-platform reading. If content remains incorrect, the file's text layer may be corrupted (e.g., image-only PDF).")
-                try: cv_text = extract_text_from_pdf(uploaded_file)
-                except Exception as e: st.error(f"Failed to read PDF. Error: {e}"); cv_text = ""
-            else:
-                try:
-                    uploaded_file.seek(0)
-                    raw_bytes = uploaded_file.read()
-                    try: string_data = raw_bytes.decode('utf-8')
-                    except UnicodeDecodeError: string_data = raw_bytes.decode('windows-1252', errors='replace')
-                    cv_text = string_data
-                except Exception as e: st.error(f"Error reading TXT file: {e}"); cv_text = ""
-            
-            if cv_text and len(cv_text.strip()) < 50: st.error("❌ **Reading Failure:** Extracted text is too short or empty."); cv_text = ""
-                
-        if not cv_text.strip() and st.session_state.get('run_search'):
-            st.session_state['run_search'] = False; st.session_state['cv_text_to_process'] = ""; st.warning("Input cancelled due to empty CV content.")
-            
-    st.markdown("---")
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    if col2.button("Generate Comprehensive Job Strategy", use_container_width=True):
-        if not cv_text.strip(): st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
-        else: st.session_state['cv_text_to_process'] = cv_text; st.session_state['run_search'] = True
-            
-    if st.session_state.get('results_displayed'):
-        if st.button("Start New Search (Reset)", type="secondary", on_click=handle_reset_click): pass
-
-    st.markdown("---")
-    st.subheader("🚀 Step 3: High-Definition Generated Strategy")
-    
-    if st.session_state.get('run_search') and st.session_state.get('cv_text_to_process'):
-        with st.container():
-            st.markdown('<div class="results-card">', unsafe_allow_html=True)
-            with st.spinner("Analyzing CV and Performing Real-Time Grounded Search..."):
-                # Call the modified Gemini function that returns three values now
-                markdown_output, skill_gap_report, citations = generate_job_strategy_from_gemini(st.session_state['cv_text_to_process'])
-
-            st.session_state['markdown_output'] = markdown_output
-            st.session_state['skill_gap_report'] = skill_gap_report
-            
-            st.markdown(markdown_output)
-
-            if citations:
-                st.markdown("---")
-                st.markdown("#### 🔗 Grounding Sources (For Verification)")
-                for i, source in enumerate(citations): st.markdown(f"**[{i+1}]** [{source.get('title')}]({source.get('uri')})")
-            else: st.info("No explicit grounding sources were returned.")
-            
-            st.session_state['results_displayed'] = True; st.session_state['run_search'] = False; st.markdown('</div>', unsafe_allow_html=True)
-            st.rerun() 
-            
-    elif st.session_state.get('results_displayed'):
-        with st.container():
-            st.markdown('<div class="results-card">', unsafe_allow_html=True)
-            st.markdown(st.session_state.get('markdown_output', 'Results not loaded.'), unsafe_allow_html=False)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    else: st.info("Your comprehensive job search strategy and dynamic 3D skill-match matrix will appear here after analysis. Click 'Generate' to begin.")
-
-
-if __name__ == '__main__':
-    if 'cv_input_paste' not in st.session_state: st.session_state['cv_input_paste'] = ""
-    if 'run_search' not in st.session_state: st.session_state['run_search'] = False
-    if 'results_displayed' not in st.session_state: st.session_state['results_displayed'] = False
-    if 'cv_text_to_process' not in st.session_state: st.session_state['cv_text_to_process'] = ""
-    if 'reset_key_counter' not in st.session_state: st.session_state['reset_key_counter'] = 0
-    if 'markdown_output' not in st.session_state: st.session_state['markdown_output'] = ""
-    if 'skill_gap_report' not in st.session_state: st.session_state['skill_gap_report'] = None # NEW STATE
-        
-    main()
+        link_index = link_match
