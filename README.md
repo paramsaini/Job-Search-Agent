@@ -1,0 +1,5 @@
+Feature,Niche Problem Solved,Data Value Proposition
+Predictive Skill Health Score,ATS Rejection & Stagnation. Identifies why your resume fails to rank highly against elite candidate profiles.,"A single, quantifiable score (0-100%) showing your readiness for future market demands."
+Weakest Link & Breakdown,Inefficient Upskilling. Pinpoints the exact hard or soft skill that represents your biggest competitive gap.,"Provides a visual breakdown of your Technical, Leadership, and Domain scores, showing you precisely what to focus on."
+High-Accuracy Employer Targeting,Wasted Applications. Stops you from applying blindly to jobs that aren't a mutual fit.,"Lists 10 high-profile, pre-vetted domestic and international employers with direct application links, based on a 90%+ suitability match to your profile."
+International Visa Action Plan,"Immigration Complexity. Solves the nuance of global job seeking, addressing visas and foreign requirements.","Provides specific visa categories/codes (e.g., H-1B, Blue Card) and key sponsorship requirements for your target international roles."
