@@ -1,4 +1,4 @@
-# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V7_RESTORED_DESIGN ---
+# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V8_LINKS_FIXED ---
 import streamlit as st
 import requests
 import json
@@ -31,7 +31,6 @@ def handle_reset_click():
     st.session_state['skill_gap_report'] = None
     
 # --- Gemini & Qdrant Configuration ---
-# Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY", os.environ.get("QDRANT_API_KEY", "")) 
 QDRANT_HOST = st.secrets.get("QDRANT_HOST", os.environ.get("QDRANT_HOST", "localhost"))
@@ -147,20 +146,27 @@ def generate_job_strategy_from_gemini(cv_text):
     User CV: {cv_text}
     """
     
+    # --- CRITICAL FIX: Prompt updated to demand links in a structured, guaranteed format ---
     markdown_prompt = f"""
-    You are a World-Class Job Search Consultant and Visa Immigration Analyst...
+    You are a World-Class Job Search Consultant and Visa Immigration Analyst. Your primary goal is to generate the professional job strategy using Google Search for current data, and the RETRIEVED KNOWLEDGE BASE CONTEXT for grounding employer types.
+    
     --- RETRIEVED KNOWLEDGE BASE CONTEXT (1000 Resumes) ---
     {context_text}
     --- END RETRIEVED CONTEXT ---
-    Analyze the user's CV and generate the requested professional job strategy...
+
+    Analyze the user's CV and generate the requested professional job strategy. The user's CV content is:
     ---
     {cv_text}
     ---
     MANDATORY OUTPUT REQUIREMENTS:
-    1. HIGH-ACCURACY DOMESTIC EMPLOYERS: List 5 specific, high-profile employers...
-    2. HIGH-ACCURACY INTERNATIONAL EMPLOYERS: List 5 specific, high-profile employers...
-    3. DOMESTIC JOB STRATEGY: Provide 3 specific job titles...
-    4. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles...
+    1. HIGH-ACCURACY DOMESTIC EMPLOYERS: List 5 specific, high-profile employers in the user's current domestic location 
+    (or related domestic hubs) that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **DIRECT APPLICATION WEBSITE LINK** in the format: **[Company Name] - Rationale (Location): [Direct Link to Company Career Page/Website]**
+    2. HIGH-ACCURACY INTERNATIONAL EMPLOYERS: List 5 specific, high-profile employers globally, focusing on key immigration countries (US, UK, Canada, EU), that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **DIRECT APPLICATION WEBSITE LINK** in the format: **[Company Name] - Rationale (Location): [Direct Link to Company Career Page/Website]**
+    3. DOMESTIC JOB STRATEGY: Provide 3 specific job titles matching the CV. For each title, give a step-by-step guide on how to apply.\n"
+    4. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles matching the CV. For each title/region, you MUST include: 
+        a. The typical application steps (including necessary foreign credential evaluations). 
+        b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). 
+        c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source.
     """
     
     json_payload = {
@@ -239,7 +245,6 @@ def render_strategy_visualizations(report):
     
     # KPI 1: Overall Match Score
     with col_kpi_1:
-        # Determine status for st.metric delta color (using default Streamlit values)
         if score >= 85:
             score_status = "normal"
         elif score >= 70:
@@ -336,7 +341,6 @@ def main():
             
             col_advice, col_compiler_link = st.columns([2, 1])
             
-            # Advice box using native st.container
             with col_advice:
                 with st.container(border=True):
                     st.markdown(f"**Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}**")
