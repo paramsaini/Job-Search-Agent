@@ -319,11 +319,24 @@ def render_strategy_visualizations(report):
             st.caption("Target employers and initiate the Visa Action Plan (see report below).")
 
 
-# --- Main Application Logic (CLEANED OF CUSTOM STYLING) ---
+# --- Main Application Logic (ENHANCED AESTHETIC TITLE) ---
 def main():
     # NO CUSTOM STYLING: Relying on default Streamlit theme for stability
     
-    st.title("Aequor")
+    # --- COLORFUL AND DASHING TITLE ---
+    st.markdown("""
+        <h1 style='text-align: center;'>
+            <span style='color: #00FFCC;'>✨</span> 
+            <span style='color: #00CCFF;'>**A**</span>
+            <span style='color: #FF66CC;'>e</span>
+            <span style='color: #FF3366;'>q</span>
+            <span style='color: #FFCC00;'>u</span>
+            <span style='color: #CC66FF;'>o</span>
+            <span style='color: #00FF66;'>r</span>
+            <span style='color: #00FFCC;'>🔥</span>
+        </h1>
+    """, unsafe_allow_html=True)
+    
     st.markdown("### The smooth, level pathway through the job market turbulence.")
     st.divider()
 
