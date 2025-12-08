@@ -235,12 +235,13 @@ def render_strategy_visualizations(report):
     """Renders the Strategy Funnel and Progress Meter Dashboard using dense data presentation."""
     
     st.header("🧠 Strategic Visualization Suite")
-    
+    st.divider() 
+
     score = report.get('predictive_score', 0)
     score_float = float(score) / 100.0 if score is not None else 0.0
     
-    # --- 1. KPI Metrics (Denser presentation with st.metric) ---
-    st.subheader("Key Predictive Metrics")
+    # --- 1. KPI Metrics (Primary Score Group) ---
+    st.subheader("🎯 Key Predictive Metrics")
     
     col_kpi_1, col_kpi_2, col_kpi_3 = st.columns(3)
     
@@ -254,29 +255,26 @@ def render_strategy_visualizations(report):
         
     score_text = f"**{score}%**"
 
-    # KPI 1: Overall Match Score
     with col_kpi_1:
         st.markdown(f"**Overall Predictive Match**")
         st.metric(label="Score", value=score_text, delta_color=score_status)
         st.progress(score_float)
     
-    # KPI 2: Weakest Link / Mitigation Focus
     with col_kpi_2:
         weak_link = report.get('weakest_link_skill', 'N/A')
         st.markdown(f"**Targeted Mitigation Focus**")
         st.error(f"**{weak_link}**")
         st.caption("*Highest priority for CV optimization.*")
         
-    # KPI 3: Next Action Step
     with col_kpi_3:
         st.markdown(f"**Immediate Tactical Goal**")
         st.success(f"**Optimize CV in Compiler**")
         st.caption("*Test against a specific Job Description.*")
 
-    st.markdown("---")
+    st.divider()
 
     # --- 2. Deep Dive: Predictive Skill Breakdown (More dense information) ---
-    st.subheader("Deep Dive: Capability Breakdown")
+    st.subheader("📈 Deep Dive: Capability Breakdown")
     
     # Extract sub-scores safely, default to 0 if missing
     tech_score = report.get('tech_score', 0) / 100
@@ -298,10 +296,10 @@ def render_strategy_visualizations(report):
         st.markdown("🌐 **Domain Expertise**")
         st.progress(domain_score, text=f"**{int(domain_score * 100)}%**")
     
-    st.markdown("---")
+    st.divider()
     
     # --- 3. Action Strategy Pipeline (Restored structure) ---
-    st.subheader("Action Strategy Pipeline")
+    st.subheader("🚀 Action Strategy Pipeline")
     
     col_flow_1, col_flow_2, col_flow_3 = st.columns(3)
     
@@ -321,7 +319,7 @@ def main():
     
     st.title("Aequor")
     st.markdown("### The smooth, level pathway through the job market turbulence.")
-    st.markdown("---")
+    st.divider()
 
     # --- Conditional Navigation Hub (CLEANED) ---
     st.header("🚀 Specialized Tools")
@@ -333,7 +331,7 @@ def main():
     with col_nav_2:
         st.page_link("pages/3_Skill_Migration.py", label="🌍 **Skill Migration Map**", icon="🌍", use_container_width=True)
         
-    st.markdown("---")
+    st.divider()
     # 👆 END MODIFIED NAVIGATION HUB
 
     # --- 0. Predictive Skill Health Card (CLEANED) ---
@@ -356,47 +354,50 @@ def main():
                 st.markdown('**Immediate Optimization Tool:**')
                 st.page_link("pages/4_CV_Compiler.py", label="🔄 **CV Compiler**", icon="🛠️", use_container_width=True)
                 
-            st.markdown("---")
+            st.divider()
             
             # --- RENDER VISUALIZATIONS ---
             render_strategy_visualizations(report)
     
     # --- Input Section (CLEANED) ---
-    st.subheader("📝 Step 2: Input Your Professional Profile")
+    st.header("📄 Profile Analysis Input") # Replaced 'Step 2'
     
-    tab_paste, tab_upload = st.tabs(["Paste CV Content", "Upload CV File"])
-    cv_text = ""
-    
-    with tab_paste:
-        st.caption("**Pasting Tip:** Use Ctrl+Shift+V or Cmd+Shift+V if direct pasting is difficult.")
-        st.text_area("Paste CV Content Here", value=st.session_state.get('cv_input_paste', ""), height=300,
-            placeholder="Paste your resume content here...", key="cv_input_paste", label_visibility="hidden")
-        cv_text = st.session_state.get('cv_input_paste', "")
+    # Use expander for cleaner layout
+    with st.expander("Upload or Paste Your CV Content", expanded=True):
 
-    with tab_upload:
-        uploaded_file_key = f"cv_input_upload_{st.session_state['reset_key_counter']}"
-        uploaded_file = st.file_uploader("Upload CV or Resume", type=["txt", "pdf"], key=uploaded_file_key)
+        tab_paste, tab_upload = st.tabs(["Paste Profile Content", "Upload File (PDF/TXT)"])
+        cv_text = ""
+        
+        with tab_paste:
+            st.caption("**Pasting Tip:** Use Ctrl+Shift+V or Cmd+Shift+V if direct pasting is difficult.")
+            st.text_area("Paste Profile Content Here", value=st.session_state.get('cv_input_paste', ""), height=300,
+                placeholder="Paste your resume content here...", key="cv_input_paste", label_visibility="hidden")
+            cv_text = st.session_state.get('cv_input_paste', "")
 
-        if uploaded_file is not None:
-            if uploaded_file.type == "application/pdf":
-                st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust reading.")
-                try: cv_text = extract_text_from_pdf(uploaded_file)
-                except Exception as e: st.error(f"Failed to read PDF. Error: {e}"); cv_text = ""
-            else:
-                try:
-                    uploaded_file.seek(0)
-                    raw_bytes = uploaded_file.read()
-                    try: string_data = raw_bytes.decode('utf-8')
-                    except UnicodeDecodeError: string_data = raw_bytes.decode('windows-1252', errors='replace')
-                    cv_text = string_data
-                except Exception as e: st.error(f"Error reading TXT file: {e}"); cv_text = ""
-            
-            if cv_text and len(cv_text.strip()) < 50: st.error("❌ **Reading Failure:** Extracted text is too short or empty."); cv_text = ""
+        with tab_upload:
+            uploaded_file_key = f"cv_input_upload_{st.session_state['reset_key_counter']}"
+            uploaded_file = st.file_uploader("Upload CV or Resume", type=["txt", "pdf"], key=uploaded_file_key)
+
+            if uploaded_file is not None:
+                if uploaded_file.type == "application/pdf":
+                    st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust reading.")
+                    try: cv_text = extract_text_from_pdf(uploaded_file)
+                    except Exception as e: st.error(f"Failed to read PDF. Error: {e}"); cv_text = ""
+                else:
+                    try:
+                        uploaded_file.seek(0)
+                        raw_bytes = uploaded_file.read()
+                        try: string_data = raw_bytes.decode('utf-8')
+                        except UnicodeDecodeError: string_data = raw_bytes.decode('windows-1252', errors='replace')
+                        cv_text = string_data
+                    except Exception as e: st.error(f"Error reading TXT file: {e}"); cv_text = ""
                 
-        if not cv_text.strip() and st.session_state.get('run_search'):
-            st.session_state['run_search'] = False; st.session_state['cv_text_to_process'] = ""; st.warning("Input cancelled due to empty CV content.")
+                if cv_text and len(cv_text.strip()) < 50: st.error("❌ **Reading Failure:** Extracted text is too short or empty."); cv_text = ""
+                    
+            if not cv_text.strip() and st.session_state.get('run_search'):
+                st.session_state['run_search'] = False; st.session_state['cv_text_to_process'] = ""; st.warning("Input cancelled due to empty CV content.")
             
-    st.markdown("---")
+    st.divider()
     
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -407,8 +408,10 @@ def main():
     if st.session_state.get('results_displayed'):
         if st.button("Start New Search (Reset)", type="secondary", on_click=handle_reset_click): pass
 
-    st.markdown("---")
-    st.subheader("🚀 Step 3: High-Definition Generated Strategy")
+    st.divider()
+    
+    # --- Output Section (Replaced 'Step 3') ---
+    st.header("🎯 Generated Strategy & Analysis")
     
     if st.session_state.get('run_search') and st.session_state.get('cv_text_to_process'):
         with st.container():
