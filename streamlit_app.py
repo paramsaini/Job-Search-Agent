@@ -61,7 +61,7 @@ GRID_ORANGE = "rgba(255, 140, 0, 0.6)"
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
-# FIX: DEFINITION OF custom_css (Syntax Error Corrected)
+# FIX: DEFINITION OF custom_css (OPTIMIZED FOR SPEED)
 # ------------------------------------------------
 custom_css = f"""
 <style>
@@ -69,15 +69,50 @@ custom_css = f"""
 footer {{visibility: hidden;}}
 header {{visibility: hidden;}}
 
-/* Base App Styling & Background */
+/* 1. MOVING BACKGROUND IMPLEMENTATION (Aequor wave - OPTIMIZED) */
+/* Use background image and complex CSS animation for the dynamic feel */
+
 .stApp {{
-    background-color: {BG_DARK};
-    color: white; /* Base text color */
+    /* Base background color for safety, though image will cover it */
+    background-color: {BG_DARK}; 
+    color: white; 
+    position: relative; 
 }}
 
+/* Create a fixed, full-screen pseudo-element for the animated background */
+.stApp::before {{
+    content: '';
+    position: fixed; 
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -100; 
+    
+    /* Load a static image/GIF/WebP as the base background */
+    /* NOTE: If using an animated file like GIF, ensure it's small/optimized */
+    background: url('aequor_background_loop.gif') no-repeat center center fixed; 
+    background-size: cover; 
+    
+    /* Apply a slow, subtle animation layer to simulate the "golden crystals" and motion */
+    background-image: linear-gradient(45deg, rgba(0,0,0,0.8), rgba(0,0,0,0.7)),
+                      radial-gradient(ellipse at bottom, {ACCENT_CYAN}40, {ACCENT_ORANGE}40, transparent);
+    background-size: 400% 400%; /* Allows for a slow movement effect */
+    
+    animation: gradient-motion 30s ease infinite; 
+    opacity: 0.85; /* Keep the content readable */
+    
+}}
+
+@keyframes gradient-motion {{
+    0% {{ background-position: 0% 50%; }}
+    50% {{ background-position: 100% 50%; }}
+    100% {{ background-position: 0% 50%; }}
+}}
+
+
 /* FIX FOR BLACK SCREEN: Ensure all primary text/input labels are white */
-/* target the main content block and generic text elements */
-section.main, body, p, label, div {{
+section.main, body, p, label, div, .stTextInput, .stTextArea, .stSelectbox {{
     color: white !important;
 }}
 
@@ -110,6 +145,7 @@ div.stButton > button {{
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
+    position: relative; 
 }}
 
 /* Textarea color fix */
@@ -123,17 +159,6 @@ hr {{
     margin: 1rem 0;
 }}
 
-/* Strategy Funnel CSS */
-.funnel-step {{
-    background-color: {ACCENT_CYAN}10;
-    padding: 10px;
-    margin-bottom: 5px;
-    text-align: center;
-    border-left: 5px solid {ACCENT_CYAN};
-    font-weight: bold;
-    color: {ACCENT_CYAN};
-    border-radius: 4px;
-}}
 /* Custom Progress Bar Styling (to match theme) */
 .stProgress > div > div > div > div {{
     background-color: {ACCENT_CYAN};
@@ -439,7 +464,11 @@ def main():
     st.markdown(custom_css, unsafe_allow_html=True) # Apply CSS first
     
     # --- New Name and Logo Integration ---
-    st.image("aequor_logo_placeholder.png") # Placeholder for the uploaded image
+    # Using markdown image link for the logo, which is more reliable than st.image
+    st.markdown(
+        f'<div style="text-align: center; margin-bottom: 15px;"><img src="aequor_logo_placeholder.png" alt="Aequor Logo" style="width: 120px; border-radius: 50%;"></div>',
+        unsafe_allow_html=True
+    )
     st.markdown('<h1 class="holo-text" style="font-size: 3rem; margin-bottom: 0.5rem; text-align: center;">Aequor</h1>', unsafe_allow_html=True)
     st.markdown('<p style="font-size: 1.25rem; color: #9CA3AF; text-align: center;">The smooth, level pathway through the job market turbulence.</p>', unsafe_allow_html=True)
     st.markdown("---")
