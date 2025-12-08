@@ -31,6 +31,7 @@ def handle_reset_click():
     st.session_state['skill_gap_report'] = None
     
 # --- Gemini & Qdrant Configuration ---
+# Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY", os.environ.get("QDRANT_API_KEY", "")) 
 QDRANT_HOST = st.secrets.get("QDRANT_HOST", os.environ.get("QDRANT_HOST", "localhost"))
@@ -318,19 +319,15 @@ def render_strategy_visualizations(report):
             st.caption("Target employers and initiate the Visa Action Plan (see report below).")
 
 
-# --- Main Application Logic (ENHANCED AESTHETIC TITLE) ---
+# --- Main Application Logic (POLISHED AESTHETIC FIX) ---
 def main():
     # NO CUSTOM STYLING: Relying on default Streamlit theme for stability
     
-    # --- COLORFUL AND DASHING TITLE (AESTHETIC FIX) ---
+    # --- POLISHED TITLE AESTHETIC (Clean, smooth gradient look) ---
     st.markdown("""
         <h1 style='text-align: center; font-size: 3.5rem;'>
-            <span style='color: #00CCFF;'>**A**</span>
-            <span style='color: #FF66CC;'>e</span>
-            <span style='color: #FF3366;'>q</span>
-            <span style='color: #FFCC00;'>u</span>
-            <span style='color: #CC66FF;'>o</span>
-            <span style='color: #00FF66;'>r</span>
+            <span style='color: #00CCFF;'>🌊</span> 
+            **AEQUOR** <span style='color: #FF8C00;'>💡</span>
         </h1>
     """, unsafe_allow_html=True)
     
