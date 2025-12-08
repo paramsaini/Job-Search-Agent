@@ -1,4 +1,4 @@
-# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V8_LINKS_FIXED ---
+# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V8_RESTORED_DESIGN ---
 import streamlit as st
 import requests
 import json
@@ -31,6 +31,7 @@ def handle_reset_click():
     st.session_state['skill_gap_report'] = None
     
 # --- Gemini & Qdrant Configuration ---
+# Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY", os.environ.get("QDRANT_API_KEY", "")) 
 QDRANT_HOST = st.secrets.get("QDRANT_HOST", os.environ.get("QDRANT_HOST", "localhost"))
@@ -243,17 +244,20 @@ def render_strategy_visualizations(report):
     
     col_kpi_1, col_kpi_2, col_kpi_3 = st.columns(3)
     
+    # Determine status for st.metric delta color
+    if score >= 85:
+        score_status = "normal"
+    elif score >= 70:
+        score_status = "off"
+    else:
+        score_status = "inverse"
+        
+    score_text = f"**{score}%**"
+
     # KPI 1: Overall Match Score
     with col_kpi_1:
-        if score >= 85:
-            score_status = "normal"
-        elif score >= 70:
-            score_status = "off"
-        else:
-            score_status = "inverse"
-        
         st.markdown(f"**Overall Predictive Match**")
-        st.metric(label="Score", value=f"{score}%", delta_color=score_status)
+        st.metric(label="Score", value=score_text, delta_color=score_status)
         st.progress(score_float)
     
     # KPI 2: Weakest Link / Mitigation Focus
