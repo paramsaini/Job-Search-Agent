@@ -1,4 +1,4 @@
-# --- 2025-12-08_VISIBILITY_FIX_COMMITTED_FINAL_V3 ---
+# --- 2025-12-08_STABILITY_COMMITTED_FINAL ---
 import streamlit as st
 import requests
 import json
@@ -21,15 +21,19 @@ load_dotenv()
 
 def handle_reset_click():
     """Resets session state variables to restart the search process."""
+    # Increment the reset counter to force the file_uploader to be recreated.
     st.session_state['reset_key_counter'] = st.session_state.get('reset_key_counter', 0) + 1
+    
+    # Reset input values and flow control flags
     st.session_state['cv_input_paste'] = ""
     st.session_state['cv_text_to_process'] = ""
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
-    st.session_state['markdown_output'] = ""
-    st.session_state['skill_gap_report'] = None
+    st.session_state['markdown_output'] = "" # Clear previous output
+    st.session_state['skill_gap_report'] = None # CLEAR NEW REPORT
     
-# --- Gemini & Qdrant Configuration (UNCHANGED) ---
+# --- Gemini & Qdrant Configuration ---
+# Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY", os.environ.get("QDRANT_API_KEY", "")) 
 QDRANT_HOST = st.secrets.get("QDRANT_HOST", os.environ.get("QDRANT_HOST", "localhost"))
@@ -39,17 +43,23 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}
 EMBEDDING_MODEL = "text-embedding-004"
 EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBEDDING_MODEL}:embedContent?key={API_KEY}"
 
-# --- RAG Configuration (UNCHANGED) ---
-COLLECTION_NAME = 'resume_knowledge_base'
-RAG_K = 10
+# --- Configuration Placeholder ---
+system_prompt = "" 
 
-# --- Holographic Theme Configuration (UNCHANGED) ---
-BG_DARK = "#000000"
+# --- RAG Configuration ---
+COLLECTION_NAME = 'resume_knowledge_base'
+RAG_K = 10 # Number of top documents to retrieve
+
+# --- Holographic Theme Configuration (UPDATED for maximum effect and new colors) ---
+BG_DARK = "#000000" # Pure black background for max contrast
 ACCENT_CYAN = "#00E0FF"
 ACCENT_ORANGE = "#FF8C00" 
 ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
 TEXT_HOLO = f"0 0 10px {ACCENT_CYAN}, 0 0 20px {ACCENT_ORANGE}90"
+GRID_CYAN = "rgba(0, 255, 255, 0.6)" 
+GRID_ORANGE = "rgba(255, 140, 0, 0.6)" 
+GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
 # FIX: DEFINITION OF custom_css (BACKGROUND FILE REFERENCE REMOVED FOR STABILITY)
@@ -78,7 +88,7 @@ header {{visibility: hidden;}}
     z-index: -100; 
     
     /* *** CRITICAL FIX: External image reference disabled to fix black screen. 
-           We use stable gradient animation only. *** */
+           Relying solely on stable gradient animation. *** */
     
     background-size: cover; 
     
@@ -425,7 +435,7 @@ def main():
     st.markdown(custom_css, unsafe_allow_html=True) # Apply CSS first
     
     # --- New Name and Logo Integration ---
-    # CRITICAL: Filename is set to the correct, simple file name that exists in the root.
+    # CRITICAL: Filename is set to the correct, clean file name that exists in the root: aequor_logo_placeholder.png
     st.markdown(
         f'<div style="text-align: center; margin-bottom: 15px;"><img src="aequor_logo_placeholder.png" alt="Aequor Logo" style="width: 120px; border-radius: 50%;"></div>',
         unsafe_allow_html=True
