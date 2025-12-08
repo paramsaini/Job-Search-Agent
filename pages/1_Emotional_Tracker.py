@@ -73,17 +73,15 @@ def emotional_tracker_page():
     </style>
     """, unsafe_allow_html=True)
     
-    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🧘 Emotional Endurance Tracker</h1>', unsafe_allow_html=True)
-    
-    # MODIFIED: Attractive, engaging text added back
+    # --- New Name Integration ---
+    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🧘 Aequor: Emotional Endurance</h1>', unsafe_allow_html=True)
     st.markdown(f"""
     <p style="text-align: center; color: {ACCENT_CYAN}; font-size: 1.1em; font-weight: 500; text-shadow: 0 0 2px {ACCENT_CYAN}40;">
         **Optimize Your Inner Game:** Track your **Emotional Input** (Mood) against your **Career Output** (Activity) to calculate your live **Resilience Score**. Defeat burnout before it starts.
     </p>
     """, unsafe_allow_html=True)
-    # END MODIFIED TEXT
-    
     st.markdown("---")
+    # ---------------------------
 
     # --- Resilience Score Display ---
     current_score = st.session_state['resilience_score']
