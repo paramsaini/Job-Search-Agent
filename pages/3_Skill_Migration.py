@@ -55,13 +55,15 @@ def get_skill_migration_data(report):
 # --- Page Render ---
 
 def skill_migration_page():
-    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🌍 Role-to-Role Skill Migration Map</h1>', unsafe_allow_html=True)
+    # --- New Name Integration ---
+    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🌍 Aequor: Skill Migration Map</h1>', unsafe_allow_html=True)
     st.markdown(f"""
     <p style="text-align: center; color: {ACCENT_CYAN}; font-size: 1.1em; font-weight: 500; text-shadow: 0 0 2px {ACCENT_CYAN}40;">
         **Niche Solution: Transition Uncertainty.** Visualize your current skill position (Tech vs. Leadership) relative to three key career pivot targets. Find the shortest path to your next role.
     </p>
     """, unsafe_allow_html=True)
     st.markdown("---")
+    # ---------------------------
 
     report = st.session_state.get('skill_gap_report', None)
 
@@ -109,7 +111,7 @@ def skill_migration_page():
         xaxis=dict(title="Technical Depth (%)", range=[40, 100], gridcolor=GRID_CYAN),
         yaxis=dict(title="Leadership Potential (%)", range=[40, 100], gridcolor=GRID_ORANGE)
     )
-    st.plotly_chart(fig, use_container_width=True) 
+    st.plotly_chart(fig, use_container_width=True) # 
 
     st.markdown("---")
     
