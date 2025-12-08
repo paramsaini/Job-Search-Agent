@@ -331,8 +331,8 @@ def main():
     # LOGO (Bigger Size: 200px)
     st.image("aequor_logo_placeholder.png", width=200) 
     
-    # TITLE (Smaller Size, Centered, using H1 for size)
-    st.markdown("<h1>AEQUOR</h1>", unsafe_allow_html=True)
+    # TITLE (Centered, directly below the logo, removing the H1 tag for simple, clean text)
+    st.markdown("## **AEQUOR**")
     
     st.markdown("</div>", unsafe_allow_html=True)
     
