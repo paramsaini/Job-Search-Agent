@@ -1,4 +1,4 @@
-# --- 2025-12-08_FINAL_STABLE_VERSION ---
+# --- 2025-12-08_FINAL_STABLE_VERSION_PRE_STYLING ---
 import streamlit as st
 import requests
 import json
@@ -21,14 +21,16 @@ load_dotenv()
 
 def handle_reset_click():
     """Resets session state variables to restart the search process."""
+    # Increment the reset counter to force the file_uploader to be recreated.
     st.session_state['reset_key_counter'] = st.session_state.get('reset_key_counter', 0) + 1
     
+    # Reset input values and flow control flags
     st.session_state['cv_input_paste'] = ""
     st.session_state['cv_text_to_process'] = ""
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
-    st.session_state['markdown_output'] = ""
-    st.session_state['skill_gap_report'] = None
+    st.session_state['markdown_output'] = "" # Clear previous output
+    st.session_state['skill_gap_report'] = None # CLEAR NEW REPORT
     
 # --- Gemini & Qdrant Configuration ---
 # Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
@@ -45,7 +47,8 @@ EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{E
 COLLECTION_NAME = 'resume_knowledge_base'
 RAG_K = 10 
 
-# --- NO CUSTOM CSS SECTION: Using Streamlit's Default Dark Theme ---
+# --- NO CUSTOM STYLING BLOCK ---
+# All custom CSS and external asset references have been removed for stability.
 
 # --- PDF Extraction Function (Kept) ---
 def extract_text_from_pdf(uploaded_file):
@@ -204,6 +207,7 @@ def call_gemini_api(payload, structured=False):
                 
                 sources = []
                 grounding_metadata = candidate.get('groundingMetadata')
+                    
                 if grounding_metadata and grounding_metadata.get('groundingAttributions'):
                     sources = [
                         {"uri": attr.get('web', {}).get('uri'), "title": attr.get('web', {}).get('title')}
@@ -283,8 +287,7 @@ def render_strategy_visualizations(report):
 
 # --- Main Application Logic (CLEANED OF CUSTOM STYLING) ---
 def main():
-    # NO CUSTOM CSS: Relying on default Streamlit theme for stability
-    # st.markdown(custom_css, unsafe_allow_html=True) 
+    # NO CUSTOM STYLING: Relying on default Streamlit theme for stability
     
     st.title("Aequor")
     st.markdown("### The smooth, level pathway through the job market turbulence.")
