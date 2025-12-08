@@ -1,4 +1,4 @@
-# --- 2025-12-08_STABILITY_COMMITTED_FINAL ---
+# --- 2025-12-08_STABILITY_COMMITTED_FINAL_V4 ---
 import streamlit as st
 import requests
 import json
@@ -435,7 +435,7 @@ def main():
     st.markdown(custom_css, unsafe_allow_html=True) # Apply CSS first
     
     # --- New Name and Logo Integration ---
-    # CRITICAL: Filename is set to the correct, clean file name that exists in the root: aequor_logo_placeholder.png
+    # CRITICAL: Filename is set to the correct, clean file name: aequor_logo_placeholder.png
     st.markdown(
         f'<div style="text-align: center; margin-bottom: 15px;"><img src="aequor_logo_placeholder.png" alt="Aequor Logo" style="width: 120px; border-radius: 50%;"></div>',
         unsafe_allow_html=True
