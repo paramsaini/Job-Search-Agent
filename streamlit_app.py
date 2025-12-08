@@ -1,4 +1,4 @@
-# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V9_AESTHETIC_DESIGN ---
+# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V10_AESTHETIC_FIX ---
 import streamlit as st
 import requests
 import json
@@ -31,7 +31,6 @@ def handle_reset_click():
     st.session_state['skill_gap_report'] = None
     
 # --- Gemini & Qdrant Configuration ---
-# Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY", os.environ.get("QDRANT_API_KEY", "")) 
 QDRANT_HOST = st.secrets.get("QDRANT_HOST", os.environ.get("QDRANT_HOST", "localhost"))
@@ -323,17 +322,15 @@ def render_strategy_visualizations(report):
 def main():
     # NO CUSTOM STYLING: Relying on default Streamlit theme for stability
     
-    # --- COLORFUL AND DASHING TITLE ---
+    # --- COLORFUL AND DASHING TITLE (AESTHETIC FIX) ---
     st.markdown("""
-        <h1 style='text-align: center;'>
-            <span style='color: #00FFCC;'>✨</span> 
+        <h1 style='text-align: center; font-size: 3.5rem;'>
             <span style='color: #00CCFF;'>**A**</span>
             <span style='color: #FF66CC;'>e</span>
             <span style='color: #FF3366;'>q</span>
             <span style='color: #FFCC00;'>u</span>
             <span style='color: #CC66FF;'>o</span>
             <span style='color: #00FF66;'>r</span>
-            <span style='color: #00FFCC;'>🔥</span>
         </h1>
     """, unsafe_allow_html=True)
     
