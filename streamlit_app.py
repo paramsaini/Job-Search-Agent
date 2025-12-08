@@ -1,4 +1,4 @@
-# --- 2025-12-08_STABILITY_COMMITTED_FINAL_V6_NO_BACKGROUND_CSS ---
+# --- 2025-12-08_FINAL_STABLE_VERSION ---
 import streamlit as st
 import requests
 import json
@@ -21,16 +21,14 @@ load_dotenv()
 
 def handle_reset_click():
     """Resets session state variables to restart the search process."""
-    # Increment the reset counter to force the file_uploader to be recreated.
     st.session_state['reset_key_counter'] = st.session_state.get('reset_key_counter', 0) + 1
     
-    # Reset input values and flow control flags
     st.session_state['cv_input_paste'] = ""
     st.session_state['cv_text_to_process'] = ""
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
-    st.session_state['markdown_output'] = "" # Clear previous output
-    st.session_state['skill_gap_report'] = None # CLEAR NEW REPORT
+    st.session_state['markdown_output'] = ""
+    st.session_state['skill_gap_report'] = None
     
 # --- Gemini & Qdrant Configuration ---
 # Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
@@ -43,115 +41,11 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}
 EMBEDDING_MODEL = "text-embedding-004"
 EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBEDDING_MODEL}:embedContent?key={API_KEY}"
 
-# --- Configuration Placeholder ---
-system_prompt = "" 
-
 # --- RAG Configuration ---
 COLLECTION_NAME = 'resume_knowledge_base'
-RAG_K = 10 # Number of top documents to retrieve
+RAG_K = 10 
 
-# --- Holographic Theme Configuration (UPDATED for maximum effect and new colors) ---
-BG_DARK = "#000000" # Pure black background for max contrast
-ACCENT_CYAN = "#00E0FF"
-ACCENT_ORANGE = "#FF8C00" 
-ACCENT_GREEN = "#10B981"
-ACCENT_YELLOW = "#F59E0B"
-TEXT_HOLO = f"0 0 10px {ACCENT_CYAN}, 0 0 20px {ACCENT_ORANGE}90"
-GRID_CYAN = "rgba(0, 255, 255, 0.6)" 
-GRID_ORANGE = "rgba(255, 140, 0, 0.6)" 
-GRID_GREEN = "rgba(16, 185, 129, 0.6)"
-
-# ------------------------------------------------
-# FIX: DEFINITION OF custom_css (COMPLETELY REMOVING BACKGROUND ASSETS)
-# ------------------------------------------------
-custom_css = f"""
-<style>
-/* Streamlit standard cleanup */
-footer {{visibility: hidden;}}
-header {{visibility: hidden;}}
-
-/* 1. BACKGROUND IMPLEMENTATION (MAXIMUM STABILITY) */
-.stApp {{
-    /* Base black background is the only background now */
-    background-color: {BG_DARK}; 
-    color: white; 
-    position: relative; 
-}}
-
-/* Removing .stApp::before block to eliminate all file loading conflicts */
-
-/* --- VISIBILITY FIXES (Aggressively set all text to white) --- */
-/* Target general text, titles, and labels */
-section.main, body, p, label, div, h1, h2, h3, h4, span, ul, li {{
-    color: white !important;
-}}
-
-/* Target specific input elements and their labels */
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea,
-.stSelectbox > div > div > div,
-.stFileUploader > label {{
-    color: white !important;
-    background-color: rgba(255, 255, 255, 0.05);
-    border-color: {ACCENT_CYAN}50;
-}}
-
-/* Holographic Text Effect */
-.holo-text {{
-    color: {ACCENT_CYAN};
-    text-shadow: {TEXT_HOLO};
-    font-weight: 700;
-    transition: all 0.3s ease-in-out;
-}}
-
-/* Custom Button Styling */
-div.stButton > button {{
-    color: {BG_DARK};
-    background-color: {ACCENT_ORANGE}; 
-    border: 2px solid {ACCENT_ORANGE}; 
-    border-radius: 12px;
-    font-weight: bold;
-    box-shadow: 0 0 10px {ACCENT_ORANGE}50, 0 0 20px {ACCENT_ORANGE}30; 
-    transition: all 0.3s ease-in-out;
-}}
-
-/* Custom Card for Results/Reports */
-.results-card, .glass-card {{
-    padding: 20px;
-    margin: 15px 0;
-    border-radius: 15px;
-    border: 2px solid {ACCENT_CYAN}40;
-    background: rgba(16, 185, 129, 0.05);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    position: relative; 
-}}
-
-/* Textarea color fix */
-.stTextArea label, .stFileUploader label, .stMarkdown p {{
-    color: white !important;
-}}
-
-/* Horizontal Rule Fix */
-hr {{
-    border-top: 2px solid {ACCENT_CYAN}50;
-    margin: 1rem 0;
-}}
-
-/* Custom Progress Bar Styling (to match theme) */
-.stProgress > div > div > div > div {{
-    background-color: {ACCENT_CYAN};
-    animation: gradient 2s ease infinite;
-}}
-@keyframes gradient {{
-    0% {{background-color: {ACCENT_CYAN};}}
-    50% {{background-color: {ACCENT_ORANGE};}}
-    100% {{background-color: {ACCENT_CYAN};}}
-}}
-</style>
-"""
-# ------------------------------------------------
+# --- NO CUSTOM CSS SECTION: Using Streamlit's Default Dark Theme ---
 
 # --- PDF Extraction Function (Kept) ---
 def extract_text_from_pdf(uploaded_file):
@@ -330,46 +224,46 @@ def call_gemini_api(payload, structured=False):
 
     return ("Error: Failed after retries.", []) if not structured else {"error": "Failed after retries."}
 
-# --- Visualization Render (UNCHANGED) ---
+# --- Visualization Render (CLEANED OF CUSTOM STYLING) ---
 def render_strategy_visualizations(report):
     """Renders the Strategy Funnel and Progress Meter Dashboard using data from the report."""
     
-    st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">🧠 Strategic Visualization Suite</h2>', unsafe_allow_html=True)
+    st.header("🧠 Strategic Visualization Suite")
     
     score = report.get('predictive_score', 0)
     score_float = float(score) / 100.0 if score is not None else 0.0
     
-    score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_ORANGE)
+    # Use standard Streamlit colors (success, warning, error)
+    if score >= 85:
+        score_status = "success"
+        score_text = f"**{score}%**"
+    elif score >= 70:
+        score_status = "warning"
+        score_text = f"**{score}%**"
+    else:
+        score_status = "error"
+        score_text = f"**{score}%**"
+
+    st.markdown("---")
 
     col_kpi_1, col_kpi_2, col_kpi_3 = st.columns(3)
     
+    # KPI 1: Overall Match Score
     with col_kpi_1:
-        st.markdown(f'<p style="color: {ACCENT_CYAN}; font-weight: bold; margin-bottom: 0;">Overall Predictive Match</p>', unsafe_allow_html=True)
-        st.markdown(f"""
-        <div style="font-size: 2.5rem; font-weight: bold; color: {score_color}; text-shadow: 0 0 8px {score_color}50;">
-            {score}%
-        </div>
-        """, unsafe_allow_html=True)
+        st.subheader("Overall Predictive Match")
+        st.metric(label="Score", value=score_text, delta_color=score_status)
         st.progress(score_float)
     
+    # KPI 2: Weakest Link / Mitigation Focus
     with col_kpi_2:
         weak_link = report.get('weakest_link_skill', 'N/A')
-        st.markdown(f'<p style="color: {ACCENT_ORANGE}; font-weight: bold; margin-bottom: 0;">Targeted Mitigation Focus</p>', unsafe_allow_html=True)
-        st.markdown(f"""
-        <div style="font-size: 1.5rem; font-weight: bold; color: white;">
-            {weak_link}
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown(f'<p style="color: {ACCENT_YELLOW}; font-size: 0.8rem; margin-top: -10px;">Highest priority for CV optimization.</p>', unsafe_allow_html=True)
+        st.subheader("Targeted Mitigation Focus")
+        st.info(f"**{weak_link}**\n\n*Highest priority for CV optimization.*")
         
+    # KPI 3: Next Action Step
     with col_kpi_3:
-        st.markdown(f'<p style="color: {ACCENT_GREEN}; font-weight: bold; margin-bottom: 0;">Immediate Tactical Goal</p>', unsafe_allow_html=True)
-        st.markdown(f"""
-        <div style="font-size: 1.5rem; font-weight: bold; color: white;">
-            Optimize CV in Compiler
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown(f'<p style="color: #ccc; font-size: 0.8rem; margin-top: -10px;">Test against a specific Job Description.</p>', unsafe_allow_html=True)
+        st.subheader("Immediate Tactical Goal")
+        st.success(f"**Optimize CV in Compiler**\n\n*Test against a specific Job Description.*")
 
     st.markdown("---")
 
@@ -378,124 +272,69 @@ def render_strategy_visualizations(report):
     col_flow_1, col_flow_2, col_flow_3 = st.columns(3)
     
     with col_flow_1:
-        st.markdown(f"""
-        <div class="glass-card" style="border-left: 5px solid {ACCENT_CYAN};">
-            <p style="color:{ACCENT_CYAN}; font-weight: bold;">1. ANALYSIS</p>
-            <p style="font-size: 0.9rem; color: #ccc;">CV scanned against 1,000 elite profiles. Match Score established.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"**1. ANALYSIS**\n\nCV scanned against 1,000 elite profiles. Match Score established.")
 
     with col_flow_2:
-        st.markdown(f"""
-        <div class="glass-card" style="border-left: 5px solid {ACCENT_ORANGE};">
-            <p style="color:{ACCENT_ORANGE}; font-weight: bold;">2. OPTIMIZATION</p>
-            <p style="font-size: 0.9rem; color: #ccc;">Use Compiler to eliminate the Weakest Link and pass the ATS/Recruiter filters.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"**2. OPTIMIZATION**\n\nUse Compiler to eliminate the Weakest Link and pass the ATS/Recruiter filters.")
 
     with col_flow_3:
-        st.markdown(f"""
-        <div class="glass-card" style="border-left: 5px solid {ACCENT_GREEN};">
-            <p style="color:{ACCENT_GREEN}; font-weight: bold;">3. EXECUTION</p>
-            <p style="font-size: 0.9rem; color: #ccc;">Target employers and initiate the Visa Action Plan (see report below).</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"**3. EXECUTION**\n\nTarget employers and initiate the Visa Action Plan (see report below).")
 
 
-# --- Main Application Logic (UNCHANGED) ---
+# --- Main Application Logic (CLEANED OF CUSTOM STYLING) ---
 def main():
-    st.markdown(custom_css, unsafe_allow_html=True) # Apply CSS first
+    # NO CUSTOM CSS: Relying on default Streamlit theme for stability
+    # st.markdown(custom_css, unsafe_allow_html=True) 
     
-    # --- New Name and Logo Integration ---
-    # CRITICAL: Filename is set to the correct, clean file name: aequor_logo_placeholder.png
-    st.markdown(
-        f'<div style="text-align: center; margin-bottom: 15px;"><img src="aequor_logo_placeholder.png" alt="Aequor Logo" style="width: 120px; border-radius: 50%;"></div>',
-        unsafe_allow_html=True
-    )
-    st.markdown('<h1 class="holo-text" style="font-size: 3rem; margin-bottom: 0.5rem; text-align: center;">Aequor</h1>', unsafe_allow_html=True)
-    st.markdown('<p style="font-size: 1.25rem; color: #9CA3AF; text-align: center;">The smooth, level pathway through the job market turbulence.</p>', unsafe_allow_html=True)
+    st.title("Aequor")
+    st.markdown("### The smooth, level pathway through the job market turbulence.")
     st.markdown("---")
-    # -----------------------------------
 
-    # --- Conditional Navigation Hub ---
-    st.markdown("""
-    <h3 class="holo-text" style="color:#00E0FF; font-size: 1.8rem;">🚀 Specialized Tools</h3>
-    <p style='color: #ccc; font-size: 0.9rem; margin-bottom: 10px;'>Access specialized tools for endurance and pivot strategy.</p>
-    """, unsafe_allow_html=True)
+    # --- Conditional Navigation Hub (CLEANED) ---
+    st.header("🚀 Specialized Tools")
     
     col_nav_1, col_nav_2 = st.columns(2)
     
     with col_nav_1:
-        st.page_link("pages/1_Emotional_Tracker.py", label="🧘 Emotional Endurance", icon="🧘", use_container_width=True)
+        st.page_link("pages/1_Emotional_Tracker.py", label="🧘 **Emotional Endurance**", icon="🧘", use_container_width=True)
     with col_nav_2:
-        st.page_link("pages/3_Skill_Migration.py", label="🌍 Skill Migration Map", icon="🌍", use_container_width=True)
+        st.page_link("pages/3_Skill_Migration.py", label="🌍 **Skill Migration Map**", icon="🌍", use_container_width=True)
         
     st.markdown("---")
     # 👆 END MODIFIED NAVIGATION HUB
 
-    # --- 0. Predictive Skill Health Card ---
+    # --- 0. Predictive Skill Health Card (CLEANED) ---
     if st.session_state.get('skill_gap_report'):
         report = st.session_state['skill_gap_report']
         if not report.get('error'):
             
-            # --- START: Conditional Placement of CV Compiler Button ---
-            st.markdown(f'<h2 class="holo-text" style="color:{ACCENT_ORANGE};">✨ Predictive Skill Health Score</h2>', unsafe_allow_html=True)
+            st.header("✨ Predictive Skill Health Score")
             
             col_advice, col_compiler_link = st.columns([2, 1])
             
             with col_advice:
-                st.markdown(f"""
-                    <div class="glass-card">
-                        <p style="color: {ACCENT_ORANGE}; font-weight: bold; margin-bottom: 0.5rem;">Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}</p>
-                        <p style="color: {ACCENT_CYAN}; margin-bottom: 0.5rem; font-size: 0.9rem;">
-                            **Action:** You must optimize your CV against target JDs to address this gap.
-                        </p>
-                        <ul style="color: {ACCENT_CYAN}; padding-left: 20px;">
-                            <li>{report.get('learning_resource_1', 'Check report below.')}</li>
-                            <li>{report.get('learning_resource_2', 'Check report below.')}</li>
-                        </ul>
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"**Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}**")
+                st.caption(f"Action: You must optimize your CV against target JDs to address this gap.")
+                st.markdown(f"* **Resource 1:** {report.get('learning_resource_1', 'Check report below.')}")
+                st.markdown(f"* **Resource 2:** {report.get('learning_resource_2', 'Check report below.')}")
             
             with col_compiler_link:
-                st.markdown('<p style="font-weight: bold; color: white; margin-top: 1.5rem;">Immediate Optimization Tool:</p>', unsafe_allow_html=True)
-                st.page_link("pages/4_CV_Compiler.py", label="🔄 CV Compiler", icon="🛠️", use_container_width=True)
+                st.markdown('**Immediate Optimization Tool:**')
+                st.page_link("pages/4_CV_Compiler.py", label="🔄 **CV Compiler**", icon="🛠️", use_container_width=True)
                 
-            # --- END: Conditional Placement of CV Compiler Button ---
-            
             st.markdown("---")
             
-            col_score, col_gap = st.columns([1, 2])
-            
-            with col_score:
-                score = report.get('predictive_score', 0)
-                score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_ORANGE)
-                st.markdown(f"""
-                    <div class="glass-card" style="border: 2px solid {score_color}; text-align: center; height: 100%;">
-                        <p style="color: {score_color}; font-size: 1rem; margin-bottom: 0;">Trajectory Match</p>
-                        <p style="color: white; font-size: 3rem; font-weight: bold; margin: 0; text-shadow: 0 0 10px {score_color}50;">{score}%</p>
-                    </div>
-                """, unsafe_allow_html=True)
-
             # --- RENDER VISUALIZATIONS ---
             render_strategy_visualizations(report)
     
-    # --- Input Section (Remains same) ---
+    # --- Input Section (CLEANED) ---
     st.subheader("📝 Step 2: Input Your Professional Profile")
     
     tab_paste, tab_upload = st.tabs(["Paste CV Content", "Upload CV File"])
     cv_text = ""
     
     with tab_paste:
-        # FIX: Ensure all triple-quoted strings are clean
-        st.markdown(
-            """
-            <p style="color: #00E0FF;">
-            **Pasting Tip:** If direct pasting is blocked, please try right-clicking the text box
-            or use **Ctrl+Shift+V** (Windows) / **Cmd+Shift+V** (Mac).
-            </p>
-            """, unsafe_allow_html=True
-        )
+        st.caption("**Pasting Tip:** Use Ctrl+Shift+V or Cmd+Shift+V if direct pasting is difficult.")
         st.text_area("Paste CV Content Here", value=st.session_state.get('cv_input_paste', ""), height=300,
             placeholder="Paste your resume content here...", key="cv_input_paste", label_visibility="hidden")
         cv_text = st.session_state.get('cv_input_paste', "")
@@ -506,7 +345,7 @@ def main():
 
         if uploaded_file is not None:
             if uploaded_file.type == "application/pdf":
-                st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust, cross-platform reading. If content remains incorrect, the file's text layer may be corrupted (e.g., image-only PDF).")
+                st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust reading.")
                 try: cv_text = extract_text_from_pdf(uploaded_file)
                 except Exception as e: st.error(f"Failed to read PDF. Error: {e}"); cv_text = ""
             else:
@@ -527,7 +366,7 @@ def main():
     
     col1, col2, col3 = st.columns([1, 2, 1])
     
-    if col2.button("Generate Comprehensive Job Strategy", use_container_width=True):
+    if col2.button("Generate Comprehensive Job Strategy", type="primary", use_container_width=True):
         if not cv_text.strip(): st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
         else: st.session_state['cv_text_to_process'] = cv_text; st.session_state['run_search'] = True
             
@@ -539,7 +378,6 @@ def main():
     
     if st.session_state.get('run_search') and st.session_state.get('cv_text_to_process'):
         with st.container():
-            st.markdown('<div class="results-card">', unsafe_allow_html=True)
             with st.spinner("Analyzing CV and Performing Real-Time Grounded Search..."):
                 markdown_output, skill_gap_report, citations = generate_job_strategy_from_gemini(st.session_state['cv_text_to_process'])
 
@@ -554,14 +392,12 @@ def main():
                 for i, source in enumerate(citations): st.markdown(f"**[{i+1}]** [{source.get('title')}]({source.get('uri')})")
             else: st.info("No explicit grounding sources were returned.")
             
-            st.session_state['results_displayed'] = True; st.session_state['run_search'] = False; st.markdown('</div>', unsafe_allow_html=True)
+            st.session_state['results_displayed'] = True; st.session_state['run_search'] = False
             st.rerun() 
             
     elif st.session_state.get('results_displayed'):
         with st.container():
-            st.markdown('<div class="results-card">', unsafe_allow_html=True)
             st.markdown(st.session_state.get('markdown_output', 'Results not loaded.'), unsafe_allow_html=False)
-            st.markdown('</div>', unsafe_allow_html=True)
 
     else: st.info("Your comprehensive job search strategy and dynamic skill-match matrix will appear here after analysis. Click 'Generate' to begin.")
 
