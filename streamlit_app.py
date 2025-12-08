@@ -1,4 +1,4 @@
-# --- 2025-12-08_FINAL_ULTIMATE_STABILITY ---
+# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V7_RESTORED_DESIGN ---
 import streamlit as st
 import requests
 import json
@@ -132,9 +132,9 @@ def generate_job_strategy_from_gemini(cv_text):
             "weakest_link_skill": {"type": "STRING", "description": "The specific skill or competency..."},
             "learning_resource_1": {"type": "STRING", "description": "Specific, actionable resource..."},
             "learning_resource_2": {"type": "STRING", "description": "Second specific resource..."},
-            "tech_score": {"type": "INTEGER", "description": "Simulated Technical Depth Score..."},
-            "leader_score": {"type": "INTEGER", "description": "Simulated Leadership Potential Score..."},
-            "domain_score": {"type": "INTEGER", "description": "Simulated Domain Expertise Score..."},
+            "tech_score": {"type": "INTEGER", "description": "Simulated Technical Depth Score (0-100)."},
+            "leader_score": {"type": "INTEGER", "description": "Simulated Leadership Potential Score (0-100)."},
+            "domain_score": {"type": "INTEGER", "description": "Simulated Domain Expertise Score (0-100)."},
         },
         "required": ["predictive_score", "weakest_link_skill", "learning_resource_1", "learning_resource_2", "tech_score", "leader_score", "domain_score"]
     }
@@ -223,7 +223,7 @@ def call_gemini_api(payload, structured=False):
 
     return ("Error: Failed after retries.", []) if not structured else {"error": "Failed after retries."}
 
-# --- Visualization Render (CLEANED OF CUSTOM STYLING) ---
+# --- Visualization Render (IMPROVED DESIGN) ---
 def render_strategy_visualizations(report):
     """Renders the Strategy Funnel and Progress Meter Dashboard using dense data presentation."""
     
@@ -232,23 +232,21 @@ def render_strategy_visualizations(report):
     score = report.get('predictive_score', 0)
     score_float = float(score) / 100.0 if score is not None else 0.0
     
-    # Determine status for st.metric delta color
-    if score >= 85:
-        score_status = "normal"
-        score_text = f"**{score}%**"
-    elif score >= 70:
-        score_status = "off"
-        score_text = f"**{score}%**"
-    else:
-        score_status = "inverse"
-        score_text = f"**{score}%**"
-
-    st.markdown("---")
-
+    # --- 1. KPI Metrics (Denser presentation with st.metric) ---
+    st.subheader("Key Predictive Metrics")
+    
     col_kpi_1, col_kpi_2, col_kpi_3 = st.columns(3)
     
     # KPI 1: Overall Match Score
     with col_kpi_1:
+        # Determine status for st.metric delta color (using default Streamlit values)
+        if score >= 85:
+            score_status = "normal"
+        elif score >= 70:
+            score_status = "off"
+        else:
+            score_status = "inverse"
+        
         st.markdown(f"**Overall Predictive Match**")
         st.metric(label="Score", value=f"{score}%", delta_color=score_status)
         st.progress(score_float)
@@ -257,7 +255,7 @@ def render_strategy_visualizations(report):
     with col_kpi_2:
         weak_link = report.get('weakest_link_skill', 'N/A')
         st.markdown(f"**Targeted Mitigation Focus**")
-        st.warning(f"**{weak_link}**")
+        st.error(f"**{weak_link}**")
         st.caption("*Highest priority for CV optimization.*")
         
     # KPI 3: Next Action Step
@@ -276,14 +274,20 @@ def render_strategy_visualizations(report):
     leader_score = report.get('leader_score', 0) / 100
     domain_score = report.get('domain_score', 0) / 100
     
-    st.markdown("**Technical Depth (Hard Skills)**")
-    st.progress(tech_score, text=f"{int(tech_score * 100)}%")
+    # Use columns to present the breakdown more densely
+    col_skill_1, col_skill_2, col_skill_3 = st.columns(3)
+    
+    with col_skill_1:
+        st.markdown("👨‍💻 **Technical Depth**")
+        st.progress(tech_score, text=f"**{int(tech_score * 100)}%**")
 
-    st.markdown("**Leadership Potential (Soft Skills/Management)**")
-    st.progress(leader_score, text=f"{int(leader_score * 100)}%")
+    with col_skill_2:
+        st.markdown("🤝 **Leadership Potential**")
+        st.progress(leader_score, text=f"**{int(leader_score * 100)}%**")
 
-    st.markdown("**Domain Expertise (Industry Specific)**")
-    st.progress(domain_score, text=f"{int(domain_score * 100)}%")
+    with col_skill_3:
+        st.markdown("🌐 **Domain Expertise**")
+        st.progress(domain_score, text=f"**{int(domain_score * 100)}%**")
     
     st.markdown("---")
     
@@ -293,13 +297,13 @@ def render_strategy_visualizations(report):
     col_flow_1, col_flow_2, col_flow_3 = st.columns(3)
     
     with col_flow_1:
-        st.info(f"**1. ANALYSIS**\n\nCV scanned against 1,000 elite profiles. Match Score established.")
+        st.container(border=True, height=150).markdown(f"**1. ANALYSIS**\n\nCV scanned against 1,000 elite profiles. Match Score established.")
 
     with col_flow_2:
-        st.info(f"**2. OPTIMIZATION**\n\nUse Compiler to eliminate the Weakest Link and pass the ATS/Recruiter filters.")
+        st.container(border=True, height=150).markdown(f"**2. OPTIMIZATION**\n\nUse Compiler to eliminate the Weakest Link and pass the ATS/Recruiter filters.")
 
     with col_flow_3:
-        st.info(f"**3. EXECUTION**\n\nTarget employers and initiate the Visa Action Plan (see report below).")
+        st.container(border=True, height=150).markdown(f"**3. EXECUTION**\n\nTarget employers and initiate the Visa Action Plan (see report below).")
 
 
 # --- Main Application Logic (CLEANED OF CUSTOM STYLING) ---
@@ -332,11 +336,13 @@ def main():
             
             col_advice, col_compiler_link = st.columns([2, 1])
             
+            # Advice box using native st.container
             with col_advice:
-                st.markdown(f"**Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}**")
-                st.caption(f"Action: You must optimize your CV against target JDs to address this gap.")
-                st.markdown(f"* **Resource 1:** {report.get('learning_resource_1', 'Check report below.')}")
-                st.markdown(f"* **Resource 2:** {report.get('learning_resource_2', 'Check report below.')}")
+                with st.container(border=True):
+                    st.markdown(f"**Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}**")
+                    st.caption(f"Action: You must optimize your CV against target JDs to address this gap.")
+                    st.markdown(f"* **Resource 1:** {report.get('learning_resource_1', 'Check report below.')}")
+                    st.markdown(f"* **Resource 2:** {report.get('learning_resource_2', 'Check report below.')}")
             
             with col_compiler_link:
                 st.markdown('**Immediate Optimization Tool:**')
