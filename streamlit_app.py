@@ -61,7 +61,7 @@ GRID_ORANGE = "rgba(255, 140, 0, 0.6)"
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
-# FIX: DEFINITION OF custom_css
+# FIX: DEFINITION OF custom_css (Syntax Error Corrected)
 # ------------------------------------------------
 custom_css = f"""
 <style>
@@ -445,42 +445,34 @@ def main():
     st.markdown("---")
     # -----------------------------------
 
-    # 👇 NEW: Feature Navigation Links
+    # --- Conditional Navigation Hub (Moved out the Compiler) ---
     st.markdown("""
-    <h3 class="holo-text" style="color:#00E0FF; font-size: 1.8rem;">🚀 Feature Navigation Hub</h3>
-    <p style='color: #ccc; font-size: 0.9rem; margin-bottom: 10px;'>Unlock deeper insights by navigating the specialized tools below.</p>
+    <h3 class="holo-text" style="color:#00E0FF; font-size: 1.8rem;">🚀 Specialized Tools</h3>
+    <p style='color: #ccc; font-size: 0.9rem; margin-bottom: 10px;'>Access specialized tools for endurance and pivot strategy.</p>
     """, unsafe_allow_html=True)
     
-    col_nav_1, col_nav_2, col_nav_3 = st.columns(3)
+    col_nav_1, col_nav_2 = st.columns(2)
     
     with col_nav_1:
         st.page_link("pages/1_Emotional_Tracker.py", label="🧘 Emotional Endurance", icon="🧘", use_container_width=True)
     with col_nav_2:
-        st.page_link("pages/2_Feedback_Loop.py", label="🔄 Predictive Feedback Loop", icon="🔄", use_container_width=True)
-    with col_nav_3:
         st.page_link("pages/3_Skill_Migration.py", label="🌍 Skill Migration Map", icon="🌍", use_container_width=True)
         
     st.markdown("---")
-    # 👆 END NEW NAVIGATION SECTION
+    # 👆 END MODIFIED NAVIGATION HUB
 
     # --- 0. Predictive Skill Health Card (NEW FEATURE DISPLAY) ---
     if st.session_state.get('skill_gap_report'):
         report = st.session_state['skill_gap_report']
         if not report.get('error'):
-            st.markdown(f'<h2 class="holo-text" style="color:{ACCENT_ORANGE};">✨ Predictive Skill Health Score</h2>', unsafe_allow_html=True) # Changed color
-            col_score, col_gap = st.columns([1, 2])
             
-            with col_score:
-                score = report.get('predictive_score', 0)
-                score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_ORANGE) # Changed color
-                st.markdown(f"""
-                    <div class="glass-card" style="border: 2px solid {score_color}; text-align: center; height: 100%;">
-                        <p style="color: {score_color}; font-size: 1rem; margin-bottom: 0;">Trajectory Match</p>
-                        <p style="color: white; font-size: 3rem; font-weight: bold; margin: 0; text-shadow: 0 0 10px {score_color}50;">{score}%</p>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-            with col_gap:
+            # --- START: Conditional Placement of CV Compiler Button ---
+            st.markdown(f'<h2 class="holo-text" style="color:{ACCENT_ORANGE};">✨ Predictive Skill Health Score</h2>', unsafe_allow_html=True)
+            
+            # Use columns to place the Compiler link next to the Advisor card
+            col_advice, col_compiler_link = st.columns([2, 1])
+            
+            with col_advice:
                 st.markdown(f"""
                     <div class="glass-card">
                         <p style="color: {ACCENT_ORANGE}; font-weight: bold; margin-bottom: 0.5rem;">Weakest Link Found: {report.get('weakest_link_skill', 'N/A')}</p>
@@ -493,18 +485,32 @@ def main():
                         </ul>
                     </div>
                 """, unsafe_allow_html=True)
+            
+            with col_compiler_link:
+                st.markdown('<p style="font-weight: bold; color: white; margin-top: 1.5rem;">Immediate Optimization Tool:</p>', unsafe_allow_html=True)
+                st.page_link("pages/4_CV_Compiler.py", label="🔄 CV Compiler", icon="🛠️", use_container_width=True)
+                
+            # --- END: Conditional Placement of CV Compiler Button ---
+            
             st.markdown("---")
             
-            # NEW CALL-TO-ACTION AFTER SCORES ARE DISPLAYED
-            st.info("💡 **NEXT STEP:** Use the 'CV Confidence Compiler' tool in the sidebar to test your CV against specific job descriptions and eliminate the Weakest Link.") 
+            # Display Score Card (consolidated into the new structure above, but keeping old logic)
+            col_score, col_gap = st.columns([1, 2])
+            
+            with col_score:
+                score = report.get('predictive_score', 0)
+                score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_ORANGE)
+                st.markdown(f"""
+                    <div class="glass-card" style="border: 2px solid {score_color}; text-align: center; height: 100%;">
+                        <p style="color: {score_color}; font-size: 1rem; margin-bottom: 0;">Trajectory Match</p>
+                        <p style="color: white; font-size: 3rem; font-weight: bold; margin: 0; text-shadow: 0 0 10px {score_color}50;">{score}%</p>
+                    </div>
+                """, unsafe_allow_html=True)
 
-    # --- 1. Conditional Visualization (Updated to use new function) ---
-    if st.session_state.get('results_displayed') and st.session_state.get('skill_gap_report'):
-        report = st.session_state['skill_gap_report']
-        if not report.get('error'):
-            render_strategy_visualizations(report) # <-- NEW FUNCTION CALL
-            st.markdown("---")
+            # --- RENDER VISUALIZATIONS ---
+            render_strategy_visualizations(report)
     
+    # --- Input Section (Remains same) ---
     st.subheader("📝 Step 2: Input Your Professional Profile")
     
     tab_paste, tab_upload = st.tabs(["Paste CV Content", "Upload CV File"])
@@ -525,4 +531,78 @@ def main():
 
     with tab_upload:
         uploaded_file_key = f"cv_input_upload_{st.session_state['reset_key_counter']}"
-        uploaded_file = st.file_uploader("Upload CV or
+        uploaded_file = st.file_uploader("Upload CV or Resume", type=["txt", "pdf"], key=uploaded_file_key)
+
+        if uploaded_file is not None:
+            if uploaded_file.type == "application/pdf":
+                st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust, cross-platform reading. If content remains incorrect, the file's text layer may be corrupted (e.g., image-only PDF).")
+                try: cv_text = extract_text_from_pdf(uploaded_file)
+                except Exception as e: st.error(f"Failed to read PDF. Error: {e}"); cv_text = ""
+            else:
+                try:
+                    uploaded_file.seek(0)
+                    raw_bytes = uploaded_file.read()
+                    try: string_data = raw_bytes.decode('utf-8')
+                    except UnicodeDecodeError: string_data = raw_bytes.decode('windows-1252', errors='replace')
+                    cv_text = string_data
+                except Exception as e: st.error(f"Error reading TXT file: {e}"); cv_text = ""
+            
+            if cv_text and len(cv_text.strip()) < 50: st.error("❌ **Reading Failure:** Extracted text is too short or empty."); cv_text = ""
+                
+        if not cv_text.strip() and st.session_state.get('run_search'):
+            st.session_state['run_search'] = False; st.session_state['cv_text_to_process'] = ""; st.warning("Input cancelled due to empty CV content.")
+            
+    st.markdown("---")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    if col2.button("Generate Comprehensive Job Strategy", use_container_width=True):
+        if not cv_text.strip(): st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
+        else: st.session_state['cv_text_to_process'] = cv_text; st.session_state['run_search'] = True
+            
+    if st.session_state.get('results_displayed'):
+        if st.button("Start New Search (Reset)", type="secondary", on_click=handle_reset_click): pass
+
+    st.markdown("---")
+    st.subheader("🚀 Step 3: High-Definition Generated Strategy")
+    
+    if st.session_state.get('run_search') and st.session_state.get('cv_text_to_process'):
+        with st.container():
+            st.markdown('<div class="results-card">', unsafe_allow_html=True)
+            with st.spinner("Analyzing CV and Performing Real-Time Grounded Search..."):
+                # Call the modified Gemini function that returns three values now
+                markdown_output, skill_gap_report, citations = generate_job_strategy_from_gemini(st.session_state['cv_text_to_process'])
+
+            st.session_state['markdown_output'] = markdown_output
+            st.session_state['skill_gap_report'] = skill_gap_report
+            
+            st.markdown(markdown_output)
+
+            if citations:
+                st.markdown("---")
+                st.markdown("#### 🔗 Grounding Sources (For Verification)")
+                for i, source in enumerate(citations): st.markdown(f"**[{i+1}]** [{source.get('title')}]({source.get('uri')})")
+            else: st.info("No explicit grounding sources were returned.")
+            
+            st.session_state['results_displayed'] = True; st.session_state['run_search'] = False; st.markdown('</div>', unsafe_allow_html=True)
+            st.rerun() 
+            
+    elif st.session_state.get('results_displayed'):
+        with st.container():
+            st.markdown('<div class="results-card">', unsafe_allow_html=True)
+            st.markdown(st.session_state.get('markdown_output', 'Results not loaded.'), unsafe_allow_html=False)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    else: st.info("Your comprehensive job search strategy and dynamic skill-match matrix will appear here after analysis. Click 'Generate' to begin.")
+
+
+if __name__ == '__main__':
+    if 'cv_input_paste' not in st.session_state: st.session_state['cv_input_paste'] = ""
+    if 'run_search' not in st.session_state: st.session_state['run_search'] = False
+    if 'results_displayed' not in st.session_state: st.session_state['results_displayed'] = False
+    if 'cv_text_to_process' not in st.session_state: st.session_state['cv_text_to_process'] = ""
+    if 'reset_key_counter' not in st.session_state: st.session_state['reset_key_counter'] = 0
+    if 'markdown_output' not in st.session_state: st.session_state['markdown_output'] = ""
+    if 'skill_gap_report' not in st.session_state: st.session_state['skill_gap_report'] = None # NEW STATE
+        
+    main()
