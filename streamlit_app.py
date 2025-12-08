@@ -61,7 +61,7 @@ GRID_ORANGE = "rgba(255, 140, 0, 0.6)"
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
-# FIX: DEFINITION OF custom_css (Syntax Error Corrected)
+# FIX: DEFINITION OF custom_css
 # ------------------------------------------------
 custom_css = f"""
 <style>
@@ -237,7 +237,6 @@ def generate_job_strategy_from_gemini(cv_text):
 
     # --- RAG STEP 2: Augmented Prompt Construction ---
     # NEW: Define JSON schema for the predictive skill report
-    # FIX: Ensured all strings are properly terminated within the dictionary definition
     json_schema = {
         "type": "OBJECT",
         "properties": {
@@ -363,8 +362,6 @@ def render_strategy_visualizations(report):
     
     st.markdown('<h2 class="holo-text" style="margin-top: 2rem;">🧠 Strategic Visualization Suite</h2>', unsafe_allow_html=True)
     
-    col_chart, col_funnel = st.columns([2, 1])
-    
     score = report.get('predictive_score', 0)
     score_float = float(score) / 100.0 if score is not None else 0.0
     
@@ -441,9 +438,12 @@ def render_strategy_visualizations(report):
 def main():
     st.markdown(custom_css, unsafe_allow_html=True) # Apply CSS first
     
-    st.markdown('<h1 class="holo-text" style="font-size: 3rem; margin-bottom: 0.5rem; text-align: center;">🤖 AI Recruitment Matrix V3.0</h1>', unsafe_allow_html=True)
-    st.markdown('<p style="font-size: 1.25rem; color: #9CA3AF; text-align: center;">Analyze your CV against global employers using grounded Gemini AI.</p>', unsafe_allow_html=True)
+    # --- New Name and Logo Integration ---
+    st.image("aequor_logo_placeholder.png") # Placeholder for the uploaded image
+    st.markdown('<h1 class="holo-text" style="font-size: 3rem; margin-bottom: 0.5rem; text-align: center;">Aequor</h1>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size: 1.25rem; color: #9CA3AF; text-align: center;">The smooth, level pathway through the job market turbulence.</p>', unsafe_allow_html=True)
     st.markdown("---")
+    # -----------------------------------
 
     # 👇 NEW: Feature Navigation Links
     st.markdown("""
@@ -525,78 +525,4 @@ def main():
 
     with tab_upload:
         uploaded_file_key = f"cv_input_upload_{st.session_state['reset_key_counter']}"
-        uploaded_file = st.file_uploader("Upload CV or Resume", type=["txt", "pdf"], key=uploaded_file_key)
-
-        if uploaded_file is not None:
-            if uploaded_file.type == "application/pdf":
-                st.warning("⚠️ **PDF Extraction:** Using dedicated PDF library (pypdf) for robust, cross-platform reading. If content remains incorrect, the file's text layer may be corrupted (e.g., image-only PDF).")
-                try: cv_text = extract_text_from_pdf(uploaded_file)
-                except Exception as e: st.error(f"Failed to read PDF. Error: {e}"); cv_text = ""
-            else:
-                try:
-                    uploaded_file.seek(0)
-                    raw_bytes = uploaded_file.read()
-                    try: string_data = raw_bytes.decode('utf-8')
-                    except UnicodeDecodeError: string_data = raw_bytes.decode('windows-1252', errors='replace')
-                    cv_text = string_data
-                except Exception as e: st.error(f"Error reading TXT file: {e}"); cv_text = ""
-            
-            if cv_text and len(cv_text.strip()) < 50: st.error("❌ **Reading Failure:** Extracted text is too short or empty."); cv_text = ""
-                
-        if not cv_text.strip() and st.session_state.get('run_search'):
-            st.session_state['run_search'] = False; st.session_state['cv_text_to_process'] = ""; st.warning("Input cancelled due to empty CV content.")
-            
-    st.markdown("---")
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    if col2.button("Generate Comprehensive Job Strategy", use_container_width=True):
-        if not cv_text.strip(): st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
-        else: st.session_state['cv_text_to_process'] = cv_text; st.session_state['run_search'] = True
-            
-    if st.session_state.get('results_displayed'):
-        if st.button("Start New Search (Reset)", type="secondary", on_click=handle_reset_click): pass
-
-    st.markdown("---")
-    st.subheader("🚀 Step 3: High-Definition Generated Strategy")
-    
-    if st.session_state.get('run_search') and st.session_state.get('cv_text_to_process'):
-        with st.container():
-            st.markdown('<div class="results-card">', unsafe_allow_html=True)
-            with st.spinner("Analyzing CV and Performing Real-Time Grounded Search..."):
-                # Call the modified Gemini function that returns three values now
-                markdown_output, skill_gap_report, citations = generate_job_strategy_from_gemini(st.session_state['cv_text_to_process'])
-
-            st.session_state['markdown_output'] = markdown_output
-            st.session_state['skill_gap_report'] = skill_gap_report
-            
-            st.markdown(markdown_output)
-
-            if citations:
-                st.markdown("---")
-                st.markdown("#### 🔗 Grounding Sources (For Verification)")
-                for i, source in enumerate(citations): st.markdown(f"**[{i+1}]** [{source.get('title')}]({source.get('uri')})")
-            else: st.info("No explicit grounding sources were returned.")
-            
-            st.session_state['results_displayed'] = True; st.session_state['run_search'] = False; st.markdown('</div>', unsafe_allow_html=True)
-            st.rerun() 
-            
-    elif st.session_state.get('results_displayed'):
-        with st.container():
-            st.markdown('<div class="results-card">', unsafe_allow_html=True)
-            st.markdown(st.session_state.get('markdown_output', 'Results not loaded.'), unsafe_allow_html=False)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    else: st.info("Your comprehensive job search strategy and dynamic skill-match matrix will appear here after analysis. Click 'Generate' to begin.")
-
-
-if __name__ == '__main__':
-    if 'cv_input_paste' not in st.session_state: st.session_state['cv_input_paste'] = ""
-    if 'run_search' not in st.session_state: st.session_state['run_search'] = False
-    if 'results_displayed' not in st.session_state: st.session_state['results_displayed'] = False
-    if 'cv_text_to_process' not in st.session_state: st.session_state['cv_text_to_process'] = ""
-    if 'reset_key_counter' not in st.session_state: st.session_state['reset_key_counter'] = 0
-    if 'markdown_output' not in st.session_state: st.session_state['markdown_output'] = ""
-    if 'skill_gap_report' not in st.session_state: st.session_state['skill_gap_report'] = None # NEW STATE
-        
-    main()
+        uploaded_file = st.file_uploader("Upload CV or
