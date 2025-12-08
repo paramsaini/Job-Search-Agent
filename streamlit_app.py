@@ -1,4 +1,4 @@
-# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V8_RESTORED_DESIGN ---
+# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V9_AESTHETIC_DESIGN ---
 import streamlit as st
 import requests
 import json
@@ -304,13 +304,19 @@ def render_strategy_visualizations(report):
     col_flow_1, col_flow_2, col_flow_3 = st.columns(3)
     
     with col_flow_1:
-        st.container(border=True, height=150).markdown(f"**1. ANALYSIS**\n\nCV scanned against 1,000 elite profiles. Match Score established.")
+        with st.container(border=True, height=150):
+            st.markdown(f"**1. ANALYSIS**")
+            st.caption("CV scanned against 1,000 elite profiles. Match Score established.")
 
     with col_flow_2:
-        st.container(border=True, height=150).markdown(f"**2. OPTIMIZATION**\n\nUse Compiler to eliminate the Weakest Link and pass the ATS/Recruiter filters.")
+        with st.container(border=True, height=150):
+            st.markdown(f"**2. OPTIMIZATION**")
+            st.caption("Use Compiler to eliminate the Weakest Link and pass the ATS/Recruiter filters.")
 
     with col_flow_3:
-        st.container(border=True, height=150).markdown(f"**3. EXECUTION**\n\nTarget employers and initiate the Visa Action Plan (see report below).")
+        with st.container(border=True, height=150):
+            st.markdown(f"**3. EXECUTION**")
+            st.caption("Target employers and initiate the Visa Action Plan (see report below).")
 
 
 # --- Main Application Logic (CLEANED OF CUSTOM STYLING) ---
@@ -321,15 +327,19 @@ def main():
     st.markdown("### The smooth, level pathway through the job market turbulence.")
     st.divider()
 
-    # --- Conditional Navigation Hub (CLEANED) ---
-    st.header("🚀 Specialized Tools")
+    # --- Conditional Navigation Hub (IMPROVED AESTHETIC CARDS) ---
+    st.header("🔗 Specialized Tools")
     
     col_nav_1, col_nav_2 = st.columns(2)
     
     with col_nav_1:
-        st.page_link("pages/1_Emotional_Tracker.py", label="🧘 **Emotional Endurance**", icon="🧘", use_container_width=True)
+        with st.container(border=True):
+            st.page_link("pages/1_Emotional_Tracker.py", label="🧘 **Emotional Endurance**", icon="🧘", use_container_width=True)
+            st.caption("Track and stabilize mental health during job seeking.")
     with col_nav_2:
-        st.page_link("pages/3_Skill_Migration.py", label="🌍 **Skill Migration Map**", icon="🌍", use_container_width=True)
+        with st.container(border=True):
+            st.page_link("pages/3_Skill_Migration.py", label="🌍 **Skill Migration Map**", icon="🌍", use_container_width=True)
+            st.caption("Identify international job/visa opportunities by country.")
         
     st.divider()
     # 👆 END MODIFIED NAVIGATION HUB
@@ -360,7 +370,7 @@ def main():
             render_strategy_visualizations(report)
     
     # --- Input Section (CLEANED) ---
-    st.header("📄 Profile Analysis Input") # Replaced 'Step 2'
+    st.header("📄 Profile Analysis Input") # Professional Header
     
     # Use expander for cleaner layout
     with st.expander("Upload or Paste Your CV Content", expanded=True):
