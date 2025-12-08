@@ -1,4 +1,4 @@
-# --- 2025-12-08_STABILITY_COMMITTED_FINAL_V5_SYNTAX_FIX ---
+# --- 2025-12-08_STABILITY_COMMITTED_FINAL_V6_NO_BACKGROUND_CSS ---
 import streamlit as st
 import requests
 import json
@@ -62,7 +62,7 @@ GRID_ORANGE = "rgba(255, 140, 0, 0.6)"
 GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
-# FIX: DEFINITION OF custom_css (BACKGROUND FILE REFERENCE REMOVED FOR STABILITY)
+# FIX: DEFINITION OF custom_css (COMPLETELY REMOVING BACKGROUND ASSETS)
 # ------------------------------------------------
 custom_css = f"""
 <style>
@@ -70,43 +70,15 @@ custom_css = f"""
 footer {{visibility: hidden;}}
 header {{visibility: hidden;}}
 
-/* 1. MOVING BACKGROUND IMPLEMENTATION (OPTIMIZED FOR STABILITY) */
+/* 1. BACKGROUND IMPLEMENTATION (MAXIMUM STABILITY) */
 .stApp {{
+    /* Base black background is the only background now */
     background-color: {BG_DARK}; 
     color: white; 
     position: relative; 
 }}
 
-/* Create a fixed, full-screen pseudo-element for the animated background */
-.stApp::before {{
-    content: '';
-    position: fixed; 
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -100; 
-    
-    /* *** CRITICAL FIX: External image reference disabled to fix black screen. 
-           Relying solely on stable gradient animation. *** */
-    
-    background-size: cover; 
-    
-    /* Use ONLY stable gradient animation for dynamic feel */
-    background-image: linear-gradient(45deg, rgba(0,0,0,0.8), rgba(0,0,0,0.7)),
-                      radial-gradient(ellipse at bottom, {ACCENT_CYAN}40, {ACCENT_ORANGE}40, transparent);
-    background-size: 400% 400%;
-    
-    animation: gradient-motion 30s ease infinite; 
-    opacity: 0.85; 
-}}
-
-@keyframes gradient-motion {{
-    0% {{ background-position: 0% 50%; }}
-    50% {{ background-position: 100% 50%; }}
-    100% {{ background-position: 0% 50%; }}
-}}
-
+/* Removing .stApp::before block to eliminate all file loading conflicts */
 
 /* --- VISIBILITY FIXES (Aggressively set all text to white) --- */
 /* Target general text, titles, and labels */
