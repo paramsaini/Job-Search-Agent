@@ -26,7 +26,6 @@ def calculate_clarity(text):
         return 0
 
     # 1. Active Voice & Quantification Check (Simulated)
-    # Count of numbers (a proxy for quantification/metrics)
     metric_count = len(re.findall(r'\d[\d,\.]*', text)) 
     
     # 2. Readability (Flesch-Kincaid style, simplified)
@@ -100,7 +99,7 @@ def log_finalized_application(company, job_id, live_compliance, live_clarity):
 
 def compiler_page():
     
-    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🤖 CV Confidence Compiler</h1>', unsafe_allow_html=True)
+    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🤖 Aequor: CV Confidence Compiler</h1>', unsafe_allow_html=True)
     st.markdown(f"""
     <p style="text-align: center; color: {ACCENT_CYAN}; font-size: 1.1em; font-weight: 500; text-shadow: 0 0 2px {ACCENT_CYAN}40;">
         **Niche Solution: Algorithmic Black Box.** Measure the trade-off between **ATS Compliance** and **Human Clarity** in real-time before you apply.
