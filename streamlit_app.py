@@ -139,6 +139,7 @@ def generate_job_strategy_from_gemini(cv_text):
         "required": ["predictive_score", "weakest_link_skill", "learning_resource_1", "learning_resource_2", "tech_score", "leader_score", "domain_score"]
     }
     
+    # --- SYNTAX CHECK: JSON Prompt F-String ---
     json_prompt = f"""
     Based on the following CV and the RAG Knowledge Base Context (1000 resumes), analyze the user's current professional trajectory...
     --- RETRIEVED KNOWLEDGE BASE CONTEXT ---
@@ -324,17 +325,18 @@ def main():
     # NO CUSTOM STYLING: Relying on default Streamlit theme for stability
     
     # --- FINAL CLEAN NAME & LOGO INTEGRATION ---
-    col_logo, col_title = st.columns([1, 5])
+    # Centering the entire block with Markdown/HTML is the only stable way without full CSS
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
     
-    with col_logo:
-        # Logo image is placed close and above the name (Assumes aequor_logo_placeholder.png is in the root)
-        st.image("aequor_logo_placeholder.png", width=100) 
-        
-    with col_title:
-        # Simple, bolded name structure, removing all custom color HTML and excess symbols
-        st.title("AEQUOR")
-        st.markdown("### The smooth, level pathway through the job market turbulence.")
-        
+    # LOGO (Bigger Size: 200px)
+    st.image("aequor_logo_placeholder.png", width=200) 
+    
+    # TITLE (Smaller Size, Centered, using H1 for size)
+    st.markdown("<h1>AEQUOR</h1>", unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("### The smooth, level pathway through the job market turbulence.")
     st.divider()
 
     # --- Conditional Navigation Hub (IMPROVED AESTHETIC CARDS) ---
