@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import re
-from datetime import datetime # Necessary for logging functions if used here
-import numpy as np # <--- FIX: Added missing import
+from datetime import datetime 
+import numpy as np 
 
 # --- Configuration (Copied from main app for consistency) ---
 BG_DARK = "#000000"
@@ -55,20 +55,22 @@ def analyze_friction(cv_text, jd_text, predictive_score):
         friction_level = "Medium"
         color = ACCENT_YELLOW
         
-    final_score = int(np.clip(friction_score, 40, 100)) # FIX: np is now defined
+    final_score = int(np.clip(friction_score, 40, 100))
     
     return final_score, objection, color, keyword_match_percent
 
 # --- Page Render ---
 
 def feedback_loop_page():
-    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🔄 Predictive Feedback Loop</h1>', unsafe_allow_html=True)
+    # --- New Name Integration ---
+    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🔄 Aequor: Predictive Feedback Loop</h1>', unsafe_allow_html=True)
     st.markdown(f"""
     <p style="text-align: center; color: {ACCENT_CYAN}; font-size: 1.1em; font-weight: 500; text-shadow: 0 0 2px {ACCENT_CYAN}40;">
         **Niche Solution: Opaque Feedback.** Instantly simulate a recruiter's first impression by comparing your CV to a Job Description (JD). Eliminate wasted time on low-probability applications.
     </p>
     """, unsafe_allow_html=True)
     st.markdown("---")
+    # ---------------------------
 
     # Get CV text from session state (prerequisite)
     cv_text = st.session_state.get('cv_text_to_process', None)
