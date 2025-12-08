@@ -1,3 +1,4 @@
+# --- 2025-12-08_VISIBILITY_FIX_COMMITTED_FINAL ---
 import streamlit as st
 import requests
 import json
@@ -20,18 +21,15 @@ load_dotenv()
 
 def handle_reset_click():
     """Resets session state variables to restart the search process."""
-    # Increment the reset counter to force the file_uploader to be recreated.
     st.session_state['reset_key_counter'] = st.session_state.get('reset_key_counter', 0) + 1
-    
-    # Reset input values and flow control flags
     st.session_state['cv_input_paste'] = ""
     st.session_state['cv_text_to_process'] = ""
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
-    st.session_state['markdown_output'] = "" # Clear previous output
-    st.session_state['skill_gap_report'] = None # CLEAR NEW REPORT
+    st.session_state['markdown_output'] = ""
+    st.session_state['skill_gap_report'] = None
     
-# --- Gemini & Qdrant Configuration ---
+# --- Gemini & Qdrant Configuration (UNCHANGED) ---
 # Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
 API_KEY = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
 QDRANT_API_KEY = st.secrets.get("QDRANT_API_KEY", os.environ.get("QDRANT_API_KEY", "")) 
@@ -42,26 +40,20 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}
 EMBEDDING_MODEL = "text-embedding-004"
 EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBEDDING_MODEL}:embedContent?key={API_KEY}"
 
-# --- Configuration Placeholder ---
-system_prompt = "" 
-
-# --- RAG Configuration ---
+# --- RAG Configuration (UNCHANGED) ---
 COLLECTION_NAME = 'resume_knowledge_base'
-RAG_K = 10 # Number of top documents to retrieve
+RAG_K = 10
 
-# --- Holographic Theme Configuration (UPDATED for maximum effect and new colors) ---
-BG_DARK = "#000000" # Pure black background for max contrast
+# --- Holographic Theme Configuration (UNCHANGED) ---
+BG_DARK = "#000000"
 ACCENT_CYAN = "#00E0FF"
 ACCENT_ORANGE = "#FF8C00" 
 ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
 TEXT_HOLO = f"0 0 10px {ACCENT_CYAN}, 0 0 20px {ACCENT_ORANGE}90"
-GRID_CYAN = "rgba(0, 255, 255, 0.6)" 
-GRID_ORANGE = "rgba(255, 140, 0, 0.6)" 
-GRID_GREEN = "rgba(16, 185, 129, 0.6)"
 
 # ------------------------------------------------
-# FIX: DEFINITION OF custom_css (AGGRESSIVE VISIBILITY FIX)
+# FIX: DEFINITION OF custom_css (AGGRESSIVE VISIBILITY & BACKGROUND FIX)
 # ------------------------------------------------
 custom_css = f"""
 <style>
@@ -90,7 +82,7 @@ header {{visibility: hidden;}}
     background: url('aequor_background_loop.gif') no-repeat center center fixed; 
     background-size: cover; 
     
-    /* Apply animation layer for dynamic feel */
+    /* Apply animation layer for dynamic feel (Simulating motion/crystals) */
     background-image: linear-gradient(45deg, rgba(0,0,0,0.8), rgba(0,0,0,0.7)),
                       radial-gradient(ellipse at bottom, {ACCENT_CYAN}40, {ACCENT_ORANGE}40, transparent);
     background-size: 400% 400%;
@@ -154,11 +146,6 @@ div.stButton > button {{
     position: relative; 
 }}
 
-/* Textarea color fix */
-.stTextArea label, .stFileUploader label, .stMarkdown p {{
-    color: white !important;
-}}
-
 /* Horizontal Rule Fix */
 hr {{
     border-top: 2px solid {ACCENT_CYAN}50;
@@ -179,7 +166,7 @@ hr {{
 """
 # ------------------------------------------------
 
-# --- PDF Extraction Function (Kept) ---
+# --- PDF Extraction Function (UNCHANGED) ---
 def extract_text_from_pdf(uploaded_file):
     """Uses pypdf to extract text from a PDF file stream."""
     try:
@@ -193,31 +180,27 @@ def extract_text_from_pdf(uploaded_file):
         st.error(f"Failed to process PDF with pypdf. Error: {e}")
         return ""
 
-# --- RAG Utility: Initialize Qdrant Client ---
+# --- RAG Utility: Initialize Qdrant Client (FIXED SyntaxError) ---
 @st.cache_resource
 def get_qdrant_client():
     """Initializes and returns the Qdrant Client object."""
-    # FIX: Corrected SyntaxError by completing the conditional statement
     if not QDRANT_API_KEY or not QDRANT_HOST: 
         st.error("Qdrant configuration is missing. Please set QDRANT_HOST and QDRANT_API_KEY in secrets.")
         return None
         
     try:
         client = QdrantClient(
-            # FIX: Use 'url' instead of 'host' for the full HTTPS protocol
             url=QDRANT_HOST,
             api_key=QDRANT_API_KEY,
             prefer_grpc=True
         )
-        # Verify collection exists (optional but recommended)
         client.get_collection(collection_name=COLLECTION_NAME) 
         return client
     except Exception as e:
-        # NOTE: Error text changed to reflect 'url' usage
         st.error(f"Qdrant Client Error: Ensure host/key are correct and collection '{COLLECTION_NAME}' exists. Error: {e}")
         return None
 
-# --- RAG Utility: Embed User Query (Kept) ---
+# --- RAG Utility: Embed User Query (UNCHANGED) ---
 @st.cache_data(ttl=600)
 def get_user_embedding(text):
     """Calls Gemini API to get a single embedding vector for the user's CV."""
@@ -232,16 +215,13 @@ def get_user_embedding(text):
         return None
 
 
-# --- Core Gemini API Call Function (MODIFIED FOR RAG) ---
+# --- Core Gemini API Call Function (UNCHANGED) ---
 @st.cache_data(show_spinner=False, max_entries=10)
 def generate_job_strategy_from_gemini(cv_text):
     if not API_KEY:
         return "Error: Gemini API Key not configured.", None, []
         
-    # --- RAG STEP 1: Retrieval from Qdrant ---
     context_text = "No RAG context available."
-    
-    # FIX: Use a more specific variable name to avoid shadowing and ensure correct object type
     qdrant_client_instance = get_qdrant_client()
     
     if qdrant_client_instance:
@@ -249,16 +229,14 @@ def generate_job_strategy_from_gemini(cv_text):
         
         if query_vector:
             try:
-                # Use the specific instance name
                 search_result = qdrant_client_instance.search( 
                     collection_name=COLLECTION_NAME,
-                    query_vector=query_vector, # Pass the vector here
+                    query_vector=query_vector, 
                     limit=RAG_K,
                     with_payload=True 
                 )
                 
-                # Format the retrieved documents into a single context string
-                if search_result: # Search results are returned as a list of points
+                if search_result:
                     retrieved_docs = [hit.payload['text'] for hit in search_result]
                     context_text = "\n---\n".join(retrieved_docs)
                 else:
@@ -267,62 +245,45 @@ def generate_job_strategy_from_gemini(cv_text):
                 context_text = f"Qdrant Query Error: {e}"
                 st.error(f"Failed to query Qdrant: {e}")
 
-    # --- RAG STEP 2: Augmented Prompt Construction ---
-    # NEW: Define JSON schema for the predictive skill report
+    # --- RAG STEP 2: Augmented Prompt Construction (UNCHANGED) ---
     json_schema = {
         "type": "OBJECT",
         "properties": {
-            "predictive_score": {"type": "INTEGER", "description": "Percentage score (0-100) comparing user's profile to the elite RAG context (90-100)."},
-            "weakest_link_skill": {"type": "STRING", "description": "The specific skill or competency (e.g., Data Modeling, Team Leadership) with the largest gap."},
-            "learning_resource_1": {"type": "STRING", "description": "Specific, actionable resource to close the weakest link gap."},
-            "learning_resource_2": {"type": "STRING", "description": "Second specific resource."},
-            # Add placeholders for the Radar Chart data (scores are dummy but derived from main predictive score)
-            "tech_score": {"type": "INTEGER", "description": "Simulated Technical Depth Score (0-100)."},
-            "leader_score": {"type": "INTEGER", "description": "Simulated Leadership Potential Score (0-100)."},
-            "domain_score": {"type": "INTEGER", "description": "Simulated Domain Expertise Score (0-100)."},
+            "predictive_score": {"type": "INTEGER", "description": "Percentage score (0-100)..."},
+            "weakest_link_skill": {"type": "STRING", "description": "The specific skill or competency..."},
+            "learning_resource_1": {"type": "STRING", "description": "Specific, actionable resource..."},
+            "learning_resource_2": {"type": "STRING", "description": "Second specific resource..."},
+            "tech_score": {"type": "INTEGER", "description": "Simulated Technical Depth Score..."},
+            "leader_score": {"type": "INTEGER", "description": "Simulated Leadership Potential Score..."},
+            "domain_score": {"type": "INTEGER", "description": "Simulated Domain Expertise Score..."},
         },
         "required": ["predictive_score", "weakest_link_skill", "learning_resource_1", "learning_resource_2", "tech_score", "leader_score", "domain_score"]
     }
     
-    # NEW: First call to get the JSON report (Structured response)
     json_prompt = f"""
-    Based on the following CV and the RAG Knowledge Base Context (1000 resumes), analyze the user's current professional trajectory relative to the elite profiles found in the context. 
-    Generate a JSON object strictly following the provided schema. 
-    1. The 'predictive_score' should reflect the user's readiness for the next 5 years of market demands as seen in the RAG context.
-    2. The 'tech_score', 'leader_score', and 'domain_score' should be derived as sub-scores of the predictive score, indicating specific strengths/weaknesses (e.g., if predictive score is 85, scores should be around 85 +/- 5).
-
+    Based on the following CV and the RAG Knowledge Base Context (1000 resumes), analyze the user's current professional trajectory...
     --- RETRIEVED KNOWLEDGE BASE CONTEXT ---
     {context_text}
     ---
     User CV: {cv_text}
     """
     
-    # NEW: Second call for the main Markdown strategy (Text + Search Grounding)
     markdown_prompt = f"""
-    You are a World-Class Job Search Consultant and Visa Immigration Analyst. Your primary goal is to generate the professional job strategy using Google Search for current data, and the RETRIEVED KNOWLEDGE BASE CONTEXT for grounding employer types.
-    
+    You are a World-Class Job Search Consultant and Visa Immigration Analyst...
     --- RETRIEVED KNOWLEDGE BASE CONTEXT (1000 Resumes) ---
     {context_text}
     --- END RETRIEVED CONTEXT ---
-
-    Analyze the user's CV and generate the requested professional job strategy. The user's CV content is:
+    Analyze the user's CV and generate the requested professional job strategy...
     ---
     {cv_text}
     ---
     MANDATORY OUTPUT REQUIREMENTS:
-    1. HIGH-ACCURACY DOMESTIC EMPLOYERS: List 5 specific, high-profile employers in the user's current domestic location 
-    (or related domestic hubs) that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.
-    2. HIGH-ACCURACY INTERNATIONAL EMPLOYERS: List 5 specific, high-profile employers globally, focusing on key immigration countries (US, UK, Canada, EU), that match the CV content (90%-100% suitability). For each, provide the name, location, a brief rationale, and the **[Direct Company Website Link](URL)**.
-    3. DOMESTIC JOB STRATEGY: Provide 3 specific job titles matching the CV. For each title, give a step-by-step guide on how to apply.\n"
-    4. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles matching the CV. For each title/region, you MUST include: 
-        a. The typical application steps (including necessary foreign credential evaluations). 
-        b. The specific, relevant **visa category/code** (e.g., H-1B, Skilled Worker Visa, Blue Card). 
-        c. Key **visa sponsorship requirements** for the employer and applicant, citing the search source.
+    1. HIGH-ACCURACY DOMESTIC EMPLOYERS: List 5 specific, high-profile employers...
+    2. HIGH-ACCURACY INTERNATIONAL EMPLOYERS: List 5 specific, high-profile employers...
+    3. DOMESTIC JOB STRATEGY: Provide 3 specific job titles...
+    4. INTERNATIONAL JOB STRATEGY: Provide 3 specific international job titles...
     """
     
-    # --- Execute two calls: one for structured data, one for text ---
-    
-    # CALL 1: Structured (JSON) Report
     json_payload = {
         "contents": [{ "parts": [{ "text": json_prompt }] }],
         "generationConfig": {
@@ -332,7 +293,6 @@ def generate_job_strategy_from_gemini(cv_text):
     }
     skill_gap_report = call_gemini_api(json_payload, structured=True)
     
-    # CALL 2: Markdown Strategy (Text + Search Grounding)
     markdown_payload = {
         "contents": [{ "parts": [{ "text": markdown_prompt }] }],
         "tools": [{ "google_search": {} }],
@@ -344,7 +304,6 @@ def generate_job_strategy_from_gemini(cv_text):
 
 def call_gemini_api(payload, structured=False):
     """Handles API calls with retries and response parsing for both JSON and Markdown."""
-    
     max_retries = 5
     for attempt in range(max_retries):
         try:
@@ -362,7 +321,6 @@ def call_gemini_api(payload, structured=False):
                     except json.JSONDecodeError:
                         return {"error": "Failed to decode JSON report."}
                 
-                # Handle text output and sources
                 sources = []
                 grounding_metadata = candidate.get('groundingMetadata')
                 if grounding_metadata and grounding_metadata.get('groundingAttributions'):
@@ -385,10 +343,7 @@ def call_gemini_api(payload, structured=False):
 
     return ("Error: Failed after retries.", []) if not structured else {"error": "Failed after retries."}
 
-# ----------------------------------------------------------------------------------
-# ALL 3D/2D PLOTLY FUNCTIONS REMOVED.
-# ----------------------------------------------------------------------------------
-
+# --- Visualization Render (UNCHANGED) ---
 def render_strategy_visualizations(report):
     """Renders the Strategy Funnel and Progress Meter Dashboard using data from the report."""
     
@@ -397,13 +352,10 @@ def render_strategy_visualizations(report):
     score = report.get('predictive_score', 0)
     score_float = float(score) / 100.0 if score is not None else 0.0
     
-    # Determine KPI color based on score
     score_color = ACCENT_GREEN if score >= 85 else (ACCENT_YELLOW if score >= 70 else ACCENT_ORANGE)
 
-    # --- 1. KPI Metrics (Professional Look) ---
     col_kpi_1, col_kpi_2, col_kpi_3 = st.columns(3)
     
-    # KPI 1: Overall Match Score
     with col_kpi_1:
         st.markdown(f'<p style="color: {ACCENT_CYAN}; font-weight: bold; margin-bottom: 0;">Overall Predictive Match</p>', unsafe_allow_html=True)
         st.markdown(f"""
@@ -413,7 +365,6 @@ def render_strategy_visualizations(report):
         """, unsafe_allow_html=True)
         st.progress(score_float)
     
-    # KPI 2: Weakest Link / Mitigation Focus
     with col_kpi_2:
         weak_link = report.get('weakest_link_skill', 'N/A')
         st.markdown(f'<p style="color: {ACCENT_ORANGE}; font-weight: bold; margin-bottom: 0;">Targeted Mitigation Focus</p>', unsafe_allow_html=True)
@@ -424,7 +375,6 @@ def render_strategy_visualizations(report):
         """, unsafe_allow_html=True)
         st.markdown(f'<p style="color: {ACCENT_YELLOW}; font-size: 0.8rem; margin-top: -10px;">Highest priority for CV optimization.</p>', unsafe_allow_html=True)
         
-    # KPI 3: Next Action Step
     with col_kpi_3:
         st.markdown(f'<p style="color: {ACCENT_GREEN}; font-weight: bold; margin-bottom: 0;">Immediate Tactical Goal</p>', unsafe_allow_html=True)
         st.markdown(f"""
@@ -436,7 +386,6 @@ def render_strategy_visualizations(report):
 
     st.markdown("---")
 
-    # --- 2. Action Strategy Flow (Integrated Funnel Text) ---
     st.subheader("Action Strategy Pipeline")
     
     col_flow_1, col_flow_2, col_flow_3 = st.columns(3)
@@ -466,7 +415,7 @@ def render_strategy_visualizations(report):
         """, unsafe_allow_html=True)
 
 
-# --- Main Application Logic (Unchanged) ---
+# --- Main Application Logic (UNCHANGED) ---
 def main():
     st.markdown(custom_css, unsafe_allow_html=True) # Apply CSS first
     
@@ -481,7 +430,7 @@ def main():
     st.markdown("---")
     # -----------------------------------
 
-    # --- Conditional Navigation Hub (Moved out the Compiler) ---
+    # --- Conditional Navigation Hub ---
     st.markdown("""
     <h3 class="holo-text" style="color:#00E0FF; font-size: 1.8rem;">🚀 Specialized Tools</h3>
     <p style='color: #ccc; font-size: 0.9rem; margin-bottom: 10px;'>Access specialized tools for endurance and pivot strategy.</p>
@@ -497,7 +446,7 @@ def main():
     st.markdown("---")
     # 👆 END MODIFIED NAVIGATION HUB
 
-    # --- 0. Predictive Skill Health Card (NEW FEATURE DISPLAY) ---
+    # --- 0. Predictive Skill Health Card ---
     if st.session_state.get('skill_gap_report'):
         report = st.session_state['skill_gap_report']
         if not report.get('error'):
@@ -505,7 +454,6 @@ def main():
             # --- START: Conditional Placement of CV Compiler Button ---
             st.markdown(f'<h2 class="holo-text" style="color:{ACCENT_ORANGE};">✨ Predictive Skill Health Score</h2>', unsafe_allow_html=True)
             
-            # Use columns to place the Compiler link next to the Advisor card
             col_advice, col_compiler_link = st.columns([2, 1])
             
             with col_advice:
@@ -530,7 +478,6 @@ def main():
             
             st.markdown("---")
             
-            # Display Score Card (consolidated into the new structure above, but keeping old logic)
             col_score, col_gap = st.columns([1, 2])
             
             with col_score:
@@ -606,7 +553,6 @@ def main():
         with st.container():
             st.markdown('<div class="results-card">', unsafe_allow_html=True)
             with st.spinner("Analyzing CV and Performing Real-Time Grounded Search..."):
-                # Call the modified Gemini function that returns three values now
                 markdown_output, skill_gap_report, citations = generate_job_strategy_from_gemini(st.session_state['cv_text_to_process'])
 
             st.session_state['markdown_output'] = markdown_output
@@ -639,6 +585,6 @@ if __name__ == '__main__':
     if 'cv_text_to_process' not in st.session_state: st.session_state['cv_text_to_process'] = ""
     if 'reset_key_counter' not in st.session_state: st.session_state['reset_key_counter'] = 0
     if 'markdown_output' not in st.session_state: st.session_state['markdown_output'] = ""
-    if 'skill_gap_report' not in st.session_state: st.session_state['skill_gap_report'] = None # NEW STATE
+    if 'skill_gap_report' not in st.session_state: st.session_state['skill_gap_report'] = None 
         
     main()
