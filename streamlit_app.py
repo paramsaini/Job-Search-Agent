@@ -1,4 +1,4 @@
-# --- 2025-12-08_FINAL_STABLE_VERSION_PRE_STYLING ---
+# --- 2025-12-08_FINAL_STABLE_VERSION_RESTORED_DESIGN ---
 import streamlit as st
 import requests
 import json
@@ -21,16 +21,14 @@ load_dotenv()
 
 def handle_reset_click():
     """Resets session state variables to restart the search process."""
-    # Increment the reset counter to force the file_uploader to be recreated.
     st.session_state['reset_key_counter'] = st.session_state.get('reset_key_counter', 0) + 1
     
-    # Reset input values and flow control flags
     st.session_state['cv_input_paste'] = ""
     st.session_state['cv_text_to_process'] = ""
     st.session_state['run_search'] = False
     st.session_state['results_displayed'] = False
-    st.session_state['markdown_output'] = "" # Clear previous output
-    st.session_state['skill_gap_report'] = None # CLEAR NEW REPORT
+    st.session_state['markdown_output'] = ""
+    st.session_state['skill_gap_report'] = None
     
 # --- Gemini & Qdrant Configuration ---
 # Uses st.secrets in Streamlit Cloud, falls back to os.environ locally
@@ -46,9 +44,6 @@ EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{E
 # --- RAG Configuration ---
 COLLECTION_NAME = 'resume_knowledge_base'
 RAG_K = 10 
-
-# --- NO CUSTOM STYLING BLOCK ---
-# All custom CSS and external asset references have been removed for stability.
 
 # --- PDF Extraction Function (Kept) ---
 def extract_text_from_pdf(uploaded_file):
@@ -237,15 +232,15 @@ def render_strategy_visualizations(report):
     score = report.get('predictive_score', 0)
     score_float = float(score) / 100.0 if score is not None else 0.0
     
-    # Use standard Streamlit colors (success, warning, error)
+    # Determine status for st.metric delta color
     if score >= 85:
-        score_status = "success"
+        score_status = "normal"
         score_text = f"**{score}%**"
     elif score >= 70:
-        score_status = "warning"
+        score_status = "off"
         score_text = f"**{score}%**"
     else:
-        score_status = "error"
+        score_status = "inverse"
         score_text = f"**{score}%**"
 
     st.markdown("---")
@@ -276,18 +271,18 @@ def render_strategy_visualizations(report):
     col_flow_1, col_flow_2, col_flow_3 = st.columns(3)
     
     with col_flow_1:
-        st.markdown(f"**1. ANALYSIS**\n\nCV scanned against 1,000 elite profiles. Match Score established.")
+        st.info(f"**1. ANALYSIS**\n\nCV scanned against 1,000 elite profiles. Match Score established.")
 
     with col_flow_2:
-        st.markdown(f"**2. OPTIMIZATION**\n\nUse Compiler to eliminate the Weakest Link and pass the ATS/Recruiter filters.")
+        st.info(f"**2. OPTIMIZATION**\n\nUse Compiler to eliminate the Weakest Link and pass the ATS/Recruiter filters.")
 
     with col_flow_3:
-        st.markdown(f"**3. EXECUTION**\n\nTarget employers and initiate the Visa Action Plan (see report below).")
+        st.info(f"**3. EXECUTION**\n\nTarget employers and initiate the Visa Action Plan (see report below).")
 
 
 # --- Main Application Logic (CLEANED OF CUSTOM STYLING) ---
 def main():
-    # NO CUSTOM STYLING: Relying on default Streamlit theme for stability
+    # Relying on default Streamlit theme for stability
     
     st.title("Aequor")
     st.markdown("### The smooth, level pathway through the job market turbulence.")
