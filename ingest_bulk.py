@@ -1,69 +1,133 @@
 import pandas as pd
-from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct, VectorParams, Distance
-from sentence_transformers import SentenceTransformer
-from tqdm import tqdm
+import time
 import uuid
+import os
+import requests
+import json
+from dotenv import load_dotenv
+from qdrant_client import QdrantClient, models
+from tqdm import tqdm
 
-# --- CONFIGURATION ---
-# Use the same Qdrant settings as your setup_rag.py
-QDRANT_URL = "http://localhost:6333" # Or your Cloud URL
-QDRANT_API_KEY = None # Add your key if using Cloud
-COLLECTION_NAME = "resumes_54k" # A new collection for this large dataset
-CSV_PATH = "data/resumes.csv" # Path to your downloaded CSV
+# --- 1. CONFIGURATION (Same as setup_rag.py) ---
+load_dotenv()
 
-# --- INITIALIZATION ---
-print("Initializing Qdrant and Model...")
-client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-model = SentenceTransformer('all-MiniLM-L6-v2') # 384 dimensions, fast and effective
+API_KEY = os.environ.get("GEMINI_API_KEY", "")
+QDRANT_HOST = os.environ.get("QDRANT_HOST", "YOUR_CLOUD_URL_HERE") # Ensure this is your Cloud URL
+QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "")
+COLLECTION_NAME = 'resume_knowledge_base'
+EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBEDDING_MODEL}:embedContent?key={API_KEY}"
 
-# Create collection if it doesn't exist
-if not client.collection_exists(COLLECTION_NAME):
-    client.create_collection(
-        collection_name=COLLECTION_NAME,
-        vectors_config=VectorParams(size=384, distance=Distance.COSINE)
-    )
-    print(f"Collection '{COLLECTION_NAME}' created.")
-
-# --- LOAD DATA ---
-print(f"Loading dataset from {CSV_PATH}...")
-# The 54k dataset usually has 'Resume_str' and 'Category' columns
-df = pd.read_csv(CSV_PATH)
-df = df.dropna(subset=['Resume_str']) # Remove empty rows
-print(f"Loaded {len(df)} resumes.")
-
-# --- INGESTION LOOP ---
-batch_size = 100 # Upload in batches to prevent timeouts
-points = []
-
-print("Starting ingestion...")
-for index, row in tqdm(df.iterrows(), total=len(df)):
-    text = row['Resume_str']
-    category = row.get('Category', 'Uncategorized')
+# --- 2. DEFINE THE EMBEDDING FUNCTION (Reused) ---
+def get_embedding(text):
+    """Calls Gemini API to get a single embedding vector (Identical to setup_rag.py)."""
+    if not API_KEY:
+        raise ValueError("API Key is missing.")
+        
+    payload = { "model": EMBEDDING_MODEL, "content": { "parts": [{ "text": text }] } }
     
-    # 1. Embed the text
-    embedding = model.encode(text).tolist()
-    
-    # 2. Create the Point (Vector + Metadata)
-    point = PointStruct(
-        id=str(uuid.uuid4()), # Generate a unique ID
-        vector=embedding,
-        payload={
-            "text": text,
-            "category": category,
-            "source": "54k_dataset",
-            "original_id": row.get('ID', index)
-        }
-    )
-    points.append(point)
-    
-    # 3. Upload Batch
-    if len(points) >= batch_size:
-        client.upsert(collection_name=COLLECTION_NAME, points=points)
-        points = [] # Clear batch
+    # Retry logic for rate limits (Important for 54k items)
+    for attempt in range(5):
+        try:
+            response = requests.post(
+                EMBEDDING_API_URL,
+                headers={'Content-Type': 'application/json'},
+                data=json.dumps(payload)
+            )
+            if response.status_code == 429: # Rate limit hit
+                time.sleep(5 * (attempt + 1)) # Backoff
+                continue
+                
+            response.raise_for_status()
+            return response.json()['embedding']['values']
+        except Exception as e:
+            time.sleep(2)
+            continue
+    print(f"Failed to embed text: {text[:50]}...")
+    return None
 
-# Upload remaining points
-if points:
-    client.upsert(collection_name=COLLECTION_NAME, points=points)
+# --- 3. MERGE DATA (Relational -> Single Text) ---
+def load_and_merge_data():
+    print("Reading CSV files...")
+    # Load People
+    df_people = pd.read_csv("data/01_people.csv")
+    df_people = df_people[['person_id', 'name']] # Minimal columns
 
-print("Ingestion Complete! All resumes are now in Qdrant.")
+    # Load Skills
+    print("Processing Skills...")
+    df_skills = pd.read_csv("data/02_abilities.csv")
+    skills_grouped = df_skills.groupby('person_id')['ability'].apply(
+        lambda x: ', '.join(x.astype(str))
+    ).reset_index(name='skills')
+
+    # Load Experience
+    print("Processing Experience...")
+    df_exp = pd.read_csv("data/04_experience.csv")
+    df_exp['role_str'] = df_exp['position_name'] + " at " + df_exp['organization_name']
+    exp_grouped = df_exp.groupby('person_id')['role_str'].apply(
+        lambda x: '; '.join(x.astype(str))
+    ).reset_index(name='experience')
+
+    # Merge All
+    print("Merging datasets...")
+    df_final = df_people.merge(skills_grouped, on='person_id', how='left')
+    df_final = df_final.merge(exp_grouped, on='person_id', how='left')
+    df_final.fillna("", inplace=True)
+    
+    return df_final
+
+# --- 4. MAIN EXECUTION ---
+if __name__ == "__main__":
+    # Initialize Qdrant
+    qdrant = QdrantClient(url=QDRANT_HOST, api_key=QDRANT_API_KEY)
+    
+    # Load Data
+    df = load_and_merge_data()
+    print(f"Total resumes to process: {len(df)}")
+
+    batch_size = 50 
+    points = []
+
+    # Iterate and Upload
+    for index, row in tqdm(df.iterrows(), total=len(df)):
+        
+        # Construct the text representation
+        # We simulate a document structure so the search finds it easily
+        text_content = (
+            f"Candidate Name: {row['name']}\n"
+            f"Skills: {row['skills']}\n"
+            f"Experience: {row['experience']}"
+        )
+        
+        # Skip empty data
+        if len(text_content) < 50: continue
+
+        # Get Embedding (Gemini)
+        vector = get_embedding(text_content)
+        
+        if vector:
+            points.append(models.PointStruct(
+                id=str(uuid.uuid4()),
+                vector=vector,
+                payload={
+                    "text": text_content,
+                    "source_file": "kaggle_54k_dataset",
+                    "person_id": str(row['person_id']),
+                    "role": row['name']
+                }
+            ))
+
+        # Upload Batch
+        if len(points) >= batch_size:
+            try:
+                qdrant.upsert(collection_name=COLLECTION_NAME, points=points)
+                points = [] # Clear batch
+                time.sleep(0.5) # Small pause to be nice to Gemini API
+            except Exception as e:
+                print(f"Error uploading batch: {e}")
+
+    # Final Batch
+    if points:
+        qdrant.upsert(collection_name=COLLECTION_NAME, points=points)
+        
+    print("Done! All resumes added to Qdrant.")
