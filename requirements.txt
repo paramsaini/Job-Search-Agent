@@ -7,6 +7,5 @@ numpy
 plotly
 qdrant-client
 langchain-text-splitters
-python-docx
-sentence-transformers 
+python-docx 
 tqdm
