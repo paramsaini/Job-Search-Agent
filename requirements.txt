@@ -8,3 +8,5 @@ plotly
 qdrant-client
 langchain-text-splitters
 python-docx
+sentence-transformers 
+tqdm
