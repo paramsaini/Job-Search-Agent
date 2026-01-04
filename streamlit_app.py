@@ -1,4 +1,4 @@
-# --- 2025-12-08_FINAL_ULTIMATE_STABILITY_V11_POLISHED_FINAL ---
+# --- 2026-01-05_AEQUOR_FINAL_ULTIMATE_V12_FILTERED ---
 import streamlit as st
 import requests
 import json
@@ -12,13 +12,14 @@ from datetime import datetime
 import io
 import pypdf
 import re
-from qdrant_client import QdrantClient, models 
+from qdrant_client import QdrantClient, models
+# NEW IMPORTS FOR FILTERING
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 # Load environment variables (for local testing)
 load_dotenv()
 
-# --- RAG Specific Function (FIXED: Defined in global scope) ---
-
+# --- RAG Specific Function (Defined in global scope) ---
 def handle_reset_click():
     """Resets session state variables to restart the search process."""
     st.session_state['reset_key_counter'] = st.session_state.get('reset_key_counter', 0) + 1
@@ -45,7 +46,7 @@ EMBEDDING_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{E
 COLLECTION_NAME = 'resume_knowledge_base'
 RAG_K = 10 
 
-# --- PDF Extraction Function (Kept) ---
+# --- PDF Extraction Function ---
 def extract_text_from_pdf(uploaded_file):
     """Uses pypdf to extract text from a PDF file stream."""
     try:
@@ -59,7 +60,7 @@ def extract_text_from_pdf(uploaded_file):
         st.error(f"Failed to process PDF with pypdf. Error: {e}")
         return ""
 
-# --- RAG Utility: Initialize Qdrant Client (FIXED SyntaxError) ---
+# --- RAG Utility: Initialize Qdrant Client ---
 @st.cache_resource
 def get_qdrant_client():
     """Initializes and returns the Qdrant Client object."""
@@ -73,13 +74,14 @@ def get_qdrant_client():
             api_key=QDRANT_API_KEY,
             prefer_grpc=True
         )
+        # Verify connection by checking collection
         client.get_collection(collection_name=COLLECTION_NAME) 
         return client
     except Exception as e:
         st.error(f"Qdrant Client Error: Ensure host/key are correct and collection '{COLLECTION_NAME}' exists. Error: {e}")
         return None
 
-# --- RAG Utility: Embed User Query (Kept) ---
+# --- RAG Utility: Embed User Query ---
 @st.cache_data(ttl=600)
 def get_user_embedding(text):
     """Calls Gemini API to get a single embedding vector for the user's CV."""
@@ -94,9 +96,9 @@ def get_user_embedding(text):
         return None
 
 
-# --- Core Gemini API Call Function (MODIFIED FOR RAG) ---
+# --- Core Gemini API Call Function (UPDATED FOR FILTERING) ---
 @st.cache_data(show_spinner=False, max_entries=10)
-def generate_job_strategy_from_gemini(cv_text):
+def generate_job_strategy_from_gemini(cv_text, role_filter="All"):
     if not API_KEY:
         return "Error: Gemini API Key not configured.", None, []
         
@@ -106,25 +108,43 @@ def generate_job_strategy_from_gemini(cv_text):
     if qdrant_client_instance:
         query_vector = get_user_embedding(cv_text)
         
+        # --- FILTER LOGIC ---
+        search_filter = None
+        if role_filter != "All":
+            # This constructs the filter for Qdrant to only look at resumes with this specific role
+            search_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="role", 
+                        match=MatchValue(value=role_filter)
+                    )
+                ]
+            )
+        
         if query_vector:
             try:
                 search_result = qdrant_client_instance.search( 
                     collection_name=COLLECTION_NAME,
                     query_vector=query_vector, 
                     limit=RAG_K,
+                    query_filter=search_filter, # <--- PASS FILTER HERE
                     with_payload=True 
                 )
                 
                 if search_result:
-                    retrieved_docs = [hit.payload['text'] for hit in search_result]
+                    # Provide rich context to Gemini including the role
+                    retrieved_docs = [
+                        f"[Role: {hit.payload.get('role', 'Unknown')}] {hit.payload.get('text', hit.payload.get('text_content', ''))[:2000]}" 
+                        for hit in search_result
+                    ]
                     context_text = "\n---\n".join(retrieved_docs)
                 else:
-                    context_text = "No relevant resumes found in the knowledge base."
+                    context_text = f"No relevant resumes found for the specific role: {role_filter}."
             except Exception as e:
                 context_text = f"Qdrant Query Error: {e}"
                 st.error(f"Failed to query Qdrant: {e}")
 
-    # --- RAG STEP 2: Augmented Prompt Construction (UNCHANGED) ---
+    # --- RAG STEP 2: Augmented Prompt Construction ---
     json_schema = {
         "type": "OBJECT",
         "properties": {
@@ -139,20 +159,18 @@ def generate_job_strategy_from_gemini(cv_text):
         "required": ["predictive_score", "weakest_link_skill", "learning_resource_1", "learning_resource_2", "tech_score", "leader_score", "domain_score"]
     }
     
-    # --- SYNTAX CHECK: JSON Prompt F-String ---
     json_prompt = f"""
-    Based on the following CV and the RAG Knowledge Base Context (1000 resumes), analyze the user's current professional trajectory...
-    --- RETRIEVED KNOWLEDGE BASE CONTEXT ---
+    Based on the following CV and the RAG Knowledge Base Context (Simulated Database of 60,000+ Resumes), analyze the user's current professional trajectory...
+    --- RETRIEVED KNOWLEDGE BASE CONTEXT (Filtered by Role: {role_filter}) ---
     {context_text}
     ---
     User CV: {cv_text}
     """
     
-    # --- CRITICAL FIX: Prompt updated to demand links in a structured, guaranteed format ---
     markdown_prompt = f"""
     You are a World-Class Job Search Consultant and Visa Immigration Analyst. Your primary goal is to generate the professional job strategy using Google Search for current data, and the RETRIEVED KNOWLEDGE BASE CONTEXT for grounding employer types.
     
-    --- RETRIEVED KNOWLEDGE BASE CONTEXT (1000 Resumes) ---
+    --- RETRIEVED KNOWLEDGE BASE CONTEXT ---
     {context_text}
     --- END RETRIEVED CONTEXT ---
 
@@ -231,9 +249,9 @@ def call_gemini_api(payload, structured=False):
 
     return ("Error: Failed after retries.", []) if not structured else {"error": "Failed after retries."}
 
-# --- Visualization Render (IMPROVED DESIGN) ---
+# --- Visualization Render ---
 def render_strategy_visualizations(report):
-    """Renders the Strategy Funnel and Progress Meter Dashboard using dense data presentation."""
+    """Renders the Strategy Funnel and Progress Meter Dashboard."""
     
     st.header("🧠 Strategic Visualization Suite")
     st.divider() 
@@ -241,18 +259,14 @@ def render_strategy_visualizations(report):
     score = report.get('predictive_score', 0)
     score_float = float(score) / 100.0 if score is not None else 0.0
     
-    # --- 1. KPI Metrics (Primary Score Group) ---
+    # --- 1. KPI Metrics ---
     st.subheader("🎯 Key Predictive Metrics")
     
     col_kpi_1, col_kpi_2, col_kpi_3 = st.columns(3)
     
-    # Determine status for st.metric delta color
-    if score >= 85:
-        score_status = "normal"
-    elif score >= 70:
-        score_status = "off"
-    else:
-        score_status = "inverse"
+    if score >= 85: score_status = "normal"
+    elif score >= 70: score_status = "off"
+    else: score_status = "inverse"
         
     score_text = f"**{score}%**"
 
@@ -274,15 +288,13 @@ def render_strategy_visualizations(report):
 
     st.divider()
 
-    # --- 2. Deep Dive: Predictive Skill Breakdown (More dense information) ---
+    # --- 2. Deep Dive: Predictive Skill Breakdown ---
     st.subheader("📈 Deep Dive: Capability Breakdown")
     
-    # Extract sub-scores safely, default to 0 if missing
     tech_score = report.get('tech_score', 0) / 100
     leader_score = report.get('leader_score', 0) / 100
     domain_score = report.get('domain_score', 0) / 100
     
-    # Use columns to present the breakdown more densely
     col_skill_1, col_skill_2, col_skill_3 = st.columns(3)
     
     with col_skill_1:
@@ -299,7 +311,7 @@ def render_strategy_visualizations(report):
     
     st.divider()
     
-    # --- 3. Action Strategy Pipeline (Restored structure) ---
+    # --- 3. Action Strategy Pipeline ---
     st.subheader("🚀 Action Strategy Pipeline")
     
     col_flow_1, col_flow_2, col_flow_3 = st.columns(3)
@@ -307,7 +319,7 @@ def render_strategy_visualizations(report):
     with col_flow_1:
         with st.container(border=True, height=150):
             st.markdown(f"**1. ANALYSIS**")
-            st.caption("CV scanned against 1,000 elite profiles. Match Score established.")
+            st.caption("CV scanned against 60,000+ elite profiles. Match Score established.")
 
     with col_flow_2:
         with st.container(border=True, height=150):
@@ -317,33 +329,58 @@ def render_strategy_visualizations(report):
     with col_flow_3:
         with st.container(border=True, height=150):
             st.markdown(f"**3. EXECUTION**")
-            st.caption("Target employers and initiate the Visa Action Plan (see report below).")
+            st.caption("Target employers and initiate the Visa Action Plan.")
 
 
-# --- Main Application Logic (POLISHED AESTHETIC FIX) ---
+# --- Main Application Logic (UPDATED WITH SIDEBAR) ---
 def main():
-    # NO CUSTOM STYLING: Relying on default Streamlit theme for stability
-    
-    # --- FINAL CLEAN NAME & LOGO INTEGRATION ---
-    # Centering the entire block with Markdown/HTML is the only stable way without full CSS
+    # --- LOGO & HEADER ---
     st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-    
-    # LOGO (Bigger Size: 200px)
     st.image("aequor_logo_placeholder.png", width=200) 
-    
-    # TITLE (Centered, directly below the logo, removing the H1 tag for simple, clean text)
     st.markdown("## **AEQUOR**")
-    
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("### The smooth, level pathway through the job market turbulence.")
     st.divider()
 
-    # --- Conditional Navigation Hub (IMPROVED AESTHETIC CARDS) ---
+    # --- NEW: SIDEBAR WITH FILTERS AND NAVIGATION ---
+    with st.sidebar:
+        st.header("🔍 Search Filters")
+        st.info("Filter the Knowledge Base to match your target job market.")
+        
+        # You can expand this list based on the new data you ingested
+        target_roles = [
+            "All",
+            "Data Science",
+            "HR", 
+            "Java Developer",
+            "Mechanical Engineer",
+            "Sales",
+            "Business Analyst",
+            "Project Manager",
+            "Python Developer",
+            "DevOps Engineer",
+            "Web Designing",
+            "Civil Engineer"
+        ]
+        
+        selected_role = st.selectbox(
+            "Target Job Role",
+            target_roles,
+            index=0,
+            help="Restricts the AI analysis to compare you ONLY against candidates in this specific role."
+        )
+        
+        st.divider()
+        st.header("🔗 Navigation")
+        # Ensure these pages exist in your 'pages/' folder
+        st.page_link("pages/1_Emotional_Tracker.py", label="Emotional Tracker", icon="🧘")
+        st.page_link("pages/3_Skill_Migration.py", label="Skill Migration", icon="🌍")
+        st.page_link("pages/4_CV_Compiler.py", label="CV Compiler", icon="🛠️")
+
+    # --- Conditional Navigation Hub (Cards in Main Area) ---
     st.header("🔗 Specialized Tools")
-    
     col_nav_1, col_nav_2 = st.columns(2)
-    
     with col_nav_1:
         with st.container(border=True):
             st.page_link("pages/1_Emotional_Tracker.py", label="🧘 **Emotional Endurance**", icon="🧘", use_container_width=True)
@@ -352,17 +389,14 @@ def main():
         with st.container(border=True):
             st.page_link("pages/3_Skill_Migration.py", label="🌍 **Skill Migration Map**", icon="🌍", use_container_width=True)
             st.caption("Identify international job/visa opportunities by country.")
-        
     st.divider()
-    # 👆 END MODIFIED NAVIGATION HUB
 
-    # --- 0. Predictive Skill Health Card (CLEANED) ---
+    # --- 0. Predictive Skill Health Card ---
     if st.session_state.get('skill_gap_report'):
         report = st.session_state['skill_gap_report']
         if not report.get('error'):
             
             st.header("✨ Predictive Skill Health Score")
-            
             col_advice, col_compiler_link = st.columns([2, 1])
             
             with col_advice:
@@ -377,16 +411,12 @@ def main():
                 st.page_link("pages/4_CV_Compiler.py", label="🔄 **CV Compiler**", icon="🛠️", use_container_width=True)
                 
             st.divider()
-            
-            # --- RENDER VISUALIZATIONS ---
             render_strategy_visualizations(report)
     
-    # --- Input Section (CLEANED) ---
-    st.header("📄 Profile Analysis Input") # Professional Header
+    # --- Input Section ---
+    st.header("📄 Profile Analysis Input") 
     
-    # Use expander for cleaner layout
     with st.expander("Upload or Paste Your CV Content", expanded=True):
-
         tab_paste, tab_upload = st.tabs(["Paste Profile Content", "Upload File (PDF/TXT)"])
         cv_text = ""
         
@@ -424,21 +454,28 @@ def main():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     if col2.button("Generate Comprehensive Job Strategy", type="primary", use_container_width=True):
-        if not cv_text.strip(): st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
-        else: st.session_state['cv_text_to_process'] = cv_text; st.session_state['run_search'] = True
+        if not cv_text.strip(): 
+            st.error("Please provide your CV content either by pasting or uploading a file to start the analysis.")
+        else: 
+            st.session_state['cv_text_to_process'] = cv_text
+            st.session_state['run_search'] = True
             
     if st.session_state.get('results_displayed'):
         if st.button("Start New Search (Reset)", type="secondary", on_click=handle_reset_click): pass
 
     st.divider()
     
-    # --- Output Section (Replaced 'Step 3') ---
+    # --- Output Section ---
     st.header("🎯 Generated Strategy & Analysis")
     
     if st.session_state.get('run_search') and st.session_state.get('cv_text_to_process'):
         with st.container():
-            with st.spinner("Analyzing CV and Performing Real-Time Grounded Search..."):
-                markdown_output, skill_gap_report, citations = generate_job_strategy_from_gemini(st.session_state['cv_text_to_process'])
+            with st.spinner(f"Analyzing CV against {selected_role} profiles and Performing Real-Time Search..."):
+                # PASSING THE SELECTED ROLE FILTER HERE
+                markdown_output, skill_gap_report, citations = generate_job_strategy_from_gemini(
+                    st.session_state['cv_text_to_process'], 
+                    selected_role
+                )
 
             st.session_state['markdown_output'] = markdown_output
             st.session_state['skill_gap_report'] = skill_gap_report
