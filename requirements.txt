@@ -5,7 +5,7 @@ pypdf
 pandas
 numpy
 plotly
-qdrant-client>=1.9.0
+qdrant-client>=1.16.2
 langchain-text-splitters
 python-docx 
 tqdm
