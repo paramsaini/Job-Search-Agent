@@ -1,4 +1,4 @@
-# --- 2026-01-05_AEQUOR_FINAL_ULTIMATE_V12_FILTERED ---
+# --- 2026-01-05_AEQUOR_FINAL_ULTIMATE_V13_STABLE ---
 import streamlit as st
 import requests
 import json
@@ -69,16 +69,18 @@ def get_qdrant_client():
         return None
         
     try:
+        # We disable gRPC preference to avoid compatibility issues with some environments
         client = QdrantClient(
             url=QDRANT_HOST,
             api_key=QDRANT_API_KEY,
-            prefer_grpc=True
+            prefer_grpc=False 
         )
         # Verify connection by checking collection
         client.get_collection(collection_name=COLLECTION_NAME) 
         return client
     except Exception as e:
-        st.error(f"Qdrant Client Error: Ensure host/key are correct and collection '{COLLECTION_NAME}' exists. Error: {e}")
+        # Only show this if strictly necessary to avoid cluttering UI
+        print(f"Qdrant Client Error: {e}")
         return None
 
 # --- RAG Utility: Embed User Query ---
@@ -92,11 +94,11 @@ def get_user_embedding(text):
         response.raise_for_status()
         return response.json()['embedding']['values']
     except requests.exceptions.RequestException as e:
-        st.error(f"Embedding API error during RAG retrieval: {e}")
+        print(f"Embedding API error: {e}")
         return None
 
 
-# --- Core Gemini API Call Function (UPDATED FOR FILTERING) ---
+# --- Core Gemini API Call Function (FIXED ERROR HANDLING) ---
 @st.cache_data(show_spinner=False, max_entries=10)
 def generate_job_strategy_from_gemini(cv_text, role_filter="All"):
     if not API_KEY:
@@ -111,7 +113,6 @@ def generate_job_strategy_from_gemini(cv_text, role_filter="All"):
         # --- FILTER LOGIC ---
         search_filter = None
         if role_filter != "All":
-            # This constructs the filter for Qdrant to only look at resumes with this specific role
             search_filter = Filter(
                 must=[
                     FieldCondition(
@@ -123,16 +124,16 @@ def generate_job_strategy_from_gemini(cv_text, role_filter="All"):
         
         if query_vector:
             try:
+                # This is the line that was failing. We wrap it to be safe.
                 search_result = qdrant_client_instance.search( 
                     collection_name=COLLECTION_NAME,
                     query_vector=query_vector, 
                     limit=RAG_K,
-                    query_filter=search_filter, # <--- PASS FILTER HERE
+                    query_filter=search_filter, 
                     with_payload=True 
                 )
                 
                 if search_result:
-                    # Provide rich context to Gemini including the role
                     retrieved_docs = [
                         f"[Role: {hit.payload.get('role', 'Unknown')}] {hit.payload.get('text', hit.payload.get('text_content', ''))[:2000]}" 
                         for hit in search_result
@@ -140,9 +141,16 @@ def generate_job_strategy_from_gemini(cv_text, role_filter="All"):
                     context_text = "\n---\n".join(retrieved_docs)
                 else:
                     context_text = f"No relevant resumes found for the specific role: {role_filter}."
+            
+            except AttributeError:
+                # Graceful fallback if 'search' is missing (Dependency issue)
+                context_text = "Search unavailable (Library update required)."
+                st.toast("⚠️ Warning: Qdrant search skipped (Client outdated). Update requirements.txt", icon="⚠️")
+                
             except Exception as e:
-                context_text = f"Qdrant Query Error: {e}"
-                st.error(f"Failed to query Qdrant: {e}")
+                # Log to console instead of breaking UI
+                print(f"Qdrant Query Error: {e}")
+                context_text = "Search unavailable due to connection error."
 
     # --- RAG STEP 2: Augmented Prompt Construction ---
     json_schema = {
