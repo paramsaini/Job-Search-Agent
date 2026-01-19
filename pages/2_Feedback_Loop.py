@@ -3,6 +3,7 @@ import pandas as pd
 import re
 from datetime import datetime 
 import numpy as np 
+import pypdf # Added import for fallback handling
 
 # --- Configuration (Copied from main app for consistency) ---
 BG_DARK = "#000000"
@@ -59,6 +60,15 @@ def analyze_friction(cv_text, jd_text, predictive_score):
     
     return final_score, objection, color, keyword_match_percent
 
+# --- Helper: Extract Text (Duplicate of main app logic) ---
+def extract_text(file):
+    try:
+        if file.type == "application/pdf":
+            reader = pypdf.PdfReader(file)
+            return "".join([p.extract_text() for p in reader.pages])
+        return file.read().decode("utf-8")
+    except: return ""
+
 # --- Page Render ---
 
 def feedback_loop_page():
@@ -76,9 +86,18 @@ def feedback_loop_page():
     cv_text = st.session_state.get('cv_text_to_process', None)
     predictive_score = st.session_state.get('skill_gap_report', {}).get('predictive_score', 75)
 
+    # --- FALLBACK UPLOADER: If no CV loaded from Home, allow upload here ---
     if not cv_text:
-        st.error("⚠️ **PREREQUISITE:** Please run a full analysis on the Home Page first to load your processed CV content.")
-        return
+        st.warning("⚠️ No processed CV found from Dashboard.")
+        uploaded_file = st.file_uploader("Upload your CV to proceed (PDF/TXT):", type=["pdf", "txt"], key="feedback_uploader")
+        
+        if uploaded_file:
+            cv_text = extract_text(uploaded_file)
+            st.session_state['cv_text_to_process'] = cv_text # Sync with global state
+            st.success("✅ CV Loaded! Proceed below.")
+        else:
+            st.info("Please upload a CV to enable the simulator.")
+            return
 
     st.subheader("1. Paste Job Description (JD)")
     jd_input = st.text_area("Paste the Job Description (JD) here:", height=300, key="jd_input_area")
