@@ -14,8 +14,9 @@ ACCENT_YELLOW = "#F59E0B"
 # --- Supabase Init ---
 @st.cache_resource
 def init_supabase():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    url = st.secrets.get("SUPABASE_URL")
+    key = st.secrets.get("SUPABASE_KEY")
+    if not url or not key: return None
     return create_client(url, key)
 
 supabase = init_supabase()
@@ -42,11 +43,13 @@ def calculate_metrics(cv_text, jd_text):
 
 def fetch_ledger(user_id):
     """Fetches application history from Supabase."""
+    if not supabase: return pd.DataFrame()
     res = supabase.table("applications").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
     return pd.DataFrame(res.data) if res.data else pd.DataFrame()
 
 def log_application(user_id, company, job_id, comp, clar):
     """Saves new application to DB."""
+    if not supabase: return
     supabase.table("applications").insert({
         "user_id": user_id,
         "company_name": company,
@@ -58,6 +61,7 @@ def log_application(user_id, company, job_id, comp, clar):
 
 def update_db_outcome(app_id, new_outcome):
     """Updates the status of an existing application."""
+    if not supabase: return
     supabase.table("applications").update({"outcome": new_outcome}).eq("id", app_id).execute()
 
 # --- Page Render ---
