@@ -11,9 +11,10 @@ class JobSearchAgent:
         self.qdrant_key = qdrant_api_key
         self.collection_name = collection_name
         
-        # --- FIX: USE STABLE MODEL VERSION ---
-        # gemini-1.5-flash-002 is the latest stable version with excellent instruction following.
-        self.gen_model = "gemini-1.5-flash-002" 
+        # --- UPDATE: USING THE STRONGEST STABLE MODEL ---
+        # gemini-1.5-pro is the industry standard for high-reasoning tasks.
+        # It follows formatting instructions (tables) better than Flash.
+        self.gen_model = "gemini-1.5-pro" 
         self.embedding_model = "text-embedding-004"
         
         self.qdrant_client = self._init_qdrant()
@@ -25,6 +26,7 @@ class JobSearchAgent:
                 api_key=self.qdrant_key,
                 prefer_grpc=False
             )
+            # Quick connection check
             client.get_collection(self.collection_name)
             return client
         except Exception as e:
@@ -56,7 +58,7 @@ class JobSearchAgent:
                 limit=k,
                 with_payload=True
             )
-            docs = [f"[Role: {hit.payload.get('role', 'Unknown')}] {hit.payload.get('text', '')[:500]}" for hit in results]
+            docs = [f"[Role: {hit.payload.get('role', 'Unknown')}] {hit.payload.get('text', '')[:600]}" for hit in results]
             return "\n".join(docs) if docs else "No relevant resumes found."
         except Exception:
             return "Search failed."
@@ -81,47 +83,45 @@ class JobSearchAgent:
         json_prompt = f"Analyze this CV against the context. Context: {context_text}. CV: {cv_text}"
         skill_report = self._call_gemini(json_prompt, schema=json_schema)
 
-        # 3. Strategy (Strict Table Enforcement)
-        # We explicitly forbid "chatting" and force Markdown Tables.
+        # 3. Strategy (Markdown Tables - STRICT MODE)
         md_prompt = f"""
-        SYSTEM_INSTRUCTION: You are a DATA FORMATTER. You are NOT a chat assistant. 
-        You DO NOT speak. You DO NOT say "Here is the plan". You ONLY output Markdown Tables.
-
-        INPUT DATA:
-        Context: {context_text}
-        CV: {cv_text}
+        SYSTEM: You are a Professional Career Strategist. You output ONLY structured Markdown.
+        
+        CONTEXT:
+        {context_text}
+        
+        CANDIDATE CV:
+        {cv_text}
         
         TASK:
         1. Search Google for 5 LIVE domestic job openings matching this CV.
         2. Search Google for 5 LIVE international visa-sponsoring companies matching this CV.
-        3. Format the data into the EXACT tables below.
-        
-        REQUIRED OUTPUT FORMAT (Markdown Only):
+        3. Output the results in the EXACT tables below. Do not add conversational text.
 
-        ### 🏠 Top Domestic Employers (High Match)
-        | Company Name | Job Role & Match Reason | Direct Career Page Link |
-        | :--- | :--- | :--- |
-        | [Insert Company] | [Insert Role] - [Why it matches] | [Insert EXACT URL found via Google Search] |
-        (Repeat for 5 rows)
+        REQUIRED OUTPUT FORMAT:
+
+        ### 🏠 Domestic Opportunities
+        | Company | Role | Match Reason | Application Link |
+        | :--- | :--- | :--- | :--- |
+        | [Name] | [Role] | [Why it fits] | [Insert Link found via Search] |
+        (5 rows)
 
         ### 🌍 International Sponsorship Targets
-        | Company | Country | Visa Strategy | Direct Career Page Link |
+        | Company | Location | Visa Path | Application Link |
         | :--- | :--- | :--- | :--- |
-        | [Insert Company] | [Country] | [Visa Tier/Type] | [Insert EXACT URL found via Google Search] |
-        (Repeat for 5 rows)
+        | [Name] | [Country] | [Visa Tier] | [Insert Link found via Search] |
+        (5 rows)
 
-        ### 🚀 Execution Strategy
-        * **Action 1:** [Specific Action]
-        * **Action 2:** [Specific Action]
-        
-        CONSTRAINT: DO NOT output any text before or after the tables. Start directly with "### 🏠".
+        ### 🚀 Execution Plan
+        * **Step 1:** [Actionable Step]
+        * **Step 2:** [Actionable Step]
         """
         markdown_text, sources = self._call_gemini(md_prompt, use_search=True)
         
         return markdown_text, skill_report, sources
 
     def _call_gemini(self, prompt, schema=None, use_search=False):
-        # Correct URL construction for v1beta
+        # Using the standard v1beta endpoint with the corrected model name
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gen_model}:generateContent?key={self.gemini_key}"
         
         payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {}}
@@ -131,7 +131,6 @@ class JobSearchAgent:
             payload["generationConfig"]["responseSchema"] = schema
         
         if use_search:
-            # Force Google Search Tool
             payload["tools"] = [{"google_search": {}}] 
 
         try:
@@ -142,11 +141,9 @@ class JobSearchAgent:
             candidate = data.get('candidates', [{}])[0]
             text = candidate.get('content', {}).get('parts', [{}])[0].get('text', "")
             
-            # Extract Sources if available
             sources = []
             if use_search:
                 meta = candidate.get('groundingMetadata', {})
-                # Check both new and old fields for robustness
                 chunks = meta.get('groundingChunks', []) or meta.get('groundingAttributions', [])
                 for chunk in chunks:
                     web = chunk.get('web', {})
@@ -163,4 +160,5 @@ class JobSearchAgent:
             return text, sources
 
         except Exception as e:
+            # Return empty structure on failure to prevent app crash
             return ({"error": str(e)} if schema else (f"Error: {e}", []))
