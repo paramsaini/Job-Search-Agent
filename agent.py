@@ -10,8 +10,10 @@ class JobSearchAgent:
         self.qdrant_host = qdrant_host
         self.qdrant_key = qdrant_api_key
         self.collection_name = collection_name
-        # Using Flash 1.5 as it often follows strict formatting better than the experimental 2.0
-        self.gen_model = "gemini-1.5-flash" 
+        
+        # --- FIX: USE STABLE MODEL VERSION ---
+        # gemini-1.5-flash-002 is the latest stable version with excellent instruction following.
+        self.gen_model = "gemini-1.5-flash-002" 
         self.embedding_model = "text-embedding-004"
         
         self.qdrant_client = self._init_qdrant()
@@ -36,7 +38,7 @@ class JobSearchAgent:
             resp = requests.post(url, json=payload)
             resp.raise_for_status()
             return resp.json()['embedding']['values']
-        except Exception as e:
+        except Exception:
             return None
 
     def search_knowledge_base(self, query_vector, role_filter="All", k=5):
@@ -90,8 +92,8 @@ class JobSearchAgent:
         CV: {cv_text}
         
         TASK:
-        1. Search Google for 10 LIVE domestic job openings matching this CV.
-        2. Search Google for 10 LIVE international visa-sponsoring companies matching this CV.
+        1. Search Google for 5 LIVE domestic job openings matching this CV.
+        2. Search Google for 5 LIVE international visa-sponsoring companies matching this CV.
         3. Format the data into the EXACT tables below.
         
         REQUIRED OUTPUT FORMAT (Markdown Only):
@@ -119,6 +121,7 @@ class JobSearchAgent:
         return markdown_text, skill_report, sources
 
     def _call_gemini(self, prompt, schema=None, use_search=False):
+        # Correct URL construction for v1beta
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gen_model}:generateContent?key={self.gemini_key}"
         
         payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {}}
@@ -143,6 +146,7 @@ class JobSearchAgent:
             sources = []
             if use_search:
                 meta = candidate.get('groundingMetadata', {})
+                # Check both new and old fields for robustness
                 chunks = meta.get('groundingChunks', []) or meta.get('groundingAttributions', [])
                 for chunk in chunks:
                     web = chunk.get('web', {})
@@ -151,7 +155,10 @@ class JobSearchAgent:
 
             if schema:
                 clean_text = text.replace("```json", "").replace("```", "").strip()
-                return json.loads(clean_text)
+                try:
+                    return json.loads(clean_text)
+                except:
+                    return {}
             
             return text, sources
 
