@@ -8,7 +8,7 @@ from agent import JobSearchAgent
 from supabase import create_client, Client
 
 # --- 1. CONFIG & STYLING ---
-st.set_page_config(page_title="AEQUOR", page_icon="穴", layout="wide")
+st.set_page_config(page_title="AEQUOR", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -85,7 +85,6 @@ def logout():
 
 # --- 4. INIT AGENT ---
 if 'agent' not in st.session_state:
-    # Safely get keys using st.secrets.get() to avoid KeyErrors
     api = st.secrets.get("GEMINI_API_KEY")
     qh = st.secrets.get("QDRANT_HOST")
     qk = st.secrets.get("QDRANT_API_KEY")
@@ -131,7 +130,8 @@ def main():
 
     # --- MAIN DASHBOARD (LOGGED IN) ---
     with st.sidebar:
-        st.markdown(f"側 **{st.session_state.user}**")
+        # FIXED ICON HERE
+        st.markdown(f"👤 **{st.session_state.user}**")
         st.divider()
         nav = st.radio("Navigate", ["Dashboard", "Emotional Tracker", "Skill Migration", "CV Compiler"])
         st.divider()
@@ -143,7 +143,8 @@ def main():
     if nav == "CV Compiler": st.switch_page("pages/4_CV_Compiler.py")
 
     # --- DASHBOARD CONTENT ---
-    st.title(f"噫 Career Strategy Dashboard")
+    # FIXED ICON HERE
+    st.title(f"🚀 Career Strategy Dashboard")
     
     c1, c2, c3 = st.columns(3)
     c1.metric("System Status", "Online", delta="Connected")
@@ -152,7 +153,8 @@ def main():
     st.divider()
 
     # Input Area
-    st.subheader("塘 Start New Analysis")
+    # FIXED ICON HERE
+    st.subheader("📝 Start New Analysis")
     col_in, col_act = st.columns([2, 1])
     
     with col_in:
@@ -161,7 +163,8 @@ def main():
     
     with col_act:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("笨ｨ Generate Strategy", type="primary", use_container_width=True):
+        # FIXED ICON HERE
+        if st.button("⚡ Generate Strategy", type="primary", use_container_width=True):
             if f and st.session_state.agent:
                 with st.spinner("Agent is searching live jobs..."):
                     txt = extract_text(f)
@@ -172,7 +175,7 @@ def main():
                     st.session_state.results = {"md": md, "rep": rep, "src": src}
                     st.session_state['skill_gap_report'] = rep
                     
-                    # Save analysis to Supabase (Optional: Implement this in DB later)
+                    # Save analysis to Supabase (JSONB Storage)
                     if supabase:
                         try:
                             supabase.table("analyses").insert({
@@ -190,7 +193,8 @@ def main():
     if "results" in st.session_state:
         res = st.session_state.results
         
-        st.markdown("### 投 Analysis Results")
+        # FIXED ICON HERE
+        st.markdown("### 📊 Analysis Results")
         k1, k2, k3 = st.columns(3)
         
         with k1: 
@@ -210,7 +214,8 @@ def main():
         st.markdown(res['md'])
         
         if res['src']:
-            with st.expander("迫 Verified Sources"):
+            # FIXED ICON HERE
+            with st.expander("🔗 Verified Sources"):
                 for s in res['src']:
                     st.markdown(f"- [{s['title']}]({s['uri']})")
 
