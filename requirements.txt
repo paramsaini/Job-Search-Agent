@@ -10,3 +10,4 @@ langchain-text-splitters
 python-docx 
 tqdm
 google-generativeai
+supabase
