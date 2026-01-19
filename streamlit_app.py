@@ -4,7 +4,7 @@ import pypdf
 import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
-from agent import JobSearchAgent
+from agent import JobSearchAgent  # IMPORT THE AGENT
 
 # --- 1. CONFIG & STYLING ---
 st.set_page_config(page_title="AEQUOR", page_icon="🌊", layout="wide")
@@ -96,6 +96,7 @@ def main():
     if not st.session_state.user:
         c1, c2, c3 = st.columns([1,1,1])
         with c2:
+            st.image("aequor_logo_placeholder.png", width=100)
             st.header("AEQUOR Access")
             mode = st.radio("Select Mode", ["Login", "Sign Up"], horizontal=True)
             u = st.text_input("Username")
