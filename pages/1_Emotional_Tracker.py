@@ -37,16 +37,24 @@ def calculate_resilience(df):
     return int(np.clip(resilience, 30, 100)) # Clamp score between 30 and 100
 
 def log_mood_entry(mood, activity, notes):
-    """Logs the new mood and recalculates the resilience score."""
-    new_entry = pd.DataFrame([{
-        'Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'Mood': mood,
-        'Activity': activity,
-        'Notes': notes
-    }])
-    st.session_state['mood_history'] = pd.concat([st.session_state['mood_history'], new_entry], ignore_index=True)
-    st.session_state['resilience_score'] = calculate_resilience(st.session_state['mood_history'])
-    st.success("Mood and Activity Logged! Resilience Score Updated.")
+    user_id = st.session_state.user_id
+    if not user_id: return
+    
+    # Insert directly to Supabase
+    data = {
+        "user_id": user_id,
+        "mood_score": mood,
+        "activity_score": activity,
+        "notes": notes
+    }
+    supabase.table("mood_logs").insert(data).execute()
+    st.success("Logged to cloud database!")
+
+# ... inside page render to fetch history ...
+def get_history():
+    # Fetch only this user's data (RLS protected)
+    response = supabase.table("mood_logs").select("*").order("created_at").execute()
+    return pd.DataFrame(response.data)
 
 # --- Page Render Function ---
 
