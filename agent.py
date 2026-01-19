@@ -10,7 +10,8 @@ class JobSearchAgent:
         self.qdrant_host = qdrant_host
         self.qdrant_key = qdrant_api_key
         self.collection_name = collection_name
-        self.gen_model = "gemini-2.0-flash-exp" # Fast and smart
+        # Using Flash 1.5 as it often follows strict formatting better than the experimental 2.0
+        self.gen_model = "gemini-1.5-flash" 
         self.embedding_model = "text-embedding-004"
         
         self.qdrant_client = self._init_qdrant()
@@ -36,7 +37,6 @@ class JobSearchAgent:
             resp.raise_for_status()
             return resp.json()['embedding']['values']
         except Exception as e:
-            print(f"Embedding Error: {e}")
             return None
 
     def search_knowledge_base(self, query_vector, role_filter="All", k=5):
@@ -54,9 +54,9 @@ class JobSearchAgent:
                 limit=k,
                 with_payload=True
             )
-            docs = [f"[Role: {hit.payload.get('role', 'Unknown')}] {hit.payload.get('text', '')[:1000]}" for hit in results]
-            return "\n---\n".join(docs) if docs else "No relevant resumes found."
-        except Exception as e:
+            docs = [f"[Role: {hit.payload.get('role', 'Unknown')}] {hit.payload.get('text', '')[:500]}" for hit in results]
+            return "\n".join(docs) if docs else "No relevant resumes found."
+        except Exception:
             return "Search failed."
 
     def generate_strategy(self, cv_text, role_filter="All"):
@@ -72,7 +72,6 @@ class JobSearchAgent:
                 "weakest_link_skill": {"type": "STRING"},
                 "tech_score": {"type": "INTEGER"},
                 "leader_score": {"type": "INTEGER"},
-                "domain_score": {"type": "INTEGER"},
             },
             "required": ["predictive_score", "weakest_link_skill", "tech_score"]
         }
@@ -80,31 +79,40 @@ class JobSearchAgent:
         json_prompt = f"Analyze this CV against the context. Context: {context_text}. CV: {cv_text}"
         skill_report = self._call_gemini(json_prompt, schema=json_schema)
 
-        # 3. Strategy (Strict Table Format)
+        # 3. Strategy (Strict Table Enforcement)
+        # We explicitly forbid "chatting" and force Markdown Tables.
         md_prompt = f"""
-        Role: Expert Job Consultant.
+        SYSTEM_INSTRUCTION: You are a DATA FORMATTER. You are NOT a chat assistant. 
+        You DO NOT speak. You DO NOT say "Here is the plan". You ONLY output Markdown Tables.
+
+        INPUT DATA:
         Context: {context_text}
-        User CV: {cv_text}
+        CV: {cv_text}
         
-        Task: Perform a Google Search for REAL, ACTIVE jobs and return the results in STRICT MARKDOWN TABLES.
-
-        OUTPUT FORMAT REQUIREMENTS:
+        TASK:
+        1. Search Google for 10 LIVE domestic job openings matching this CV.
+        2. Search Google for 10 LIVE international visa-sponsoring companies matching this CV.
+        3. Format the data into the EXACT tables below.
         
-        ### 1. 🏠 Domestic Opportunities (Table)
-        | Company Name | Employer Details | Job Match Requirements | Career Page Link |
-        |---|---|---|---|
-        | [Name] | [2 sentence description] | [Key skills required] | [Insert Link found via search] |
-        (List 5 rows)
+        REQUIRED OUTPUT FORMAT (Markdown Only):
 
-        ### 2. 🌍 International Sponsorship Targets (Table)
-        | Company Name | Country | Visa/Immigration Strategy | Job Requirements | Career Page Link |
-        |---|---|---|---|---|
-        | [Name] | [Country] | [Visa Type & Sponsorship difficulty] | [Key skills] | [Insert Link found via search] |
-        (List 5 rows)
+        ### 🏠 Top Domestic Employers (High Match)
+        | Company Name | Job Role & Match Reason | Direct Career Page Link |
+        | :--- | :--- | :--- |
+        | [Insert Company] | [Insert Role] - [Why it matches] | [Insert EXACT URL found via Google Search] |
+        (Repeat for 5 rows)
 
-        ### 3. 🚀 Execution Strategy
-        * **Action 1:** ...
-        * **Action 2:** ...
+        ### 🌍 International Sponsorship Targets
+        | Company | Country | Visa Strategy | Direct Career Page Link |
+        | :--- | :--- | :--- | :--- |
+        | [Insert Company] | [Country] | [Visa Tier/Type] | [Insert EXACT URL found via Google Search] |
+        (Repeat for 5 rows)
+
+        ### 🚀 Execution Strategy
+        * **Action 1:** [Specific Action]
+        * **Action 2:** [Specific Action]
+        
+        CONSTRAINT: DO NOT output any text before or after the tables. Start directly with "### 🏠".
         """
         markdown_text, sources = self._call_gemini(md_prompt, use_search=True)
         
@@ -120,6 +128,7 @@ class JobSearchAgent:
             payload["generationConfig"]["responseSchema"] = schema
         
         if use_search:
+            # Force Google Search Tool
             payload["tools"] = [{"google_search": {}}] 
 
         try:
@@ -130,6 +139,7 @@ class JobSearchAgent:
             candidate = data.get('candidates', [{}])[0]
             text = candidate.get('content', {}).get('parts', [{}])[0].get('text', "")
             
+            # Extract Sources if available
             sources = []
             if use_search:
                 meta = candidate.get('groundingMetadata', {})
