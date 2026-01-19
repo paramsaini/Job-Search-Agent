@@ -1,167 +1,113 @@
 import streamlit as st
-from datetime import datetime
 import pandas as pd
 import numpy as np
+from datetime import datetime
+from supabase import create_client
 
-# --- Configuration (Copied from main app for consistency) ---
+# --- Configuration ---
 BG_DARK = "#000000"
 ACCENT_CYAN = "#00E0FF"
 ACCENT_ORANGE = "#FF8C00"
 ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
 
-# --- Initialization ---
-if 'mood_history' not in st.session_state:
-    # DataFrame to store mood (1-10) and activity (0-5, proxy for application intensity)
-    st.session_state['mood_history'] = pd.DataFrame(columns=['Date', 'Mood', 'Activity', 'Notes'])
+# --- Supabase Init ---
+@st.cache_resource
+def init_supabase():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
 
-if 'resilience_score' not in st.session_state:
-    st.session_state['resilience_score'] = 75 # Starting score
+supabase = init_supabase()
 
-# --- Core Logic ---
+# --- Logic ---
+
+def fetch_mood_history(user_id):
+    """Retrieves full mood history from Supabase."""
+    try:
+        response = supabase.table("mood_logs").select("*")\
+            .eq("user_id", user_id)\
+            .order("created_at", desc=False).execute() # Ascending for chart
+        
+        if response.data:
+            df = pd.DataFrame(response.data)
+            df['created_at'] = pd.to_datetime(df['created_at'])
+            return df
+    except Exception as e:
+        st.error(f"Sync Error: {e}")
+    return pd.DataFrame()
 
 def calculate_resilience(df):
-    """Calculates a simple Resilience Score (0-100) based on recent mood and activity."""
-    if df.empty:
-        return 75
+    """Calculates Resilience Score (0-100) from DB history."""
+    if df.empty: return 75
     
-    # Simple weighted average: Mood is 70% of score, Recent Activity is 30%
     recent_df = df.tail(7) 
-    avg_mood = recent_df['Mood'].mean() * 10
-    avg_activity = recent_df['Activity'].mean() * 20
+    avg_mood = recent_df['mood_score'].mean() * 10
+    avg_activity = recent_df['activity_score'].mean() * 20
     
-    # Calculate difference between emotional input and effort output
-    # If Mood > Activity, score is boosted. If Mood < Activity (Burnout Risk), score is penalized.
     resilience = (0.7 * avg_mood) + (0.3 * avg_activity)
-    
-    return int(np.clip(resilience, 30, 100)) # Clamp score between 30 and 100
+    return int(np.clip(resilience, 30, 100))
 
-def log_mood_entry(mood, activity, notes):
-    user_id = st.session_state.user_id
-    if not user_id: return
-    
-    # Insert directly to Supabase
-    data = {
-        "user_id": user_id,
-        "mood_score": mood,
-        "activity_score": activity,
-        "notes": notes
-    }
-    supabase.table("mood_logs").insert(data).execute()
-    st.success("Logged to cloud database!")
+def log_mood_to_db(user_id, mood, activity, notes):
+    """Inserts new entry to Supabase."""
+    try:
+        supabase.table("mood_logs").insert({
+            "user_id": user_id,
+            "mood_score": mood,
+            "activity_score": activity,
+            "notes": notes
+        }).execute()
+        st.success("✅ Logged to Cloud Database!")
+    except Exception as e:
+        st.error(f"Save Failed: {e}")
 
-# ... inside page render to fetch history ...
-def get_history():
-    # Fetch only this user's data (RLS protected)
-    response = supabase.table("mood_logs").select("*").order("created_at").execute()
-    return pd.DataFrame(response.data)
-
-# --- Page Render Function ---
+# --- Page Render ---
 
 def emotional_tracker_page():
-    
-    st.markdown(f"""
-    <style>
-    /* Styling for the Resilience Card */
-    .resilience-card {{
-        padding: 20px;
-        border-radius: 10px;
-        border: 2px solid {ACCENT_ORANGE};
-        background: {BG_DARK};
-        box-shadow: 0 0 15px {ACCENT_ORANGE}50;
-        text-align: center;
-        margin-bottom: 20px;
-    }}
-    .resilience-score {{
-        font-size: 4rem;
-        font-weight: bold;
-        color: {ACCENT_CYAN};
-        text-shadow: 0 0 10px {ACCENT_CYAN};
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # --- New Name Integration ---
     st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🧘 Aequor: Emotional Endurance</h1>', unsafe_allow_html=True)
-    st.markdown(f"""
-    <p style="text-align: center; color: {ACCENT_CYAN}; font-size: 1.1em; font-weight: 500; text-shadow: 0 0 2px {ACCENT_CYAN}40;">
-        **Optimize Your Inner Game:** Track your **Emotional Input** (Mood) against your **Career Output** (Activity) to calculate your live **Resilience Score**. Defeat burnout before it starts.
-    </p>
-    """, unsafe_allow_html=True)
     st.markdown("---")
-    # ---------------------------
 
-    # --- Resilience Score Display ---
-    current_score = st.session_state['resilience_score']
-    
-    # Determine Status
-    if current_score >= 80:
-        status = "Optimal Momentum 💪"
-        tip = "Keep this structure! You're converting effort into positive feeling."
-        color = ACCENT_GREEN
-    elif current_score >= 60:
-        status = "Steady State 😌"
-        tip = "Maintain awareness. Use a Weakest Link resource from the main page."
-        color = ACCENT_YELLOW
+    if not st.session_state.get('user_id'):
+        st.warning("🔒 Please log in to track your resilience.")
+        return
+
+    # Load Data
+    df_history = fetch_mood_history(st.session_state.user_id)
+    resilience_score = calculate_resilience(df_history)
+
+    # --- Resilience Card ---
+    if resilience_score >= 80:
+        status, color = "Optimal Momentum 💪", ACCENT_GREEN
+    elif resilience_score >= 60:
+        status, color = "Steady State 😌", ACCENT_YELLOW
     else:
-        status = "Burnout Risk! ⚠️"
-        tip = "Take a mandatory break or focus on a low-stress activity. Quality over quantity now."
-        color = ACCENT_ORANGE
+        status, color = "Burnout Risk! ⚠️", ACCENT_ORANGE
     
-    # Trigger image suggestion for visualization
     st.markdown(f"""
-    <div class="resilience-card" style="border-color: {color}; box-shadow: 0 0 15px {color}50;">
-        <p style="color: {color}; font-size: 1.2rem; margin: 0;">Current Resilience Status:</p>
-        <div class="resilience-score" style="color: {color}; text-shadow: 0 0 10px {color}80;">{current_score}</div>
-        <p style="color: {color}; font-weight: bold; margin: 5px 0 0 0;">{status}</p>
-        <p style="color: #ccc; font-size: 0.9rem; margin-top: 5px;">*AI Insight: {tip}</p>
+    <div style="padding: 20px; border-radius: 10px; border: 2px solid {color}; background: {BG_DARK}; text-align: center; margin-bottom: 20px;">
+        <p style="color: {color}; font-size: 1.2rem; margin: 0;">Live Resilience Score</p>
+        <div style="font-size: 4rem; font-weight: bold; color: {color};">{resilience_score}</div>
+        <p style="color: white; font-weight: bold;">{status}</p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    
-    # --- Logging Section ---
+    # --- Logging Form ---
     st.subheader("Daily Check-in")
-    
     with st.form("mood_form"):
-        col_mood, col_activity = st.columns(2)
+        c1, c2 = st.columns(2)
+        mood = c1.slider("Mood (1-10)", 1, 10, 5)
+        activity = c2.slider("Activity Level (0-5)", 0, 5, 3)
+        notes = st.text_area("Notes")
         
-        with col_mood:
-            mood = st.slider(
-                "1. Current Emotional State (1: Drained ➡️ 10: Motivated)",
-                1, 10, 5, key="mood_slider"
-            )
-        
-        with col_activity:
-            activity = st.slider(
-                "2. Application Intensity Today (1: Browsed ➡️ 5: 5+ Applications)",
-                1, 5, 3, key="activity_slider"
-            )
-            
-        notes = st.text_area("Optional: Notes on today's triggers (e.g., 'Rejection letter', 'Great interview').", key="notes_input")
-        
-        submitted = st.form_submit_button("Log Emotional Data", type="primary")
-        
-        if submitted:
-            log_mood_entry(mood, activity, notes)
-            st.rerun() 
-            
+        if st.form_submit_button("Log Entry", type="primary"):
+            log_mood_to_db(st.session_state.user_id, mood, activity, notes)
+            st.rerun()
 
-    # --- History and Visualization ---
-    st.subheader("History & Trends")
-    
-    if not st.session_state['mood_history'].empty:
-        # Display the trend chart
-        df_history = st.session_state['mood_history'].copy()
-        df_history['Date'] = pd.to_datetime(df_history['Date'])
-        df_history = df_history.set_index('Date')
-        
-        st.markdown("", unsafe_allow_html=True)
-        st.line_chart(df_history[['Mood', 'Activity']], use_container_width=True)
-        st.markdown(f"<p style='color:{ACCENT_CYAN}; font-size: 0.9rem;'>*When the 'Mood' line dips below the 'Activity' line, you are over-extending, risking burnout.</p>", unsafe_allow_html=True)
-        
-        st.caption("Raw Data Log:")
-        st.dataframe(df_history.tail(10))
+    # --- History Chart ---
+    if not df_history.empty:
+        st.markdown("---")
+        st.subheader("Trend Analysis")
+        chart_df = df_history.set_index('created_at')[['mood_score', 'activity_score']]
+        st.line_chart(chart_df, color=[ACCENT_CYAN, ACCENT_ORANGE])
 
-# Execute the page render function
 emotional_tracker_page()
