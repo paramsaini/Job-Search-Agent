@@ -10,7 +10,8 @@ class JobSearchAgent:
         self.qdrant_host = qdrant_host
         self.qdrant_key = qdrant_api_key
         self.collection_name = collection_name
-        self.gen_model = "gemini-2.0-flash" # Use stable flash model or 'gemini-2.0-flash-exp'
+        # Using Gemini 2.0 Flash which is fast, but we must prompt it strictly.
+        self.gen_model = "gemini-2.0-flash-exp" 
         self.embedding_model = "text-embedding-004"
         
         self.qdrant_client = self._init_qdrant()
@@ -22,6 +23,7 @@ class JobSearchAgent:
                 api_key=self.qdrant_key,
                 prefer_grpc=False
             )
+            # Quick check
             client.get_collection(self.collection_name)
             return client
         except Exception as e:
@@ -56,7 +58,7 @@ class JobSearchAgent:
                 limit=k,
                 with_payload=True
             )
-            docs = [f"[Role: {hit.payload.get('role', 'Unknown')}] {hit.payload.get('text', '')[:1500]}" for hit in results]
+            docs = [f"[Role: {hit.payload.get('role', 'Unknown')}] {hit.payload.get('text', '')[:1000]}" for hit in results]
             return "\n---\n".join(docs) if docs else "No relevant resumes found."
         except Exception as e:
             return "Search failed."
@@ -80,27 +82,51 @@ class JobSearchAgent:
         }
         
         json_prompt = f"""
-        Analyze this CV against the knowledge base context.
+        You are a Data Analyst. Analyze this CV against the knowledge base context and output specific scores.
         Context: {context_text}
         CV: {cv_text}
         """
         skill_report = self._call_gemini(json_prompt, schema=json_schema)
 
-        # 3. Strategy (Markdown with Search)
-        # CRITICAL: Prompt explicit search instructions for URLs
+        # 3. Strategy (Markdown with STRICT Search Command)
+        # We use a very aggressive prompt to stop the "I will search" behavior.
         md_prompt = f"""
-        Role: Expert Job Consultant.
-        Context: {context_text}
-        User CV: {cv_text}
+        You are a High-End Career Management AI. 
         
-        Task: Provide a strategic job search plan.
+        CONTEXT FROM SIMILAR PROFILES:
+        {context_text}
         
-        ACTION REQUIRED:
-        1. SEARCH for "Top employers for [User's Role] in [User's Location]".
-        2. LIST 5 Domestic Employers. For EACH, you MUST provide the specific **Careers Page URL** found in your search.
-        3. SEARCH for "Top international companies sponsoring visas for [User's Role]".
-        4. LIST 5 International Employers. For EACH, provide the **Careers Page URL**.
-        5. Detailed Visa/Immigration strategy.
+        CANDIDATE CV:
+        {cv_text}
+        
+        ---
+        
+        MISSION:
+        Perform a deep Google Search to find REAL, ACTIVE job market data and compile a final strategy report.
+        
+        MANDATORY OUTPUT FORMAT (Do not describe the plan. EXECUTE IT and OUTPUT the results):
+
+        ### 1. 🏠 Top Domestic Employers (High Match)
+        (Search for 5 top companies in the candidate's local region matching their skills)
+        * **[Company Name]** - [Rationale]
+            * 🔗 **Apply Here:** [Insert Direct Career Page URL found via Google Search]
+        * ...(Repeat for 5 companies)
+
+        ### 2. 🌍 International Sponsorship Targets
+        (Search for 5 global companies known for visa sponsorship in this domain)
+        * **[Company Name]** ([Country]) - [Visa Tier/Category]
+            * 🔗 **Apply Here:** [Insert Direct Career Page URL found via Google Search]
+        * ...(Repeat for 5 companies)
+
+        ### 3. 🛂 Visa & Immigration Pathway
+        * **Target Visa Class:** [Specific Visa Name, e.g., H-1B, Skilled Worker]
+        * **Critical Requirement:** [Key barrier to entry]
+        * **Strategy:** [One specific action to improve eligibility]
+
+        IMPORTANT:
+        - DO NOT write "I will search for...".
+        - DO NOT write "Here is a plan".
+        - GENERATE THE ACTUAL LISTS WITH LINKS NOW.
         """
         markdown_text, sources = self._call_gemini(md_prompt, use_search=True)
         
@@ -118,9 +144,8 @@ class JobSearchAgent:
             payload["generationConfig"]["responseMimeType"] = "application/json"
             payload["generationConfig"]["responseSchema"] = schema
         
-        # --- FIXED FOR GEMINI 2.0 ---
         if use_search:
-            # Gemini 2.0 uses 'google_search', not 'google_search_retrieval'
+            # Explicitly configuring the tool for Gemini 2.0
             payload["tools"] = [{"google_search": {}}] 
 
         try:
@@ -128,17 +153,21 @@ class JobSearchAgent:
             resp.raise_for_status()
             data = resp.json()
             
-            candidate = data.get('candidates', [{}])[0]
+            if 'candidates' not in data:
+                return ("Error: API blocked response.", []) if not schema else {"error": "Blocked"}
+
+            candidate = data['candidates'][0]
             
             # Text extraction
             text = candidate.get('content', {}).get('parts', [{}])[0].get('text', "")
             
-            # --- FIXED PARSING FOR GEMINI 2.0 ---
+            # Source extraction (Gemini 2.0 Logic)
             sources = []
             if use_search:
+                # Check both new and old fields just in case
                 meta = candidate.get('groundingMetadata', {})
-                # Gemini 2.0 uses 'groundingChunks', NOT 'groundingAttributions'
-                chunks = meta.get('groundingChunks', [])
+                chunks = meta.get('groundingChunks', []) or meta.get('groundingAttributions', [])
+                
                 for chunk in chunks:
                     web = chunk.get('web', {})
                     if web.get('uri'):
@@ -148,12 +177,14 @@ class JobSearchAgent:
                         })
 
             if schema:
-                # Sanitize JSON string (sometimes models add ```json ... ``` wrappers)
-                text = text.replace("```json", "").replace("```", "").strip()
-                return json.loads(text)
+                # Clean up json markdown wrappers if present
+                clean_text = text.replace("```json", "").replace("```", "").strip()
+                try:
+                    return json.loads(clean_text)
+                except:
+                    return {"error": "JSON Parse Error", "raw": text}
             
             return text, sources
 
         except Exception as e:
-            print(f"Gemini API Error: {e}")
             return ({"error": str(e)} if schema else (f"Error: {e}", []))
