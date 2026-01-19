@@ -6,185 +6,184 @@ from datetime import datetime
 from dotenv import load_dotenv
 from agent import JobSearchAgent
 
-# --- 1. PAGE CONFIG & STUDIO STYLE ---
+# --- 1. CONFIG & STYLING ---
 st.set_page_config(page_title="AEQUOR", page_icon="🌊", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #0e1117; font-family: 'Inter', sans-serif; }
+    /* Dark Theme Optimization */
+    .stApp { background-color: #0e1117; color: #fff; font-family: 'Inter', sans-serif; }
+    
+    /* Card/Container Styling */
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        background-color: #1d222a; border: 1px solid #2b313e;
-        border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        background-color: #1d222a; 
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 10px;
     }
-    h1, h2, h3 { color: #ffffff; }
-    .stButton>button { background-color: #FFD700; color: #000; font-weight: bold; border: none; }
-    .stDataFrame { border: 1px solid #333; border-radius: 5px; }
+    
+    /* Metrics */
+    div[data-testid="stMetricValue"] { font-size: 1.8rem !important; color: #FFD700 !important; }
+    
+    /* Table Styling */
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #333; color: #FFD700; padding: 8px; text-align: left; }
+    td { border-bottom: 1px solid #444; padding: 8px; }
+    
+    /* Buttons */
+    .stButton>button { width: 100%; border-radius: 5px; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
 load_dotenv()
 
-# --- 2. AUTHENTICATION SYSTEM ---
+# --- 2. AUTHENTICATION & STATE ---
 if 'user' not in st.session_state: st.session_state.user = None
-if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login' # login or signup
+if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 
-# Mock Database (In production, replace this with SQL/Firebase)
-if 'db_users' not in st.session_state:
-    st.session_state.db_users = {"demo": "password123"} # Default user
-if 'user_history' not in st.session_state:
-    st.session_state.user_history = {} # Key: username, Value: DataFrame
+# Mock DB (Reset on restart)
+if 'db_users' not in st.session_state: 
+    st.session_state.db_users = {"demo": "password", "admin": "admin"}
+if 'user_history' not in st.session_state: st.session_state.user_history = {}
 
-def login_user(username, password):
+def login(username, password):
     if username in st.session_state.db_users and st.session_state.db_users[username] == password:
         st.session_state.user = username
+        if username not in st.session_state.user_history:
+            st.session_state.user_history[username] = []
         st.rerun()
     else:
-        st.error("Invalid username or password")
+        st.error("Invalid Credentials (Try: demo / password)")
 
-def signup_user(username, password):
+def signup(username, password):
     if username in st.session_state.db_users:
-        st.error("User already exists")
+        st.error("User exists.")
     else:
         st.session_state.db_users[username] = password
-        st.session_state.user_history[username] = pd.DataFrame(columns=["Date", "Company", "Role", "Status"])
-        st.success("Account created! Please log in.")
+        st.session_state.user_history[username] = []
+        st.success("Account created. Please log in.")
         st.session_state.auth_mode = 'login'
 
-def logout_user():
+def logout():
     st.session_state.user = None
     st.rerun()
 
-# --- 3. AGENT SETUP ---
+# --- 3. INIT AGENT ---
 if 'agent' not in st.session_state:
-    api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
-    q_host = st.secrets.get("QDRANT_HOST", os.environ.get("QDRANT_HOST"))
-    q_key = st.secrets.get("QDRANT_API_KEY", os.environ.get("QDRANT_API_KEY"))
+    api = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY"))
+    qh = st.secrets.get("QDRANT_HOST", os.environ.get("QDRANT_HOST"))
+    qk = st.secrets.get("QDRANT_API_KEY", os.environ.get("QDRANT_API_KEY"))
     
-    if api_key and q_host:
-        st.session_state.agent = JobSearchAgent(api_key, q_host, q_key)
+    if api and qh:
+        st.session_state.agent = JobSearchAgent(api, qh, qk)
     else:
         st.session_state.agent = None
 
 if 'skill_gap_report' not in st.session_state: st.session_state['skill_gap_report'] = None
 
-# --- 4. DASHBOARD COMPONENT ---
-def render_user_dashboard():
-    st.title(f"👋 Welcome back, {st.session_state.user}")
-    
-    # Profile Summary
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        with st.container(border=True):
-            st.subheader("👤 Profile")
-            st.markdown(f"**Username:** {st.session_state.user}")
-            st.markdown(f"**Status:** Active Candidate")
-            st.markdown(f"**Last Login:** {datetime.now().strftime('%Y-%m-%d')}")
-            if st.button("Logout", type="secondary"):
-                logout_user()
-
-    with col2:
-        with st.container(border=True):
-            st.subheader("📂 Application History")
-            # Mock Data if empty
-            user_data = st.session_state.user_history.get(st.session_state.user, pd.DataFrame())
-            if user_data.empty:
-                # Add some dummy data for visualization
-                dummy_data = {
-                    "Date": ["2024-01-10", "2024-01-12", "2024-01-15"],
-                    "Company": ["Google", "Spotify", "Tesla"],
-                    "Role": ["Data Analyst", "Product Manager", "Engineer"],
-                    "Status": ["Applied", "Interviewing", "Rejected"]
-                }
-                user_data = pd.DataFrame(dummy_data)
-                
-            st.dataframe(user_data, use_container_width=True, hide_index=True)
-
-# --- 5. MAIN APP LOGIC ---
-def extract_text(uploaded_file):
+# --- 4. APP LOGIC ---
+def extract_text(file):
     try:
-        if uploaded_file.type == "application/pdf":
-            reader = pypdf.PdfReader(uploaded_file)
-            return "".join([page.extract_text() for page in reader.pages])
-        else:
-            return uploaded_file.read().decode("utf-8")
+        if file.type == "application/pdf":
+            reader = pypdf.PdfReader(file)
+            return "".join([p.extract_text() for p in reader.pages])
+        return file.read().decode("utf-8")
     except: return ""
 
 def main():
-    # --- AUTH GUARD ---
+    # --- LOGIN SCREEN ---
     if not st.session_state.user:
-        col1, col2, col3 = st.columns([1,1,1])
-        with col2:
-            st.image("aequor_logo_placeholder.png", width=100)
-            st.title("AEQUOR Access")
-            
+        c1, c2, c3 = st.columns([1,1,1])
+        with c2:
+            st.header("AEQUOR Access")
             mode = st.radio("Select Mode", ["Login", "Sign Up"], horizontal=True)
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
+            u = st.text_input("Username")
+            p = st.text_input("Password", type="password")
             
             if mode == "Login":
-                if st.button("Login", use_container_width=True, type="primary"):
-                    login_user(username, password)
+                if st.button("Login", type="primary"): login(u, p)
             else:
-                if st.button("Create Account", use_container_width=True, type="primary"):
-                    signup_user(username, password)
-        return  # STOP here if not logged in
+                if st.button("Sign Up", type="primary"): signup(u, p)
+        return
 
-    # --- APP CONTENT (Only reaches here if logged in) ---
-    
-    # sidebar
+    # --- MAIN DASHBOARD (LOGGED IN) ---
     with st.sidebar:
-        st.image("aequor_logo_placeholder.png", width=50)
-        st.header("Navigation")
-        page = st.radio("Go to", ["Home / Dashboard", "Emotional Tracker", "Skill Migration", "CV Compiler"])
+        st.markdown(f"👤 **{st.session_state.user}**")
         st.divider()
-        st.markdown(f"Logged in as: **{st.session_state.user}**")
-        if st.button("Logout"): logout_user()
+        nav = st.radio("Navigate", ["Dashboard", "Emotional Tracker", "Skill Migration", "CV Compiler"])
+        st.divider()
+        if st.button("Logout"): logout()
 
     # Routing
-    if page == "Home / Dashboard":
-        render_user_dashboard()
-        
-        st.divider()
-        st.header("🚀 Start New Strategy")
-        
-        col_input, col_kpi = st.columns([1, 1])
-        
-        with col_input:
-            role_filter = st.selectbox("Target Role", ["All", "Data Science", "Sales", "Engineering", "HR"])
-            uploaded_file = st.file_uploader("Upload CV for Analysis", type=["pdf", "txt"])
-            
-            if st.button("Generate Strategy", type="primary"):
-                if uploaded_file and st.session_state.agent:
-                    with st.spinner("Agent Analyzing..."):
-                        cv_text = extract_text(uploaded_file)
-                        md, report, sources = st.session_state.agent.generate_strategy(cv_text, role_filter)
-                        st.session_state.results = {"md": md, "report": report, "sources": sources}
-                        st.session_state['skill_gap_report'] = report
-                        st.rerun()
+    if nav == "Emotional Tracker": st.switch_page("pages/1_Emotional_Tracker.py")
+    if nav == "Skill Migration": st.switch_page("pages/3_Skill_Migration.py")
+    if nav == "CV Compiler": st.switch_page("pages/4_CV_Compiler.py")
 
-        # Display Results
-        if "results" in st.session_state:
-            res = st.session_state.results
-            
-            # KPI Cards
-            st.markdown("### 📊 Live Analysis")
-            k1, k2, k3 = st.columns(3)
-            k1.metric("Match Score", f"{res['report'].get('predictive_score')}%")
-            k2.metric("Tech Depth", f"{res['report'].get('tech_score')}%")
-            k3.error(f"Weakness: {res['report'].get('weakest_link_skill')}")
-            
-            st.divider()
-            
-            # MARKDOWN TABLES (This will now render the tables from Agent)
-            st.markdown(res['md'])
+    # --- DASHBOARD CONTENT ---
+    st.title(f"🚀 Career Strategy Dashboard")
+    
+    # User Stats Row
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Profile Status", "Active")
+    c2.metric("Jobs Analyzed", len(st.session_state.user_history.get(st.session_state.user, [])))
+    c3.metric("System Health", "Online", delta="Stable")
+    
+    st.divider()
 
-    # Placeholder pages for routing demo
-    elif page == "Emotional Tracker":
-        st.switch_page("pages/1_Emotional_Tracker.py")
-    elif page == "Skill Migration":
-        st.switch_page("pages/3_Skill_Migration.py")
-    elif page == "CV Compiler":
-        st.switch_page("pages/4_CV_Compiler.py")
+    # Input Area
+    st.subheader("📄 Start New Analysis")
+    col_in, col_act = st.columns([2, 1])
+    
+    with col_in:
+        role = st.selectbox("Target Role", ["All", "Data Science", "Sales", "Engineering", "HR"])
+        f = st.file_uploader("Upload CV", type=["pdf", "txt"])
+    
+    with col_act:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("✨ Generate Strategy", type="primary", use_container_width=True):
+            if f and st.session_state.agent:
+                with st.spinner("Agent is searching live jobs..."):
+                    txt = extract_text(f)
+                    md, rep, src = st.session_state.agent.generate_strategy(txt, role)
+                    
+                    # Save results
+                    st.session_state.results = {"md": md, "rep": rep, "src": src}
+                    st.session_state['skill_gap_report'] = rep
+                    # Log history
+                    st.session_state.user_history[st.session_state.user].append(datetime.now())
+                    st.rerun()
+
+    # Results Display
+    if "results" in st.session_state:
+        res = st.session_state.results
+        
+        # 1. KPI Cards
+        st.markdown("### 📊 Analysis Results")
+        k1, k2, k3 = st.columns(3)
+        
+        with k1: 
+            with st.container(border=True):
+                st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
+                st.progress(res['rep'].get('predictive_score', 0)/100)
+        with k2:
+            with st.container(border=True):
+                st.metric("Tech Depth", f"{res['rep'].get('tech_score')}%")
+                st.progress(res['rep'].get('tech_score', 0)/100)
+        with k3:
+            with st.container(border=True):
+                st.error(f"Weakest Link: {res['rep'].get('weakest_link_skill')}")
+                st.caption("Focus your learning here.")
+
+        # 2. MARKDOWN TABLES (The Fixed Output)
+        st.markdown("---")
+        st.markdown(res['md'])
+        
+        # 3. Sources
+        if res['src']:
+            with st.expander("🔗 Verified Sources"):
+                for s in res['src']:
+                    st.markdown(f"- [{s['title']}]({s['uri']})")
 
 if __name__ == "__main__":
     main()
