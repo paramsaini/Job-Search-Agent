@@ -46,6 +46,8 @@ if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
 if 'db_users' not in st.session_state: 
     st.session_state.db_users = {"demo": "password", "admin": "admin"}
 if 'user_history' not in st.session_state: st.session_state.user_history = {}
+# Ensure global CV text state exists
+if 'cv_text_to_process' not in st.session_state: st.session_state['cv_text_to_process'] = ""
 
 def login(username, password):
     if username in st.session_state.db_users and st.session_state.db_users[username] == password:
@@ -145,6 +147,10 @@ def main():
             if f and st.session_state.agent:
                 with st.spinner("Agent is searching live jobs..."):
                     txt = extract_text(f)
+                    
+                    # --- FIX: SAVE TEXT FOR OTHER PAGES ---
+                    st.session_state['cv_text_to_process'] = txt 
+                    
                     md, rep, src = st.session_state.agent.generate_strategy(txt, role)
                     
                     # Save results
