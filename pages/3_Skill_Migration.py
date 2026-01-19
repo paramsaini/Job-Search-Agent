@@ -14,8 +14,9 @@ GRID_ORANGE = "rgba(255, 140, 0, 0.6)"
 # --- Supabase Init ---
 @st.cache_resource
 def init_supabase():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    url = st.secrets.get("SUPABASE_URL")
+    key = st.secrets.get("SUPABASE_KEY")
+    if not url or not key: return None
     return create_client(url, key)
 
 supabase = init_supabase()
@@ -51,7 +52,7 @@ def get_skill_migration_data(report):
 def fetch_latest_report():
     """Fetches the most recent analysis from Supabase if session is empty."""
     user_id = st.session_state.get('user_id')
-    if not user_id: return None
+    if not user_id or not supabase: return None
     
     try:
         response = supabase.table("analyses").select("report_json")\
