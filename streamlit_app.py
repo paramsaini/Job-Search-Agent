@@ -1,4 +1,5 @@
 import streamlit as st
+from supabase import create_client, Client
 import os
 import pypdf
 import pandas as pd
@@ -38,34 +39,42 @@ st.markdown("""
 
 load_dotenv()
 
-# --- 2. AUTHENTICATION & STATE ---
+# --- INIT SUPABASE ---
+@st.cache_resource
+def init_supabase():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+supabase = init_supabase()
+
+# --- AUTHENTICATION LOGIC ---
 if 'user' not in st.session_state: st.session_state.user = None
-if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
+if 'user_id' not in st.session_state: st.session_state.user_id = None
 
-# Mock DB (Reset on restart)
-if 'db_users' not in st.session_state: 
-    st.session_state.db_users = {"demo": "password", "admin": "admin"}
-if 'user_history' not in st.session_state: st.session_state.user_history = {}
-# Ensure global CV text state exists
-if 'cv_text_to_process' not in st.session_state: st.session_state['cv_text_to_process'] = ""
-
-def login(username, password):
-    if username in st.session_state.db_users and st.session_state.db_users[username] == password:
-        st.session_state.user = username
-        if username not in st.session_state.user_history:
-            st.session_state.user_history[username] = []
+def login(email, password):
+    try:
+        # Supabase handles security
+        response = supabase.auth.sign_in_with_password({"email": email, "password": password})
+        st.session_state.user = response.user.email
+        st.session_state.user_id = response.user.id
         st.rerun()
-    else:
-        st.error("Invalid Credentials (Try: demo / password)")
+    except Exception as e:
+        st.error(f"Login failed: {e}")
 
-def signup(username, password):
-    if username in st.session_state.db_users:
-        st.error("User exists.")
-    else:
-        st.session_state.db_users[username] = password
-        st.session_state.user_history[username] = []
-        st.success("Account created. Please log in.")
-        st.session_state.auth_mode = 'login'
+def signup(email, password, username):
+    try:
+        # Metadata 'username' is passed to the Postgres Trigger we created
+        response = supabase.auth.sign_up({
+            "email": email, 
+            "password": password, 
+            "options": {"data": {"username": username}}
+        })
+        st.success("Account created! Please check your email to confirm.")
+    except Exception as e:
+        st.error(f"Signup failed: {e}")
+
+
 
 def logout():
     st.session_state.user = None
