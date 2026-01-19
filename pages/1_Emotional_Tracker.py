@@ -14,8 +14,9 @@ ACCENT_YELLOW = "#F59E0B"
 # --- Supabase Init ---
 @st.cache_resource
 def init_supabase():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    url = st.secrets.get("SUPABASE_URL")
+    key = st.secrets.get("SUPABASE_KEY")
+    if not url or not key: return None
     return create_client(url, key)
 
 supabase = init_supabase()
@@ -24,6 +25,7 @@ supabase = init_supabase()
 
 def fetch_mood_history(user_id):
     """Retrieves full mood history from Supabase."""
+    if not supabase: return pd.DataFrame()
     try:
         response = supabase.table("mood_logs").select("*")\
             .eq("user_id", user_id)\
@@ -50,6 +52,7 @@ def calculate_resilience(df):
 
 def log_mood_to_db(user_id, mood, activity, notes):
     """Inserts new entry to Supabase."""
+    if not supabase: return
     try:
         supabase.table("mood_logs").insert({
             "user_id": user_id,
