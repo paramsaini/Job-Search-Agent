@@ -10,8 +10,7 @@ class JobSearchAgent:
         self.qdrant_host = qdrant_host
         self.qdrant_key = qdrant_api_key
         self.collection_name = collection_name
-        # Using Gemini 2.0 Flash which is fast, but we must prompt it strictly.
-        self.gen_model = "gemini-2.0-flash-exp" 
+        self.gen_model = "gemini-2.0-flash-exp" # Fast and smart
         self.embedding_model = "text-embedding-004"
         
         self.qdrant_client = self._init_qdrant()
@@ -23,7 +22,6 @@ class JobSearchAgent:
                 api_key=self.qdrant_key,
                 prefer_grpc=False
             )
-            # Quick check
             client.get_collection(self.collection_name)
             return client
         except Exception as e:
@@ -46,9 +44,7 @@ class JobSearchAgent:
         
         search_filter = None
         if role_filter != "All":
-            search_filter = Filter(
-                must=[FieldCondition(key="role", match=MatchValue(value=role_filter))]
-            )
+            search_filter = Filter(must=[FieldCondition(key="role", match=MatchValue(value=role_filter))])
 
         try:
             results = self.qdrant_client.search(
@@ -78,55 +74,37 @@ class JobSearchAgent:
                 "leader_score": {"type": "INTEGER"},
                 "domain_score": {"type": "INTEGER"},
             },
-            "required": ["predictive_score", "weakest_link_skill", "tech_score", "leader_score"]
+            "required": ["predictive_score", "weakest_link_skill", "tech_score"]
         }
         
-        json_prompt = f"""
-        You are a Data Analyst. Analyze this CV against the knowledge base context and output specific scores.
-        Context: {context_text}
-        CV: {cv_text}
-        """
+        json_prompt = f"Analyze this CV against the context. Context: {context_text}. CV: {cv_text}"
         skill_report = self._call_gemini(json_prompt, schema=json_schema)
 
-        # 3. Strategy (Markdown with STRICT Search Command)
-        # We use a very aggressive prompt to stop the "I will search" behavior.
+        # 3. Strategy (Strict Table Format)
         md_prompt = f"""
-        You are a High-End Career Management AI. 
+        Role: Expert Job Consultant.
+        Context: {context_text}
+        User CV: {cv_text}
         
-        CONTEXT FROM SIMILAR PROFILES:
-        {context_text}
-        
-        CANDIDATE CV:
-        {cv_text}
-        
-        ---
-        
-        MISSION:
-        Perform a deep Google Search to find REAL, ACTIVE job market data and compile a final strategy report.
-        
-        MANDATORY OUTPUT FORMAT (Do not describe the plan. EXECUTE IT and OUTPUT the results):
+        Task: Perform a Google Search for REAL, ACTIVE jobs and return the results in STRICT MARKDOWN TABLES.
 
-        ### 1. 🏠 Top Domestic Employers (High Match)
-        (Search for 5 top companies in the candidate's local region matching their skills)
-        * **[Company Name]** - [Rationale]
-            * 🔗 **Apply Here:** [Insert Direct Career Page URL found via Google Search]
-        * ...(Repeat for 5 companies)
+        OUTPUT FORMAT REQUIREMENTS:
+        
+        ### 1. 🏠 Domestic Opportunities (Table)
+        | Company Name | Employer Details | Job Match Requirements | Career Page Link |
+        |---|---|---|---|
+        | [Name] | [2 sentence description] | [Key skills required] | [Insert Link found via search] |
+        (List 5 rows)
 
-        ### 2. 🌍 International Sponsorship Targets
-        (Search for 5 global companies known for visa sponsorship in this domain)
-        * **[Company Name]** ([Country]) - [Visa Tier/Category]
-            * 🔗 **Apply Here:** [Insert Direct Career Page URL found via Google Search]
-        * ...(Repeat for 5 companies)
+        ### 2. 🌍 International Sponsorship Targets (Table)
+        | Company Name | Country | Visa/Immigration Strategy | Job Requirements | Career Page Link |
+        |---|---|---|---|---|
+        | [Name] | [Country] | [Visa Type & Sponsorship difficulty] | [Key skills] | [Insert Link found via search] |
+        (List 5 rows)
 
-        ### 3. 🛂 Visa & Immigration Pathway
-        * **Target Visa Class:** [Specific Visa Name, e.g., H-1B, Skilled Worker]
-        * **Critical Requirement:** [Key barrier to entry]
-        * **Strategy:** [One specific action to improve eligibility]
-
-        IMPORTANT:
-        - DO NOT write "I will search for...".
-        - DO NOT write "Here is a plan".
-        - GENERATE THE ACTUAL LISTS WITH LINKS NOW.
+        ### 3. 🚀 Execution Strategy
+        * **Action 1:** ...
+        * **Action 2:** ...
         """
         markdown_text, sources = self._call_gemini(md_prompt, use_search=True)
         
@@ -135,17 +113,13 @@ class JobSearchAgent:
     def _call_gemini(self, prompt, schema=None, use_search=False):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gen_model}:generateContent?key={self.gemini_key}"
         
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {}
-        }
+        payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {}}
         
         if schema:
             payload["generationConfig"]["responseMimeType"] = "application/json"
             payload["generationConfig"]["responseSchema"] = schema
         
         if use_search:
-            # Explicitly configuring the tool for Gemini 2.0
             payload["tools"] = [{"google_search": {}}] 
 
         try:
@@ -153,36 +127,21 @@ class JobSearchAgent:
             resp.raise_for_status()
             data = resp.json()
             
-            if 'candidates' not in data:
-                return ("Error: API blocked response.", []) if not schema else {"error": "Blocked"}
-
-            candidate = data['candidates'][0]
-            
-            # Text extraction
+            candidate = data.get('candidates', [{}])[0]
             text = candidate.get('content', {}).get('parts', [{}])[0].get('text', "")
             
-            # Source extraction (Gemini 2.0 Logic)
             sources = []
             if use_search:
-                # Check both new and old fields just in case
                 meta = candidate.get('groundingMetadata', {})
                 chunks = meta.get('groundingChunks', []) or meta.get('groundingAttributions', [])
-                
                 for chunk in chunks:
                     web = chunk.get('web', {})
                     if web.get('uri'):
-                        sources.append({
-                            "title": web.get('title', 'Source'), 
-                            "uri": web['uri']
-                        })
+                        sources.append({"title": web.get('title', 'Source'), "uri": web['uri']})
 
             if schema:
-                # Clean up json markdown wrappers if present
                 clean_text = text.replace("```json", "").replace("```", "").strip()
-                try:
-                    return json.loads(clean_text)
-                except:
-                    return {"error": "JSON Parse Error", "raw": text}
+                return json.loads(clean_text)
             
             return text, sources
 
