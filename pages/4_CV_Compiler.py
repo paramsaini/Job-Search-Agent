@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import re
 import numpy as np
+import pypdf # Added import for fallback handling
 from datetime import datetime
 
 # --- Configuration (Copied from main app for consistency) ---
@@ -94,6 +95,15 @@ def log_finalized_application(company, job_id, live_compliance, live_clarity):
     }])
     st.session_state['ledger_data'] = pd.concat([st.session_state['ledger_data'], new_entry], ignore_index=True)
 
+# --- Helper: Extract Text ---
+def extract_text(file):
+    try:
+        if file.type == "application/pdf":
+            reader = pypdf.PdfReader(file)
+            return "".join([p.extract_text() for p in reader.pages])
+        return file.read().decode("utf-8")
+    except: return ""
+
 
 # --- Page Render ---
 
@@ -110,9 +120,18 @@ def compiler_page():
     # Get required data from session state
     cv_text = st.session_state.get('cv_text_to_process', None)
     
+    # --- FALLBACK UPLOADER: If no CV loaded from Home, allow upload here ---
     if not cv_text:
-        st.error("⚠️ **PREREQUISITE:** Please run a full analysis on the Home Page first to load your processed CV content.")
-        return
+        st.warning("⚠️ No processed CV found from Dashboard.")
+        uploaded_file = st.file_uploader("Upload your CV to proceed (PDF/TXT):", type=["pdf", "txt"], key="compiler_uploader")
+        
+        if uploaded_file:
+            cv_text = extract_text(uploaded_file)
+            st.session_state['cv_text_to_process'] = cv_text # Sync with global state
+            st.success("✅ CV Loaded! Proceed below.")
+        else:
+            st.info("Please upload a CV to enable the compiler.")
+            return
 
     st.subheader("1. Job Description Input")
     jd_input = st.text_area("Paste the Job Description (JD) here:", height=200, key="compiler_jd_input")
