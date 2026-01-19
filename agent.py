@@ -94,8 +94,8 @@ class JobSearchAgent:
         {cv_text}
         
         TASK:
-        1. Search Google for 5 LIVE domestic job openings matching this CV.
-        2. Search Google for 5 LIVE international visa-sponsoring companies matching this CV.
+        1. Search Google for 10 LIVE domestic job openings matching this CV.
+        2. Search Google for 10 LIVE international visa-sponsoring companies matching this CV.
         3. Output the results in the EXACT tables below. Do not add conversational text.
 
         REQUIRED OUTPUT FORMAT:
