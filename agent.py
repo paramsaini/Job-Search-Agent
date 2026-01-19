@@ -14,7 +14,7 @@ class JobSearchAgent:
         # --- UPDATE: USING THE STRONGEST STABLE MODEL ---
         # gemini-1.5-pro is the industry standard for high-reasoning tasks.
         # It follows formatting instructions (tables) better than Flash.
-        self.gen_model = "gemini-1.5-flash" 
+        self.gen_model = "gemini-2.5-flash-preview-09-2025" 
         self.embedding_model = "text-embedding-004"
         
         self.qdrant_client = self._init_qdrant()
