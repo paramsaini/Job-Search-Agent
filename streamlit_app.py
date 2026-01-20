@@ -153,9 +153,18 @@ def logout():
 
 # --- 4. INIT AGENT ---
 if 'agent' not in st.session_state:
-    api = st.secrets.get("GEMINI_API_KEY")
-    qh = st.secrets.get("QDRANT_HOST")
-    qk = st.secrets.get("QDRANT_API_KEY")
+    # Try getting keys from Environment (Railway) OR Secrets File (Local)
+    def get_secret(key):
+        if key in os.environ:
+            return os.environ[key]
+        try:
+            return st.secrets[key]
+        except:
+            return None
+
+    api = get_secret("GEMINI_API_KEY")
+    qh = get_secret("QDRANT_HOST")
+    qk = get_secret("QDRANT_API_KEY")
     
     if api and qh:
         st.session_state.agent = JobSearchAgent(api, qh, qk)
