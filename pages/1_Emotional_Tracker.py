@@ -3,6 +3,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from supabase import create_client
+import os
 
 # --- Configuration ---
 BG_DARK = "#000000"
