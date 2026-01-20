@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from supabase import create_client
+import os
 
 # --- Configuration ---
 BG_DARK = "#000000"
@@ -28,6 +29,12 @@ def init_supabase():
 
     if not url or not key: return None
     return create_client(url, key)
+
+# Initialize the connection immediately after defining the function
+try:
+    supabase = init_supabase()
+except Exception as e:
+    supabase = None
 
 # Initialize the connection immediately after defining the function
 try:
