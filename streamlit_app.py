@@ -223,7 +223,7 @@ def main():
         with st.container():
             c1, c2, c3 = st.columns([1,1,1])
             with c2:
-                st.header("AEQUOR Access")
+                st.header("job-search-agent Access")
                 
                 if not supabase:
                     st.warning("⚠️ Secrets missing. Please check .streamlit/secrets.toml")
