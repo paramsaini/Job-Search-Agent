@@ -8,7 +8,7 @@ from agent import JobSearchAgent
 from supabase import create_client, Client
 
 # --- 1. CONFIG & STYLING (NEW ANIMATED BACKGROUND) ---
-st.set_page_config(page_title="AEQUOR", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="job-search-agent", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
