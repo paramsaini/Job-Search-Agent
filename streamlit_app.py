@@ -103,8 +103,9 @@ def init_supabase():
     if not url or not key:
         return None
     return create_client(url, key)
-    try:
-    supabase = init_supabase()
+    # --- CORRECT INDENTATION BELOW ---
+try:
+    supabase = init_supabase()     # This is now indented correctly
 except Exception as e:
     supabase = None
     print(f"Supabase init failed: {e}")
