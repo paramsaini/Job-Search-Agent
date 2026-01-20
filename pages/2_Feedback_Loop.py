@@ -72,6 +72,11 @@ def extract_text(file):
 # --- Page Render ---
 
 def feedback_loop_page():
+    # --- ADD THIS BLOCK AT THE VERY TOP OF THE FUNCTION ---
+    if 'user_id' not in st.session_state or not st.session_state.user_id:
+        st.warning("🔒 Please log in to access the Feedback Loop.")
+        return
+    # ------------------------------------------------------
     # --- New Name Integration ---
     st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🔄 Aequor: Predictive Feedback Loop</h1>', unsafe_allow_html=True)
     st.markdown(f"""
