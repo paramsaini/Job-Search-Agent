@@ -79,8 +79,11 @@ def signup(email, password, username):
         st.error(f"Signup failed: {e}")
 
 def logout():
-    st.session_state.user = None
-    st.session_state.user_id = None
+    # 1. Clear every single key in the session state
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    
+    # 2. Rerun the app to force a fresh start
     st.rerun()
 
 # --- 4. INIT AGENT ---
