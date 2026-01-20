@@ -12,28 +12,23 @@ st.set_page_config(page_title="AEQUOR", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
-    /* 1. The Moving Digital Wave Background */
+    /* 1. The Static Professional Blue Background */
     .stApp {
-        /* Deep dark base with moving blue/purple gradients */
-        background: linear-gradient(-45deg, #040c24, #1a0b38, #0d0221, #001433);
-        background-size: 400% 400%;
-        animation: gradientWaveMovement 18s ease infinite;
+        /* A deep, professional, static dark blue to purple gradient */
+        background: linear-gradient(to bottom right, #0f172a, #1e1b4b);
+        background-attachment: fixed; /* Ensures background stays fixed while scrolling */
     }
 
-    /* The animation definition (moves the background) */
-    @keyframes gradientWaveMovement {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
+    /* REMOVED: The animation keyframes are gone now. */
 
     /* 2. Glassmorphism Theme (Semi-transparent Containers) */
+    /* Targets main containers, metrics, expanders, forms, and sidebar content */
     div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stMetric"],
     div[data-testid="stExpanderDetails"],
     div[data-testid="stForm"],
     [data-testid="stSidebar"] > div {
-        background-color: rgba(15, 23, 42, 0.7) !important; /* Dark blue semi-transparent */
+        background-color: rgba(15, 23, 42, 0.6) !important; /* Dark blue semi-transparent */
         backdrop-filter: blur(12px); /* The frosted glass effect */
         border: 1px solid rgba(88, 116, 176, 0.2) !important; /* Subtle glowing border */
         border-radius: 12px;
@@ -56,19 +51,19 @@ st.markdown("""
         color: #10b981 !important; /* Neon Green for positive changes */
     }
 
-    /* Buttons with a digital glow */
+    /* Buttons with a digital glow (KEPT AS REQUESTED) */
     .stButton>button {
         width: 100%;
         border-radius: 8px;
         font-weight: bold;
-        background: linear-gradient(90deg, #0062ff, #00c6ff);
+        background: linear-gradient(90deg, #0062ff, #00c6ff); /* Cyan/Blue Gradient */
         border: none;
         color: white !important;
-        box-shadow: 0 0 10px rgba(0, 98, 255, 0.4);
+        box-shadow: 0 0 10px rgba(0, 98, 255, 0.5); /* The shinning glow effect */
         transition: all 0.3s ease;
     }
     .stButton>button:hover {
-        box-shadow: 0 0 20px rgba(0, 198, 255, 0.7);
+        box-shadow: 0 0 25px rgba(0, 198, 255, 0.8); /* Brighter shine on hover */
         transform: translateY(-2px);
     }
 
@@ -80,9 +75,9 @@ st.markdown("""
         border-radius: 8px;
     }
     
-    /* Sidebar specific fix */
+    /* Sidebar specific fix to ensure it blends in */
     section[data-testid="stSidebar"] {
-        background-color: rgba(10, 14, 26, 0.85); /* Slightly darker sidebar */
+        background-color: rgba(10, 14, 26, 0.85); /* Slightly darker sidebar background */
         border-right: 1px solid rgba(88, 116, 176, 0.1);
     }
     </style>
