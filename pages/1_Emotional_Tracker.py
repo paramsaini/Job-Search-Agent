@@ -95,7 +95,7 @@ def emotional_tracker_page():
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🧘 Aequor: Emotional Endurance</h1>', unsafe_allow_html=True)
+    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🧘 Job-search-agent: Emotional Endurance</h1>', unsafe_allow_html=True)
     st.markdown("---")
 
     if not st.session_state.get('user_id'):
