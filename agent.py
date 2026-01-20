@@ -104,13 +104,13 @@ class JobSearchAgent:
         | Company | Role | Match Reason | Application Link |
         | :--- | :--- | :--- | :--- |
         | [Name] | [Role] | [Why it fits] | [Insert Link found via Search] |
-        (5 rows)
+        (10 rows)
 
         ### 🌍 International Sponsorship Targets
         | Company | Location | Visa Path | Application Link |
         | :--- | :--- | :--- | :--- |
         | [Name] | [Country] | [Visa Tier] | [Insert Link found via Search] |
-        (5 rows)
+        (10 rows)
 
         ### 🚀 Execution Plan
         * **Step 1:** [Actionable Step]
