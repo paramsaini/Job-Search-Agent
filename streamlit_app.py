@@ -10,25 +10,76 @@ from supabase import create_client, Client
 # --- 1. CONFIG & STYLING ---
 st.set_page_config(page_title="AEQUOR", page_icon="🚀", layout="wide")
 
+# --- 1. CONFIG & STYLING ---
+st.set_page_config(page_title="AEQUOR", page_icon="🚀", layout="wide")
+
+# ANIMATED BACKGROUND & GLASSMORPHISM STYLING
 st.markdown("""
     <style>
-    /* Dark Theme Optimization */
-    .stApp { background-color: #0e1117; color: #fff; font-family: 'Inter', sans-serif; }
-    
-    /* Card/Container Styling */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
-        background-color: #1d222a; 
-        border: 1px solid #333;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 10px;
+    /* 1. The Moving Digital Wave Background */
+    .stApp {
+        /* Deep dark base with moving blue/purple gradients */
+        background: linear-gradient(-45deg, #040c24, #1a0b38, #0d0221, #001433);
+        background-size: 400% 400%;
+        animation: gradientWaveMovement 18s ease infinite;
     }
-    
-    /* Metrics */
-    div[data-testid="stMetricValue"] { font-size: 1.8rem !important; color: #FFD700 !important; }
-    
-    /* Buttons */
-    .stButton>button { width: 100%; border-radius: 5px; font-weight: bold; }
+
+    /* The animation definition (moves the background) */
+    @keyframes gradientWaveMovement {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* 2. Glassmorphism Theme (Semi-transparent Containers) */
+    /* Makes containers dark, see-through, with a blur effect */
+    div[data-testid="stVerticalBlockBorderWrapper"],
+    div[data-testid="stMetric"],
+    div[data-testid="stExpanderDetails"],
+    form {
+        background-color: rgba(15, 23, 42, 0.6) !important; /* Dark blue semi-transparent */
+        backdrop-filter: blur(12px); /* The frosted glass effect */
+        border: 1px solid rgba(88, 116, 176, 0.2) !important; /* Subtle glowing border */
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Text & Metric Colors to pop against the dark background */
+    h1, h2, h3, p, label, .stMarkdown {
+        color: #e2e8f0 !important; /* Light gray/white text */
+        text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 1.8rem !important;
+        color: #00e0ff !important; /* Neon Cyan for numbers */
+        text-shadow: 0 0 10px rgba(0, 224, 255, 0.6);
+    }
+    div[data-testid="stMetricDelta"] {
+        color: #10b981 !important; /* Neon Green for positive changes */
+    }
+
+    /* Buttons with a digital glow */
+    .stButton>button {
+        width: 100%;
+        border-radius: 8px;
+        font-weight: bold;
+        background: linear-gradient(90deg, #0062ff, #00c6ff);
+        border: none;
+        color: white !important;
+        box-shadow: 0 0 10px rgba(0, 98, 255, 0.4);
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        box-shadow: 0 0 20px rgba(0, 198, 255, 0.7);
+        transform: translateY(-2px);
+    }
+
+    /* Input fields styling */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div {
+        background-color: rgba(30, 41, 59, 0.8) !important;
+        color: white !important;
+        border: 1px solid rgba(88, 116, 176, 0.3) !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
