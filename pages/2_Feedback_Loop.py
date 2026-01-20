@@ -76,9 +76,9 @@ def feedback_loop_page():
     if 'user_id' not in st.session_state or not st.session_state.user_id:
         st.warning("🔒 Please log in to access the Feedback Loop.")
         return
-    # ------------------------------------------------------
+    
     # --- New Name Integration ---
-    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🔄 Aequor: Predictive Feedback Loop</h1>', unsafe_allow_html=True)
+    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🔄 job-search-agent: Predictive Feedback Loop</h1>', unsafe_allow_html=True)
     st.markdown(f"""
     <p style="text-align: center; color: {ACCENT_CYAN}; font-size: 1.1em; font-weight: 500; text-shadow: 0 0 2px {ACCENT_CYAN}40;">
         **Niche Solution: Opaque Feedback.** Instantly simulate a recruiter's first impression by comparing your CV to a Job Description (JD). Eliminate wasted time on low-probability applications.
