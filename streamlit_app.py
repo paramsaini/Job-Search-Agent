@@ -12,7 +12,10 @@ st.set_page_config(page_title="AEQUOR", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
+    /* Dark Theme Optimization */
     .stApp { background-color: #0e1117; color: #fff; font-family: 'Inter', sans-serif; }
+    
+    /* Card/Container Styling */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #1d222a; 
         border: 1px solid #333;
@@ -20,7 +23,11 @@ st.markdown("""
         padding: 16px;
         margin-bottom: 10px;
     }
+    
+    /* Metrics */
     div[data-testid="stMetricValue"] { font-size: 1.8rem !important; color: #FFD700 !important; }
+    
+    /* Buttons */
     .stButton>button { width: 100%; border-radius: 5px; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
@@ -30,10 +37,8 @@ load_dotenv()
 # --- 2. SUPABASE CONNECTION ---
 @st.cache_resource
 def init_supabase():
-    # Try getting secrets from Streamlit secrets first, then environment variables
     url = st.secrets.get("SUPABASE_URL") or os.environ.get("SUPABASE_URL")
     key = st.secrets.get("SUPABASE_KEY") or os.environ.get("SUPABASE_KEY")
-    
     if not url or not key:
         return None
     return create_client(url, key)
@@ -47,8 +52,8 @@ except Exception as e:
 # --- 3. AUTHENTICATION & STATE ---
 if 'user' not in st.session_state: st.session_state.user = None
 if 'user_id' not in st.session_state: st.session_state.user_id = None
-if 'cv_text_to_process' not in st.session_state: st.session_state['cv_text_to_process'] = ""
 if 'auth_mode' not in st.session_state: st.session_state.auth_mode = 'login'
+if 'cv_text_to_process' not in st.session_state: st.session_state['cv_text_to_process'] = ""
 
 def login(email, password):
     if not supabase:
@@ -59,6 +64,18 @@ def login(email, password):
         response = supabase.auth.sign_in_with_password({"email": email, "password": password})
         st.session_state.user = response.user.email
         st.session_state.user_id = response.user.id
+        
+        # --- SELF-HEALING FIX: Ensure Profile Exists ---
+        # This prevents the Foreign Key error if the Trigger failed previously.
+        try:
+            user_id = response.user.id
+            profile = supabase.table("profiles").select("id").eq("id", user_id).execute()
+            if not profile.data:
+                supabase.table("profiles").insert({"id": user_id, "username": email}).execute()
+        except Exception:
+            pass # Ignore if it exists or fails silently
+        # -----------------------------------------------
+
         st.rerun()
     except Exception as e:
         st.error(f"Login failed: {e}")
@@ -79,11 +96,9 @@ def signup(email, password, username):
         st.error(f"Signup failed: {e}")
 
 def logout():
-    # 1. Clear every single key in the session state
+    # Fix: Completely clear state to prevent data leaking to next user
     for key in list(st.session_state.keys()):
         del st.session_state[key]
-    
-    # 2. Rerun the app to force a fresh start
     st.rerun()
 
 # --- 4. INIT AGENT ---
@@ -116,7 +131,7 @@ def main():
             st.header("AEQUOR Access")
             
             if not supabase:
-                st.warning("⚠️ Secrets missing. Please add SUPABASE_URL and SUPABASE_KEY to .streamlit/secrets.toml")
+                st.warning("⚠️ Secrets missing. Please check .streamlit/secrets.toml")
             
             mode = st.radio("Select Mode", ["Login", "Sign Up"], horizontal=True)
             email = st.text_input("Email")
@@ -133,7 +148,6 @@ def main():
 
     # --- MAIN DASHBOARD (LOGGED IN) ---
     with st.sidebar:
-        # FIXED ICON HERE
         st.markdown(f"👤 **{st.session_state.user}**")
         st.divider()
         nav = st.radio("Navigate", ["Dashboard", "Emotional Tracker", "Skill Migration", "CV Compiler"])
@@ -146,17 +160,16 @@ def main():
     if nav == "CV Compiler": st.switch_page("pages/4_CV_Compiler.py")
 
     # --- DASHBOARD CONTENT ---
-    # FIXED ICON HERE
     st.title(f"🚀 Career Strategy Dashboard")
     
     c1, c2, c3 = st.columns(3)
-    c1.metric("System Status", "Online", delta="Connected")
+    c1.metric("Profile Status", "Active")
     c2.metric("User ID", st.session_state.user_id[:8] + "...")
+    c3.metric("System Health", "Online", delta="Connected")
     
     st.divider()
 
     # Input Area
-    # FIXED ICON HERE
     st.subheader("📝 Start New Analysis")
     col_in, col_act = st.columns([2, 1])
     
@@ -166,7 +179,6 @@ def main():
     
     with col_act:
         st.markdown("<br>", unsafe_allow_html=True)
-        # FIXED ICON HERE
         if st.button("⚡ Generate Strategy", type="primary", use_container_width=True):
             if f and st.session_state.agent:
                 with st.spinner("Agent is searching live jobs..."):
@@ -178,7 +190,7 @@ def main():
                     st.session_state.results = {"md": md, "rep": rep, "src": src}
                     st.session_state['skill_gap_report'] = rep
                     
-                    # Save analysis to Supabase (JSONB Storage)
+                    # Save to Supabase (History)
                     if supabase:
                         try:
                             supabase.table("analyses").insert({
@@ -186,8 +198,8 @@ def main():
                                 "report_json": rep
                             }).execute()
                         except Exception as e:
-                            st.warning(f"Could not save to history: {e}")
-                            
+                            print(f"History save failed: {e}")
+
                     st.rerun()
             elif not st.session_state.agent:
                 st.error("Agent not initialized. Check GEMINI/QDRANT keys.")
@@ -196,7 +208,6 @@ def main():
     if "results" in st.session_state:
         res = st.session_state.results
         
-        # FIXED ICON HERE
         st.markdown("### 📊 Analysis Results")
         k1, k2, k3 = st.columns(3)
         
@@ -217,7 +228,6 @@ def main():
         st.markdown(res['md'])
         
         if res['src']:
-            # FIXED ICON HERE
             with st.expander("🔗 Verified Sources"):
                 for s in res['src']:
                     st.markdown(f"- [{s['title']}]({s['uri']})")
