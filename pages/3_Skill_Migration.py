@@ -26,9 +26,14 @@ def init_supabase():
     url = get_secret("SUPABASE_URL")
     key = get_secret("SUPABASE_KEY")
 
-    if not url or not key:
-        return None
+    if not url or not key: return None
     return create_client(url, key)
+
+# Initialize the connection immediately after defining the function
+try:
+    supabase = init_supabase()
+except Exception as e:
+    supabase = None
 
 # --- Logic ---
 def get_skill_migration_data(report):
