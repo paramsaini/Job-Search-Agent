@@ -7,13 +7,9 @@ from dotenv import load_dotenv
 from agent import JobSearchAgent
 from supabase import create_client, Client
 
-# --- 1. CONFIG & STYLING ---
+# --- 1. CONFIG & STYLING (NEW ANIMATED BACKGROUND) ---
 st.set_page_config(page_title="AEQUOR", page_icon="🚀", layout="wide")
 
-# --- 1. CONFIG & STYLING ---
-st.set_page_config(page_title="AEQUOR", page_icon="🚀", layout="wide")
-
-# ANIMATED BACKGROUND & GLASSMORPHISM STYLING
 st.markdown("""
     <style>
     /* 1. The Moving Digital Wave Background */
@@ -32,20 +28,22 @@ st.markdown("""
     }
 
     /* 2. Glassmorphism Theme (Semi-transparent Containers) */
-    /* Makes containers dark, see-through, with a blur effect */
     div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stMetric"],
     div[data-testid="stExpanderDetails"],
-    form {
-        background-color: rgba(15, 23, 42, 0.6) !important; /* Dark blue semi-transparent */
+    div[data-testid="stForm"],
+    [data-testid="stSidebar"] > div {
+        background-color: rgba(15, 23, 42, 0.7) !important; /* Dark blue semi-transparent */
         backdrop-filter: blur(12px); /* The frosted glass effect */
         border: 1px solid rgba(88, 116, 176, 0.2) !important; /* Subtle glowing border */
         border-radius: 12px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        padding: 15px;
+        margin-bottom: 10px;
     }
 
     /* Text & Metric Colors to pop against the dark background */
-    h1, h2, h3, p, label, .stMarkdown {
+    h1, h2, h3, p, label, .stMarkdown, div[data-testid="stCaptionContainer"] {
         color: #e2e8f0 !important; /* Light gray/white text */
         text-shadow: 0 1px 2px rgba(0,0,0,0.5);
     }
@@ -75,10 +73,17 @@ st.markdown("""
     }
 
     /* Input fields styling */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div {
+    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {
         background-color: rgba(30, 41, 59, 0.8) !important;
         color: white !important;
         border: 1px solid rgba(88, 116, 176, 0.3) !important;
+        border-radius: 8px;
+    }
+    
+    /* Sidebar specific fix */
+    section[data-testid="stSidebar"] {
+        background-color: rgba(10, 14, 26, 0.85); /* Slightly darker sidebar */
+        border-right: 1px solid rgba(88, 116, 176, 0.1);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -117,7 +122,6 @@ def login(email, password):
         st.session_state.user_id = response.user.id
         
         # --- SELF-HEALING FIX: Ensure Profile Exists ---
-        # This prevents the Foreign Key error if the Trigger failed previously.
         try:
             user_id = response.user.id
             profile = supabase.table("profiles").select("id").eq("id", user_id).execute()
@@ -177,24 +181,26 @@ def extract_text(file):
 def main():
     # --- LOGIN SCREEN ---
     if not st.session_state.user:
-        c1, c2, c3 = st.columns([1,1,1])
-        with c2:
-            st.header("AEQUOR Access")
-            
-            if not supabase:
-                st.warning("⚠️ Secrets missing. Please check .streamlit/secrets.toml")
-            
-            mode = st.radio("Select Mode", ["Login", "Sign Up"], horizontal=True)
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            
-            if mode == "Sign Up":
-                username = st.text_input("Username")
-                if st.button("Sign Up", type="primary"): 
-                    signup(email, password, username)
-            else:
-                if st.button("Login", type="primary"): 
-                    login(email, password)
+        # Wrap login in a container for glass effect
+        with st.container():
+            c1, c2, c3 = st.columns([1,1,1])
+            with c2:
+                st.header("AEQUOR Access")
+                
+                if not supabase:
+                    st.warning("⚠️ Secrets missing. Please check .streamlit/secrets.toml")
+                
+                mode = st.radio("Select Mode", ["Login", "Sign Up"], horizontal=True)
+                email = st.text_input("Email")
+                password = st.text_input("Password", type="password")
+                
+                if mode == "Sign Up":
+                    username = st.text_input("Username")
+                    if st.button("Sign Up", type="primary"): 
+                        signup(email, password, username)
+                else:
+                    if st.button("Login", type="primary"): 
+                        login(email, password)
         return
 
     # --- MAIN DASHBOARD (LOGGED IN) ---
@@ -213,75 +219,80 @@ def main():
     # --- DASHBOARD CONTENT ---
     st.title(f"🚀 Career Strategy Dashboard")
     
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Profile Status", "Active")
-    c2.metric("User ID", st.session_state.user_id[:8] + "...")
-    c3.metric("System Health", "Online", delta="Connected")
+    # Use container for glass effect on metrics
+    with st.container():
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Profile Status", "Active")
+        c2.metric("User ID", st.session_state.user_id[:8] + "...")
+        c3.metric("System Health", "Online", delta="Connected")
     
     st.divider()
 
-    # Input Area
-    st.subheader("📝 Start New Analysis")
-    col_in, col_act = st.columns([2, 1])
-    
-    with col_in:
-        role = st.selectbox("Target Role", ["All", "Data Science", "Sales", "Engineering", "HR"])
-        f = st.file_uploader("Upload CV", type=["pdf", "txt"])
-    
-    with col_act:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("⚡ Generate Strategy", type="primary", use_container_width=True):
-            if f and st.session_state.agent:
-                with st.spinner("Agent is searching live jobs..."):
-                    txt = extract_text(f)
-                    st.session_state['cv_text_to_process'] = txt 
-                    
-                    md, rep, src = st.session_state.agent.generate_strategy(txt, role)
-                    
-                    st.session_state.results = {"md": md, "rep": rep, "src": src}
-                    st.session_state['skill_gap_report'] = rep
-                    
-                    # Save to Supabase (History)
-                    if supabase:
-                        try:
-                            supabase.table("analyses").insert({
-                                "user_id": st.session_state.user_id,
-                                "report_json": rep
-                            }).execute()
-                        except Exception as e:
-                            print(f"History save failed: {e}")
+    # Input Area in a container
+    with st.container():
+        st.subheader("📝 Start New Analysis")
+        col_in, col_act = st.columns([2, 1])
+        
+        with col_in:
+            role = st.selectbox("Target Role", ["All", "Data Science", "Sales", "Engineering", "HR"])
+            f = st.file_uploader("Upload CV", type=["pdf", "txt"])
+        
+        with col_act:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("⚡ Generate Strategy", type="primary", use_container_width=True):
+                if f and st.session_state.agent:
+                    with st.spinner("Agent is searching live jobs..."):
+                        txt = extract_text(f)
+                        st.session_state['cv_text_to_process'] = txt 
+                        
+                        md, rep, src = st.session_state.agent.generate_strategy(txt, role)
+                        
+                        st.session_state.results = {"md": md, "rep": rep, "src": src}
+                        st.session_state['skill_gap_report'] = rep
+                        
+                        # Save to Supabase (History)
+                        if supabase:
+                            try:
+                                supabase.table("analyses").insert({
+                                    "user_id": st.session_state.user_id,
+                                    "report_json": rep
+                                }).execute()
+                            except Exception as e:
+                                print(f"History save failed: {e}")
 
-                    st.rerun()
-            elif not st.session_state.agent:
-                st.error("Agent not initialized. Check GEMINI/QDRANT keys.")
+                        st.rerun()
+                elif not st.session_state.agent:
+                    st.error("Agent not initialized. Check GEMINI/QDRANT keys.")
 
     # Results Display
     if "results" in st.session_state:
         res = st.session_state.results
         
         st.markdown("### 📊 Analysis Results")
-        k1, k2, k3 = st.columns(3)
-        
-        with k1: 
-            with st.container(border=True):
+        # Use container for results area
+        with st.container():
+            k1, k2, k3 = st.columns(3)
+            
+            with k1: 
                 st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
                 st.progress(res['rep'].get('predictive_score', 0)/100)
-        with k2:
-            with st.container(border=True):
+            with k2:
                 st.metric("Tech Depth", f"{res['rep'].get('tech_score')}%")
                 st.progress(res['rep'].get('tech_score', 0)/100)
-        with k3:
-            with st.container(border=True):
+            with k3:
                 st.error(f"Weakest Link: {res['rep'].get('weakest_link_skill')}")
                 st.caption("Focus your learning here.")
 
         st.markdown("---")
-        st.markdown(res['md'])
         
-        if res['src']:
-            with st.expander("🔗 Verified Sources"):
-                for s in res['src']:
-                    st.markdown(f"- [{s['title']}]({s['uri']})")
+        # Use container for markdown report
+        with st.container():
+            st.markdown(res['md'])
+            
+            if res['src']:
+                with st.expander("🔗 Verified Sources"):
+                    for s in res['src']:
+                        st.markdown(f"- [{s['title']}]({s['uri']})")
 
 if __name__ == "__main__":
     main()
