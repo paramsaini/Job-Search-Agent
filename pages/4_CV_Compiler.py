@@ -170,11 +170,17 @@ def compiler_page():
         st.progress(clar/100)
 
     with col_keywords:
-        missing_kws = get_missing_keywords(cv_text, jd_input)
-        if missing_kws:
-            st.warning(f"Missing: {', '.join(missing_kws)}")
+        st.caption("Suggested Content Integration")
+        suggestions = get_contextual_suggestions(cv_text, jd_input)
+        
+        if suggestions:
+            # We show a clean UI for the user to copy content
+            st.info("💡 Copy these phrases into your CV:")
+            for s in suggestions:
+                # usage of st.code makes it one-click copyable
+                st.code(s, language="text") 
         else:
-            st.success("Keywords aligned!")
+            st.success("✅ Your CV covers the core requirements well!")
     
     # 3. Log Application
     st.markdown("---")
