@@ -103,6 +103,11 @@ def init_supabase():
     if not url or not key:
         return None
     return create_client(url, key)
+    try:
+    supabase = init_supabase()
+except Exception as e:
+    supabase = None
+    print(f"Supabase init failed: {e}")
 
 # --- 3. AUTHENTICATION & STATE ---
 if 'user' not in st.session_state: st.session_state.user = None
