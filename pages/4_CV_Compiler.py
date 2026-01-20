@@ -14,12 +14,21 @@ ACCENT_YELLOW = "#F59E0B"
 # --- Supabase Init ---
 @st.cache_resource
 def init_supabase():
-    url = st.secrets.get("SUPABASE_URL")
-    key = st.secrets.get("SUPABASE_KEY")
-    if not url or not key: return None
-    return create_client(url, key)
+    # Helper to get secrets from EITHER Railway (Env) OR Local (File)
+    def get_secret(key):
+        if key in os.environ:
+            return os.environ[key]
+        try:
+            return st.secrets[key]
+        except:
+            return None
 
-supabase = init_supabase()
+    url = get_secret("SUPABASE_URL")
+    key = get_secret("SUPABASE_KEY")
+
+    if not url or not key:
+        return None
+    return create_client(url, key)
 
 # --- Logic: Calculation & DB ---
 
