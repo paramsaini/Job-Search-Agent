@@ -88,17 +88,21 @@ load_dotenv()
 # --- 2. SUPABASE CONNECTION ---
 @st.cache_resource
 def init_supabase():
-    url = st.secrets.get("SUPABASE_URL") or os.environ.get("SUPABASE_URL")
-    key = st.secrets.get("SUPABASE_KEY") or os.environ.get("SUPABASE_KEY")
+    # Helper to get secrets from EITHER Railway (Env) OR Local (File)
+    def get_secret(key):
+        if key in os.environ:
+            return os.environ[key]
+        try:
+            return st.secrets[key]
+        except:
+            return None
+
+    url = get_secret("SUPABASE_URL")
+    key = get_secret("SUPABASE_KEY")
+
     if not url or not key:
         return None
     return create_client(url, key)
-
-try:
-    supabase = init_supabase()
-except Exception as e:
-    supabase = None
-    st.error(f"Database connection failed: {e}")
 
 # --- 3. AUTHENTICATION & STATE ---
 if 'user' not in st.session_state: st.session_state.user = None
