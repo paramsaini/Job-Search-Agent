@@ -126,14 +126,25 @@ def login(email, password):
         st.session_state.user = response.user.email
         st.session_state.user_id = response.user.id
         
-        # --- SELF-HEALING FIX: Ensure Profile Exists ---
+        # --- SELF-HEALING FIX: Update Profile with Email ---
         try:
             user_id = response.user.id
-            profile = supabase.table("profiles").select("id").eq("id", user_id).execute()
+            # Check if profile exists
+            profile = supabase.table("profiles").select("*").eq("id", user_id).execute()
+            
             if not profile.data:
-                supabase.table("profiles").insert({"id": user_id, "username": email}).execute()
+                # Create if missing
+                supabase.table("profiles").insert({
+                    "id": user_id, 
+                    "username": email.split('@')[0], 
+                    "email": email
+                }).execute()
+            else:
+                # Update email if it's missing in the database
+                if not profile.data[0].get('email'):
+                    supabase.table("profiles").update({"email": email}).eq("id", user_id).execute()
         except Exception:
-            pass # Ignore if it exists or fails silently
+            pass 
         # -----------------------------------------------
 
         st.rerun()
@@ -151,6 +162,19 @@ def signup(email, password, username):
             "password": password, 
             "options": {"data": {"username": username}}
         })
+        
+        # --- NEW BLOCK: Save to Profiles Table ---
+        if response.user:
+            try:
+                supabase.table("profiles").insert({
+                    "id": response.user.id,
+                    "username": username,
+                    "email": email  # <--- NOW WE SAVE THE EMAIL
+                }).execute()
+            except Exception as e:
+                print(f"Profile creation error: {e}")
+        # -----------------------------------------
+
         st.success("Account created! Check your email to confirm.")
     except Exception as e:
         st.error(f"Signup failed: {e}")
