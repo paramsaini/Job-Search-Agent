@@ -45,13 +45,51 @@ def calculate_compliance(cv_text, jd_text):
     compliance_score = (intersection / union) * 100 if union > 0 else 0
     return int(np.clip(compliance_score, 0, 100))
 
-def get_missing_keywords(cv_text, jd_text):
+def get_contextual_suggestions(cv_text, jd_text):
+    """
+    Identifies missing keywords and extracts the full sentence/bullet point 
+    from the JD so the user has context to copy-paste.
+    """
+    if not jd_text or not cv_text: return []
+    
+    # 1. Identify missing specific words (Logic similar to before, but stricter)
     jd_words = set(re.findall(r'\b\w{4,}\b', jd_text.lower()))
     cv_words = set(re.findall(r'\b\w{4,}\b', cv_text.lower()))
-    stop_words = {'responsible', 'experience', 'ability', 'required', 'years', 'skills', 'level', 'knowledge', 'design', 'must', 'will', 'client', 'work', 'manage', 'team', 'project'}
-    missing = list(jd_words - cv_words)
-    missing = [w for w in missing if w not in stop_words and w.isalpha()]
-    return [w.capitalize() for w in missing[:5]]
+    
+    # Expanded stop words to ensure we catch technical skills, not generic verbs
+    stop_words = {
+        'responsible', 'experience', 'ability', 'required', 'years', 'skills', 
+        'level', 'knowledge', 'design', 'must', 'will', 'client', 'work', 
+        'manage', 'team', 'project', 'ensure', 'create', 'adhere', 'against',
+        'strong', 'proven', 'excellent', 'working', 'including'
+    }
+    
+    missing_words = list(jd_words - cv_words)
+    relevant_missing = [w for w in missing_words if w not in stop_words and w.isalpha()]
+    
+    # 2. Extract Sentences from JD containing these words
+    # We split by newlines or periods to get bullet points/sentences
+    jd_sentences = re.split(r'[.!?\n]+', jd_text)
+    suggestions = []
+    
+    seen_sentences = set()
+
+    for word in relevant_missing:
+        for sentence in jd_sentences:
+            clean_sentence = sentence.strip()
+            # We want sentences of reasonable length (not headers, not huge paragraphs)
+            if 20 < len(clean_sentence) < 200:
+                # Check if the missing word exists as a whole word in the sentence
+                if re.search(r'\b' + re.escape(word) + r'\b', clean_sentence.lower()):
+                    if clean_sentence not in seen_sentences:
+                        suggestions.append(clean_sentence)
+                        seen_sentences.add(clean_sentence)
+                        break # Move to next missing word after finding one example
+        
+        if len(suggestions) >= 3: # Limit to top 3 suggestions to save space
+            break
+            
+    return suggestions
 
 def fetch_ledger(user_id):
     """Fetches application history from Supabase."""
