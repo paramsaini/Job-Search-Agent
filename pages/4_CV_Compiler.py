@@ -4,6 +4,7 @@ import re
 import numpy as np
 import pypdf
 from supabase import create_client
+import os
 
 # --- Configuration ---
 ACCENT_CYAN = "#00E0FF"
