@@ -82,7 +82,7 @@ def fetch_latest_report():
 
 # --- Page Render ---
 def skill_migration_page():
-    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🌍 Aequor: Skill Migration Map</h1>', unsafe_allow_html=True)
+    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🌍 job-search-agent: Skill Migration Map</h1>', unsafe_allow_html=True)
     st.markdown("---")
 
     if not st.session_state.get('user_id'):
