@@ -56,11 +56,32 @@ st.markdown("""
 
 load_dotenv()
 
-# --- 2. INITIALIZATION (SUPABASE, AGENT, GROQ) ---
+# --- 2. HELPER FUNCTIONS (Moved to top for global access) ---
+def extract_text(file):
+    """Extracts text from uploaded PDF or TXT files"""
+    try:
+        if file.type == "application/pdf":
+            reader = pypdf.PdfReader(file)
+            return "".join([p.extract_text() for p in reader.pages])
+        return file.read().decode("utf-8")
+    except: return ""
+
+def create_pdf(text):
+    """Helper to convert text to PDF bytes"""
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    # Encode to latin-1 to handle standard characters, replacing unknown ones
+    clean_text = text.encode('latin-1', 'replace').decode('latin-1')
+    pdf.multi_cell(0, 10, clean_text)
+    return pdf.output(dest='S').encode('latin-1')
+
 def get_secret(key):
     if key in os.environ: return os.environ[key]
     try: return st.secrets[key]
     except: return None
+
+# --- 3. INITIALIZATION (SUPABASE, AGENT, GROQ) ---
 
 # A. Supabase
 @st.cache_resource
@@ -93,7 +114,7 @@ if 'groq' not in st.session_state:
     else:
         st.session_state.groq = None
 
-# --- 3. AUTHENTICATION LOGIC ---
+# --- 4. AUTHENTICATION LOGIC ---
 if 'user' not in st.session_state: st.session_state.user = None
 if 'user_id' not in st.session_state: st.session_state.user_id = None
 
@@ -127,17 +148,7 @@ def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 4. NEW FEATURE FUNCTIONS (OPEN SOURCE) ---
-
-def create_pdf(text):
-    """Helper to convert text to PDF bytes"""
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    # Encode to latin-1 to handle standard characters, replacing unknown ones
-    clean_text = text.encode('latin-1', 'replace').decode('latin-1')
-    pdf.multi_cell(0, 10, clean_text)
-    return pdf.output(dest='S').encode('latin-1')
+# --- 5. NEW FEATURE FUNCTIONS (UPDATED WITH FILE UPLOAD) ---
 
 def page_cover_letter():
     st.header("✍️ Instant Cover Letter (Llama 3)")
@@ -147,19 +158,25 @@ def page_cover_letter():
     with c1:
         jd_text = st.text_area("Paste Job Description:", height=300)
     with c2:
-        user_cv = st.text_area("Paste Your Resume/CV Text:", height=300)
+        # UPDATED: File Uploader instead of Text Area
+        uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cl_uploader")
     
     if st.button("Generate Letter", type="primary"):
         if not st.session_state.groq:
             st.error("Groq API Key missing.")
             return
 
-        if jd_text and user_cv:
-            with st.spinner("Llama 3 (70B) is writing your letter..."):
+        # Extract text from uploaded file
+        user_cv_text = ""
+        if uploaded_file:
+            user_cv_text = extract_text(uploaded_file)
+
+        if jd_text and user_cv_text:
+            with st.spinner("Llama 3 (70B) is reading your PDF & writing..."):
                 prompt = f"""
                 You are an expert career coach. Write a professional cover letter.
                 
-                CANDIDATE INFO: {user_cv}
+                CANDIDATE INFO (Extracted from PDF): {user_cv_text[:3000]} 
                 JOB DESCRIPTION: {jd_text}
                 
                 INSTRUCTIONS:
@@ -183,31 +200,40 @@ def page_cover_letter():
                     file_name="cover_letter.pdf",
                     mime="application/pdf"
                 )
+        else:
+            st.warning("Please upload your CV and paste the Job Description.")
 
 def page_cv_tailor():
     st.header("🎯 Smart CV Tailor (ATS Optimized)")
     st.caption("Rewrites your bullet points to match the Job Description keywords.")
     
     jd = st.text_area("Paste Job Description:", height=150)
-    cv_bullets = st.text_area("Paste Current CV Bullet Points:", height=150)
+    
+    # UPDATED: File Uploader instead of Text Area
+    uploaded_file = st.file_uploader("Upload your CV (PDF) to optimize", type=["pdf"], key="cv_uploader")
     
     if st.button("Optimize Bullets", type="primary"):
         if not st.session_state.groq:
             st.error("Groq API Key missing.")
             return
 
-        if jd and cv_bullets:
+        # Extract text from uploaded file
+        cv_text = ""
+        if uploaded_file:
+            cv_text = extract_text(uploaded_file)
+
+        if jd and cv_text:
             with st.spinner("Analyzing keywords & rewriting..."):
                 prompt = f"""
                 Act as an ATS Optimization Expert.
                 JOB DESCRIPTION: {jd}
-                CURRENT BULLETS: {cv_bullets}
+                CURRENT CV CONTENT: {cv_text[:3000]}
                 
                 TASK:
                 1. Extract top 5 keywords from the JD.
-                2. Rewrite the bullets to naturally include these keywords.
+                2. Rewrite the CV bullet points to naturally include these keywords.
                 3. Use strong action verbs.
-                4. Output ONLY the rewritten bullet points.
+                4. Output ONLY the rewritten bullet points in Markdown.
                 """
                 
                 completion = st.session_state.groq.chat.completions.create(
@@ -219,10 +245,10 @@ def page_cv_tailor():
                 
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.info("Original")
-                    st.text(cv_bullets)
+                    st.info("Original (Extracted)")
+                    st.text(cv_text[:1000] + "...") # Show preview of extracted text
                 with c2:
-                    st.success("Optimized")
+                    st.success("Optimized Version")
                     st.code(optimized, language='markdown')
                 
                 st.download_button(
@@ -231,6 +257,8 @@ def page_cv_tailor():
                     file_name="optimized_cv.pdf",
                     mime="application/pdf"
                 )
+        else:
+            st.warning("Please upload your CV and paste the Job Description.")
 
 def page_interview_sim():
     st.header("🎤 Voice Interview Simulator")
@@ -285,14 +313,7 @@ def page_interview_sim():
                 st.success("Feedback:")
                 st.write(feedback.choices[0].message.content)
 
-# --- 5. MAIN APP ---
-def extract_text(file):
-    try:
-        if file.type == "application/pdf":
-            reader = pypdf.PdfReader(file)
-            return "".join([p.extract_text() for p in reader.pages])
-        return file.read().decode("utf-8")
-    except: return ""
+# --- 6. MAIN APP ---
 
 def main():
     # A. Login Screen
@@ -332,8 +353,6 @@ def main():
     elif nav == "Voice Interview Sim":
         page_interview_sim()
     elif nav == "Emotional Tracker":
-        # Keep your existing switch_page logic if you have that file, 
-        # or implement it inline later.
         try:
             st.switch_page("pages/1_Emotional_Tracker.py")
         except:
@@ -347,6 +366,7 @@ def main():
             c1, c2 = st.columns([2,1])
             with c1:
                 role = st.selectbox("Target Role", ["All", "Data Science", "Sales", "Engineering"])
+                # File uploader logic already exists here for the dashboard
                 f = st.file_uploader("Upload CV for Strategy", type=["pdf", "txt"])
             with c2:
                 st.markdown("<br>", unsafe_allow_html=True)
