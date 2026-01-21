@@ -11,3 +11,5 @@ python-docx
 tqdm
 google-generativeai
 supabase
+groq
+fpdf2
