@@ -8,7 +8,7 @@ from groq import Groq
 from fpdf import FPDF
 
 # --- 1. CONFIG & STYLING ---
-st.set_page_config(page_title="Job-Search-Agent", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Aequor Career Agent", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -56,7 +56,7 @@ st.markdown("""
 
 load_dotenv()
 
-# --- 2. HELPER FUNCTIONS (Moved to top for global access) ---
+# --- 2. HELPER FUNCTIONS ---
 def extract_text(file):
     """Extracts text from uploaded PDF or TXT files"""
     try:
@@ -130,7 +130,12 @@ def login(email, password):
             pid = res.user.id
             prof = supabase.table("profiles").select("*").eq("id", pid).execute()
             if not prof.data:
+                # If profile missing, create it now
                 supabase.table("profiles").insert({"id": pid, "username": email.split('@')[0], "email": email}).execute()
+            else:
+                # If email is NULL, update it now
+                if not prof.data[0].get('email'):
+                    supabase.table("profiles").update({"email": email}).eq("id", pid).execute()
         except: pass
         st.rerun()
     except Exception as e: st.error(f"Login failed: {e}")
@@ -148,7 +153,7 @@ def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 5. NEW FEATURE FUNCTIONS (UPDATED WITH FILE UPLOAD) ---
+# --- 5. NEW FEATURE FUNCTIONS (FIXED MODEL NAMES) ---
 
 def page_cover_letter():
     st.header("✍️ Instant Cover Letter")
@@ -158,7 +163,6 @@ def page_cover_letter():
     with c1:
         jd_text = st.text_area("Paste Job Description:", height=300)
     with c2:
-        # UPDATED: File Uploader instead of Text Area
         uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cl_uploader")
     
     if st.button("Generate Letter", type="primary"):
@@ -166,13 +170,12 @@ def page_cover_letter():
             st.error("Groq API Key missing.")
             return
 
-        # Extract text from uploaded file
         user_cv_text = ""
         if uploaded_file:
             user_cv_text = extract_text(uploaded_file)
 
         if jd_text and user_cv_text:
-            with st.spinner("Llama 3 (70B) is reading your PDF & writing..."):
+            with st.spinner("Llama 3.3 is reading your PDF & writing..."):
                 prompt = f"""
                 You are an expert career coach. Write a professional cover letter.
                 
@@ -185,9 +188,10 @@ def page_cover_letter():
                 3. Do not use placeholders like '[Your Name]' - use 'The Applicant' if name is missing.
                 """
                 
+                # FIXED MODEL NAME HERE
                 completion = st.session_state.groq.chat.completions.create(
                     messages=[{"role": "user", "content": prompt}],
-                    model="llama3-70b-8192"
+                    model="llama-3.3-70b-versatile" 
                 )
                 
                 letter = completion.choices[0].message.content
@@ -208,8 +212,6 @@ def page_cv_tailor():
     st.caption("Rewrites your bullet points to match the Job Description keywords.")
     
     jd = st.text_area("Paste Job Description:", height=150)
-    
-    # UPDATED: File Uploader instead of Text Area
     uploaded_file = st.file_uploader("Upload your CV (PDF) to optimize", type=["pdf"], key="cv_uploader")
     
     if st.button("Optimize Bullets", type="primary"):
@@ -217,7 +219,6 @@ def page_cv_tailor():
             st.error("Groq API Key missing.")
             return
 
-        # Extract text from uploaded file
         cv_text = ""
         if uploaded_file:
             cv_text = extract_text(uploaded_file)
@@ -236,9 +237,10 @@ def page_cv_tailor():
                 4. Output ONLY the rewritten bullet points in Markdown.
                 """
                 
+                # FIXED MODEL NAME HERE
                 completion = st.session_state.groq.chat.completions.create(
                     messages=[{"role": "user", "content": prompt}],
-                    model="llama3-70b-8192"
+                    model="llama-3.3-70b-versatile"
                 )
                 
                 optimized = completion.choices[0].message.content
@@ -246,7 +248,7 @@ def page_cv_tailor():
                 c1, c2 = st.columns(2)
                 with c1:
                     st.info("Original (Extracted)")
-                    st.text(cv_text[:1000] + "...") # Show preview of extracted text
+                    st.text(cv_text[:1000] + "...") 
                 with c2:
                     st.success("Optimized Version")
                     st.code(optimized, language='markdown')
@@ -264,23 +266,21 @@ def page_interview_sim():
     st.header("🎤 Voice Interview Simulator")
     st.caption("Speak your answers. AI (Whisper) listens and rates you.")
     
-    # Session State for Question
     if 'interview_q' not in st.session_state:
         st.session_state.interview_q = "Tell me about yourself and why you want this role?"
     
-    # 1. Generate New Question
     jd_context = st.text_input("Enter Job Role (e.g. 'Senior Python Dev') to generate a specific question:")
     if st.button("Generate New Question"):
         if st.session_state.groq:
+            # FIXED MODEL NAME HERE
             q_resp = st.session_state.groq.chat.completions.create(
                 messages=[{"role": "user", "content": f"Ask a tough behavioural interview question for a {jd_context}."}],
-                model="llama3-8b-8192"
+                model="llama-3.1-8b-instant"
             )
             st.session_state.interview_q = q_resp.choices[0].message.content
     
     st.markdown(f"### 🤖 AI asks: *{st.session_state.interview_q}*")
     
-    # 2. Record Answer
     audio_val = st.audio_input("Record your answer")
     
     if audio_val:
@@ -288,7 +288,7 @@ def page_interview_sim():
             st.error("Groq API Key missing.")
         else:
             with st.spinner("Transcribing & Analyzing..."):
-                # A. Transcribe (Whisper)
+                # A. Transcribe (Whisper V3 is still valid)
                 transcription = st.session_state.groq.audio.transcriptions.create(
                     file=("audio.wav", audio_val, "audio/wav"),
                     model="distil-whisper-large-v3-en-main",
@@ -297,7 +297,7 @@ def page_interview_sim():
                 
                 st.info(f"🗣 You said: '{transcription}'")
                 
-                # B. Analyze (Llama 3)
+                # B. Analyze
                 feedback_prompt = f"""
                 Question: {st.session_state.interview_q}
                 Answer: {transcription}
@@ -305,9 +305,10 @@ def page_interview_sim():
                 Task: Rate answer 1-10. Give 1 pro and 1 con.
                 """
                 
+                # FIXED MODEL NAME HERE
                 feedback = st.session_state.groq.chat.completions.create(
                     messages=[{"role": "user", "content": feedback_prompt}],
-                    model="llama3-8b-8192"
+                    model="llama-3.1-8b-instant"
                 )
                 
                 st.success("Feedback:")
@@ -340,7 +341,8 @@ def main():
             "Smart CV Tailor", 
             "Instant Cover Letter", 
             "Voice Interview Sim",
-            "Emotional Tracker"
+            "Emotional Tracker",
+            "CV Compiler"
         ])
         st.divider()
         if st.button("Logout"): logout()
@@ -353,20 +355,15 @@ def main():
     elif nav == "Voice Interview Sim":
         page_interview_sim()
     elif nav == "Emotional Tracker":
-        try:
-            st.switch_page("pages/1_Emotional_Tracker.py")
-        except:
-            st.info("Emotional Tracker module not found in this version.")
+        try: st.switch_page("pages/1_Emotional_Tracker.py")
+        except: st.info("Emotional Tracker module not found.")
     
     elif nav == "Dashboard":
-        # Original Dashboard Logic
         st.title("🚀 Career Strategy Dashboard")
-        
         with st.container():
             c1, c2 = st.columns([2,1])
             with c1:
                 role = st.selectbox("Target Role", ["All", "Data Science", "Sales", "Engineering"])
-                # File uploader logic already exists here for the dashboard
                 f = st.file_uploader("Upload CV for Strategy", type=["pdf", "txt"])
             with c2:
                 st.markdown("<br>", unsafe_allow_html=True)
