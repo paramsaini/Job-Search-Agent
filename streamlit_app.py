@@ -8,7 +8,7 @@ from groq import Groq
 from fpdf import FPDF
 
 # --- 1. CONFIG & STYLING ---
-st.set_page_config(page_title="Aequor Career Agent", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Job-Search-Agent", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -321,7 +321,7 @@ def main():
         with st.container():
             c1, c2, c3 = st.columns([1,1,1])
             with c2:
-                st.header("Aequor Login")
+                st.header("Job-Search-Agent Login")
                 mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
                 email = st.text_input("Email")
                 pwd = st.text_input("Password", type="password")
