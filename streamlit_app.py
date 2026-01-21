@@ -151,7 +151,7 @@ def logout():
 # --- 5. NEW FEATURE FUNCTIONS (UPDATED WITH FILE UPLOAD) ---
 
 def page_cover_letter():
-    st.header("✍️ Instant Cover Letter (Llama 3)")
+    st.header("✍️ Instant Cover Letter")
     st.caption("Generates a tailored cover letter in seconds using Open Source AI.")
     
     c1, c2 = st.columns(2)
