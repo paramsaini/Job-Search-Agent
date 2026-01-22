@@ -169,58 +169,73 @@ def logout():
 
 def delete_user_account():
     """
-    Permanently deletes user account and all associated data.
+    PERMANENTLY deletes user account and ALL associated data from Supabase.
+    This includes: analyses, applications, mood_logs, profiles, AND auth.users
     Required for Apple App Store Guideline 5.1.1(v) compliance.
     """
-    if not supabase or not st.session_state.user_id:
+    if not st.session_state.user_id:
         return False, "Not authenticated"
     
     user_id = st.session_state.user_id
     
+    # Get service role key for admin operations (REQUIRED for auth deletion)
+    service_key = get_secret("SUPABASE_SERVICE_KEY")
+    supabase_url = get_secret("SUPABASE_URL")
+    
+    if not service_key or not supabase_url:
+        return False, "Server configuration error. Please contact support."
+    
     try:
-        # 1. Delete user data from all tables (order matters due to foreign keys)
-        # Delete mood logs
+        # Create admin client with service_role key (has full database access)
+        from supabase import create_client
+        admin_client = create_client(supabase_url, service_key)
+        
+        # ========================================
+        # STEP 1: Delete ALL user data from tables
+        # ========================================
+        
+        # Delete from mood_logs
         try:
-            supabase.table("mood_logs").delete().eq("user_id", user_id).execute()
-        except: pass
+            admin_client.table("mood_logs").delete().eq("user_id", user_id).execute()
+        except Exception as e:
+            print(f"mood_logs deletion: {e}")
         
-        # Delete analyses
+        # Delete from analyses
         try:
-            supabase.table("analyses").delete().eq("user_id", user_id).execute()
-        except: pass
+            admin_client.table("analyses").delete().eq("user_id", user_id).execute()
+        except Exception as e:
+            print(f"analyses deletion: {e}")
         
-        # Delete applications
+        # Delete from applications
         try:
-            supabase.table("applications").delete().eq("user_id", user_id).execute()
-        except: pass
+            admin_client.table("applications").delete().eq("user_id", user_id).execute()
+        except Exception as e:
+            print(f"applications deletion: {e}")
         
-        # Delete profile (MUST be deleted before auth user due to foreign key)
+        # Delete from profiles (MUST be before auth.users due to foreign key)
         try:
-            supabase.table("profiles").delete().eq("id", user_id).execute()
-        except: pass
+            admin_client.table("profiles").delete().eq("id", user_id).execute()
+        except Exception as e:
+            print(f"profiles deletion: {e}")
         
-        # 2. Delete the user from Supabase Auth using Admin API
-        # This requires the service_role key (SUPABASE_SERVICE_KEY)
-        service_key = get_secret("SUPABASE_SERVICE_KEY")
-        if service_key:
-            try:
-                # Create admin client with service role key
-                from supabase import create_client
-                supabase_url = get_secret("SUPABASE_URL")
-                admin_client = create_client(supabase_url, service_key)
-                
-                # Delete user from auth.users
-                admin_client.auth.admin.delete_user(user_id)
-            except Exception as admin_error:
-                print(f"Admin deletion error: {admin_error}")
-                # Continue anyway - data is deleted, user can contact support if needed
+        # ========================================
+        # STEP 2: Delete from Supabase Authentication
+        # ========================================
+        try:
+            admin_client.auth.admin.delete_user(user_id)
+        except Exception as e:
+            print(f"auth deletion: {e}")
+            return False, f"Failed to delete authentication: {e}"
         
-        # 3. Sign out the current session
+        # ========================================
+        # STEP 3: Sign out current session
+        # ========================================
         try:
             supabase.auth.sign_out()
-        except: pass
+        except:
+            pass
         
-        return True, "Account deleted successfully"
+        return True, "Account and all data permanently deleted"
         
     except Exception as e:
         return False, f"Error deleting account: {e}"
