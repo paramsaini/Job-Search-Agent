@@ -334,10 +334,10 @@ def skill_migration_page():
             value=[tech_score, leader_score, (tech_score+leader_score)//2, 
                    (tech_score+leader_score)//2, tech_score, leader_score,
                    (tech_score+leader_score)//2, (tech_score+leader_score)//2],
-            color=[f"{ACCENT_CYAN}60", f"{ACCENT_GREEN}60", 
-                   f"{ACCENT_PURPLE}60", f"{ACCENT_ORANGE}60",
-                   f"{ACCENT_CYAN}40", f"{ACCENT_GREEN}40",
-                   f"{ACCENT_PURPLE}40", f"{ACCENT_ORANGE}40"]
+            color=["rgba(0, 224, 255, 0.4)", "rgba(16, 185, 129, 0.4)", 
+                   "rgba(139, 92, 246, 0.4)", "rgba(255, 140, 0, 0.4)",
+                   "rgba(0, 224, 255, 0.25)", "rgba(16, 185, 129, 0.25)",
+                   "rgba(139, 92, 246, 0.25)", "rgba(255, 140, 0, 0.25)"]
         )
     )])
     fig_sankey.update_layout(
