@@ -326,7 +326,18 @@ def page_cv_compiler():
                     Act as an ATS Optimization Expert.
                     JOB DESCRIPTION: {jd_text}
                     CURRENT CV: {cv_text[:4000]}
-                    TASK: Rewrite bullets to include JD keywords. Output ONLY bullets in Markdown.
+                    
+                    TASK: Rewrite the CV bullet points to include relevant keywords from the job description.
+                    
+                    IMPORTANT FORMATTING RULES:
+                    - Output ONLY plain text bullet points
+                    - Start each bullet with a dash (-) or bullet (•)
+                    - DO NOT use any markdown formatting like ** or * or # or __
+                    - DO NOT use bold, italic, or any special formatting
+                    - Keep each bullet concise and professional
+                    - Focus on action verbs and quantified achievements
+                    
+                    Output the optimized bullets now:
                     """
                     completion = st.session_state.groq.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
@@ -334,6 +345,8 @@ def page_cv_compiler():
                     )
                     if completion and completion.choices:
                         optimized = completion.choices[0].message.content
+                        # Clean any remaining markdown formatting
+                        optimized = optimized.replace('**', '').replace('__', '').replace('*', '•')
                         if optimized and optimized.strip():
                             st.session_state['compiler_optimized'] = optimized
                             st.session_state['compiler_original'] = cv_text[:1000]
@@ -354,7 +367,8 @@ def page_cv_compiler():
             st.text(st.session_state.get('compiler_original', '')[:800] + "...")
         with col_opt:
             st.success("✨ Optimized Bullets")
-            st.code(st.session_state['compiler_optimized'], language='markdown')
+            # Display as plain text in a text area for clean output
+            st.text_area("", st.session_state['compiler_optimized'], height=300, disabled=True, label_visibility="collapsed")
         
         # Download buttons
         col_dl1, col_dl2 = st.columns(2)
@@ -511,7 +525,6 @@ def main():
         st.subheader(f"User: {st.session_state.user.split('@')[0]}")
         nav = st.radio("Menu", [
             "Dashboard", 
-            "CV Compiler",
             "Instant Cover Letter", 
             "Voice Interview Sim"
         ])
@@ -550,7 +563,6 @@ def main():
                 st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
                 st.markdown(res['md'])
                 
-    elif nav == "CV Compiler": page_cv_compiler()
     elif nav == "Instant Cover Letter": page_cover_letter()
     elif nav == "Voice Interview Sim": page_interview_sim()
 
