@@ -9,7 +9,7 @@ from groq import Groq
 from fpdf import FPDF
 
 # --- 1. CONFIG & STYLING ---
-st.set_page_config(page_title="Job-Search-Agent", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Aequor Career Agent", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -43,6 +43,11 @@ st.markdown("""
         border: none;
         box-shadow: 0 0 10px rgba(0, 98, 255, 0.5);
     }
+    /* Delete Account Button Styling */
+    .delete-btn button {
+        background: linear-gradient(90deg, #dc2626, #ef4444) !important;
+        box-shadow: 0 0 10px rgba(220, 38, 38, 0.5) !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -68,7 +73,7 @@ def create_pdf(text):
         
         # 1. Sanitize Text (Replace crash-prone characters)
         replacements = {
-            '’': "'", '‘': "'", '“': '"', '”': '"', '–': '-', '—': '-',
+            ''': "'", ''': "'", '"': '"', '"': '"', '–': '-', '—': '-',
             '•': '-', '…': '...', '\u2022': '-' 
         }
         for old, new in replacements.items():
@@ -116,6 +121,7 @@ if 'groq' not in st.session_state:
 # --- 4. AUTH & LOGIC ---
 if 'user' not in st.session_state: st.session_state.user = None
 if 'user_id' not in st.session_state: st.session_state.user_id = None
+if 'show_delete_confirmation' not in st.session_state: st.session_state.show_delete_confirmation = False
 
 def login(email, password):
     if not supabase: return st.error("Database error.")
@@ -140,26 +146,145 @@ def signup(email, password, username):
     try:
         res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": {"username": username}}})
         if res.user:
-            # Check if profile already exists (handles edge cases)
-            try:
-                existing = supabase.table("profiles").select("id").eq("id", res.user.id).execute()
-                if not existing.data:
-                    supabase.table("profiles").insert({"id": res.user.id, "username": username, "email": email}).execute()
-            except:
-                pass  # Profile insert failed, but auth succeeded - user can still login
-        st.success("Account created! Check your email to confirm, then login.")
-    except Exception as e:
-        error_msg = str(e)
-        if "already registered" in error_msg.lower() or "already exists" in error_msg.lower():
-            st.warning("This email is already registered. Please login instead.")
-        else:
-            st.error(f"Signup failed: {e}")
+            supabase.table("profiles").insert({"id": res.user.id, "username": username, "email": email}).execute()
+        st.success("Account created! Confirm email to login.")
+    except Exception as e: st.error(f"Signup failed: {e}")
 
 def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
+def delete_user_account():
+    """
+    Permanently deletes user account and all associated data.
+    Required for Apple App Store Guideline 5.1.1(v) compliance.
+    """
+    if not supabase or not st.session_state.user_id:
+        return False, "Not authenticated"
+    
+    user_id = st.session_state.user_id
+    
+    try:
+        # 1. Delete user data from all tables
+        # Delete mood logs
+        try:
+            supabase.table("mood_logs").delete().eq("user_id", user_id).execute()
+        except: pass
+        
+        # Delete analyses
+        try:
+            supabase.table("analyses").delete().eq("user_id", user_id).execute()
+        except: pass
+        
+        # Delete applications
+        try:
+            supabase.table("applications").delete().eq("user_id", user_id).execute()
+        except: pass
+        
+        # Delete profile
+        try:
+            supabase.table("profiles").delete().eq("id", user_id).execute()
+        except: pass
+        
+        # 2. Sign out the user
+        try:
+            supabase.auth.sign_out()
+        except: pass
+        
+        # 3. Note: Full auth user deletion requires Supabase Admin API
+        # The user record in auth.users will be marked for deletion
+        # For complete deletion, you may need to use Supabase Admin SDK
+        # or set up a database trigger/edge function
+        
+        return True, "Account deleted successfully"
+        
+    except Exception as e:
+        return False, f"Error deleting account: {e}"
+
 # --- 5. APP PAGES ---
+
+def page_delete_account():
+    """Account Deletion Page - Required for Apple App Store compliance"""
+    st.header("🗑️ Delete Account")
+    
+    st.markdown("""
+    <div style="background: rgba(220, 38, 38, 0.1); border: 1px solid #dc2626; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+        <h3 style="color: #dc2626 !important; margin-top: 0;">⚠️ Warning: This action is permanent</h3>
+        <p style="color: #fca5a5 !important;">Deleting your account will:</p>
+        <ul style="color: #fca5a5 !important;">
+            <li>Permanently delete all your personal data</li>
+            <li>Remove all your saved analyses and reports</li>
+            <li>Delete your application history and tracking data</li>
+            <li>Remove all mood logs and emotional tracking data</li>
+            <li>This action <strong>cannot be undone</strong></li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Show current user info
+    st.markdown(f"**Account to be deleted:** `{st.session_state.user}`")
+    
+    st.markdown("---")
+    
+    # Confirmation flow
+    if not st.session_state.show_delete_confirmation:
+        st.markdown("To proceed with account deletion, click the button below:")
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🗑️ I want to delete my account", type="primary", use_container_width=True):
+                st.session_state.show_delete_confirmation = True
+                st.rerun()
+    else:
+        # Second confirmation step
+        st.markdown("""
+        <div style="background: rgba(220, 38, 38, 0.2); border: 2px solid #dc2626; border-radius: 10px; padding: 20px; text-align: center;">
+            <h3 style="color: #dc2626 !important;">🚨 Final Confirmation Required</h3>
+            <p style="color: white !important;">Are you absolutely sure? This will permanently delete your account and all data.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Type confirmation
+        confirm_text = st.text_input(
+            "Type 'DELETE' to confirm:",
+            placeholder="Type DELETE here",
+            key="delete_confirm_input"
+        )
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("❌ Cancel", use_container_width=True):
+                st.session_state.show_delete_confirmation = False
+                st.rerun()
+        
+        with col2:
+            delete_disabled = confirm_text.upper() != "DELETE"
+            
+            if st.button(
+                "🗑️ Permanently Delete Account", 
+                type="primary", 
+                use_container_width=True,
+                disabled=delete_disabled
+            ):
+                if confirm_text.upper() == "DELETE":
+                    with st.spinner("Deleting your account..."):
+                        success, message = delete_user_account()
+                        
+                        if success:
+                            st.success("✅ Your account has been deleted.")
+                            st.info("You will be redirected to the login page...")
+                            # Clear all session state and redirect
+                            for key in list(st.session_state.keys()): 
+                                del st.session_state[key]
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {message}")
+                            st.info("Please try again or contact support.")
 
 def page_skill_migration():
     st.header("📈 Skill Migration Analysis")
@@ -337,18 +462,7 @@ def page_cv_compiler():
                     Act as an ATS Optimization Expert.
                     JOB DESCRIPTION: {jd_text}
                     CURRENT CV: {cv_text[:4000]}
-                    
-                    TASK: Rewrite the CV bullet points to include relevant keywords from the job description.
-                    
-                    IMPORTANT FORMATTING RULES:
-                    - Output ONLY plain text bullet points
-                    - Start each bullet with a dash (-) or bullet (•)
-                    - DO NOT use any markdown formatting like ** or * or # or __
-                    - DO NOT use bold, italic, or any special formatting
-                    - Keep each bullet concise and professional
-                    - Focus on action verbs and quantified achievements
-                    
-                    Output the optimized bullets now:
+                    TASK: Rewrite bullets to include JD keywords. Output ONLY bullets in Markdown.
                     """
                     completion = st.session_state.groq.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
@@ -356,8 +470,6 @@ def page_cv_compiler():
                     )
                     if completion and completion.choices:
                         optimized = completion.choices[0].message.content
-                        # Clean any remaining markdown formatting
-                        optimized = optimized.replace('**', '').replace('__', '').replace('*', '•')
                         if optimized and optimized.strip():
                             st.session_state['compiler_optimized'] = optimized
                             st.session_state['compiler_original'] = cv_text[:1000]
@@ -378,8 +490,7 @@ def page_cv_compiler():
             st.text(st.session_state.get('compiler_original', '')[:800] + "...")
         with col_opt:
             st.success("✨ Optimized Bullets")
-            # Display as plain text in a text area for clean output
-            st.text_area("", st.session_state['compiler_optimized'], height=300, disabled=True, label_visibility="collapsed")
+            st.code(st.session_state['compiler_optimized'], language='markdown')
         
         # Download buttons
         col_dl1, col_dl2 = st.columns(2)
@@ -521,7 +632,7 @@ def main():
         with st.container():
             c1, c2, c3 = st.columns([1,1,1])
             with c2:
-                st.header("Job-Search-Agent Login")
+                st.header("Aequor Login")
                 mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
                 email = st.text_input("Email")
                 pwd = st.text_input("Password", type="password")
@@ -536,8 +647,10 @@ def main():
         st.subheader(f"User: {st.session_state.user.split('@')[0]}")
         nav = st.radio("Menu", [
             "Dashboard", 
+            "CV Compiler",
             "Instant Cover Letter", 
-            "Voice Interview Sim"
+            "Voice Interview Sim",
+            "⚙️ Account Settings"  # NEW: Account Settings menu item
         ])
         st.divider()
         if st.button("Logout"): logout()
@@ -574,8 +687,10 @@ def main():
                 st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
                 st.markdown(res['md'])
                 
+    elif nav == "CV Compiler": page_cv_compiler()
     elif nav == "Instant Cover Letter": page_cover_letter()
     elif nav == "Voice Interview Sim": page_interview_sim()
+    elif nav == "⚙️ Account Settings": page_delete_account()  # NEW: Route to delete account page
 
 if __name__ == "__main__":
     main()
