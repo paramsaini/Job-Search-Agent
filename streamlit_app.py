@@ -235,40 +235,77 @@ def page_cv_tailor():
     uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cv_uploader")
     
     if st.button("Optimize Bullets", type="primary"):
-        if not st.session_state.groq: return st.error("Groq API Key missing.")
-        if not uploaded_file: return st.warning("Please upload a CV.")
+        if not st.session_state.groq:
+            st.error("Groq API Key missing.")
+            return
+        if not uploaded_file:
+            st.warning("Please upload a CV.")
+            return
+        if not jd or jd.strip() == "":
+            st.warning("Please paste the Job Description.")
+            return
 
         try:
             cv_text = extract_text(uploaded_file)
-            if jd and cv_text:
-                with st.spinner("Analyzing..."):
-                    prompt = f"""
-                    Act as an ATS Optimization Expert.
-                    JOB DESCRIPTION: {jd}
-                    CURRENT CV: {cv_text[:4000]}
-                    TASK: Rewrite bullets to include JD keywords. Output ONLY bullets in Markdown.
-                    """
+            if not cv_text or cv_text.strip() == "":
+                st.error("Could not extract text from CV. Please try a different file.")
+                return
+                
+            with st.spinner("Analyzing..."):
+                prompt = f"""
+                Act as an ATS Optimization Expert.
+                JOB DESCRIPTION: {jd}
+                CURRENT CV: {cv_text[:4000]}
+                TASK: Rewrite bullets to include JD keywords. Output ONLY bullets in Markdown.
+                """
+                try:
                     completion = st.session_state.groq.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
                         model="llama-3.3-70b-versatile"
                     )
-                    optimized = completion.choices[0].message.content
+                except Exception as api_err:
+                    st.error(f"API Error: {api_err}")
+                    return
+                
+                if not completion or not completion.choices:
+                    st.error("No response received from AI. Please try again.")
+                    return
                     
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.info("Original")
-                        st.text(cv_text[:1000] + "...") 
-                    with c2:
-                        st.success("Optimized")
-                        st.code(optimized, language='markdown')
-                    
-                    pdf_bytes = create_pdf(optimized)
-                    if pdf_bytes:
-                        st.download_button("📥 Download PDF", pdf_bytes, "optimized_cv.pdf", "application/pdf")
-                    else:
-                        st.download_button("📥 Download Text (Fallback)", optimized, "optimized_cv.txt", "text/plain")
-            else: st.warning("Please paste the Job Description.")
-        except Exception as e: st.error(f"Error: {e}")
+                optimized = completion.choices[0].message.content
+                
+                if not optimized or optimized.strip() == "":
+                    st.error("Empty response from AI. Please try again.")
+                    return
+                
+                # Store in session state to prevent loss on rerun
+                st.session_state['cv_tailor_original'] = cv_text[:1000]
+                st.session_state['cv_tailor_optimized'] = optimized
+                
+        except Exception as e:
+            st.error(f"Error processing request: {e}")
+            return
+    
+    # Display results from session state (survives reruns)
+    if 'cv_tailor_optimized' in st.session_state:
+        optimized = st.session_state['cv_tailor_optimized']
+        cv_text_preview = st.session_state.get('cv_tailor_original', '')
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.info("Original")
+            st.text(cv_text_preview + "...") 
+        with c2:
+            st.success("Optimized")
+            st.code(optimized, language='markdown')
+        
+        try:
+            pdf_bytes = create_pdf(optimized)
+            if pdf_bytes:
+                st.download_button("📥 Download PDF", pdf_bytes, "optimized_cv.pdf", "application/pdf")
+            else:
+                st.download_button("📥 Download Text (Fallback)", optimized, "optimized_cv.txt", "text/plain")
+        except Exception as pdf_err:
+            st.download_button("📥 Download Text (Fallback)", optimized, "optimized_cv.txt", "text/plain")
 
 def page_interview_sim():
     st.header("🎤 Voice Interview Simulator")
@@ -331,7 +368,6 @@ def main():
         st.subheader(f"User: {st.session_state.user.split('@')[0]}")
         nav = st.radio("Menu", [
             "Dashboard", 
-            "Skill Migration",
             "Smart CV Tailor", 
             "Instant Cover Letter", 
             "Voice Interview Sim"
@@ -371,7 +407,6 @@ def main():
                 st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
                 st.markdown(res['md'])
                 
-    elif nav == "Skill Migration": page_skill_migration()
     elif nav == "Smart CV Tailor": page_cv_tailor()
     elif nav == "Instant Cover Letter": page_cover_letter()
     elif nav == "Voice Interview Sim": page_interview_sim()
