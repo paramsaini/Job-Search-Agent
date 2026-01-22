@@ -48,6 +48,18 @@ except:
 
 # --- Helper Functions ---
 
+def extract_text_from_file(file):
+    """Extract text from uploaded file"""
+    if file is None: return ""
+    try:
+        if file.type == "application/pdf":
+            import pypdf
+            reader = pypdf.PdfReader(file)
+            return "".join([p.extract_text() for p in reader.pages])
+        return file.read().decode("utf-8")
+    except:
+        return ""
+
 def fetch_latest_report(user_id):
     """Fetch user's latest skill analysis from DB"""
     if not supabase or not user_id: return None
@@ -264,11 +276,79 @@ def skill_migration_page():
         st.warning("🔒 Please log in to access your Skill Migration Center.")
         return
 
+    # =====================================================
+    # NEW CV UPLOAD SECTION
+    # =====================================================
+    st.subheader("📄 Upload New CV for Fresh Analysis")
+    
+    col_upload, col_analyze = st.columns([3, 1])
+    
+    with col_upload:
+        uploaded_cv = st.file_uploader("Upload CV (PDF/TXT) for new skill analysis", type=["pdf", "txt"], key="skill_mig_cv")
+    
+    with col_analyze:
+        st.markdown("<br>", unsafe_allow_html=True)
+        analyze_btn = st.button("🔄 Analyze New CV", type="primary", use_container_width=True)
+    
+    if analyze_btn and uploaded_cv:
+        cv_text = extract_text_from_file(uploaded_cv)
+        if cv_text and groq_client:
+            with st.spinner("AI is analyzing your new CV..."):
+                try:
+                    prompt = f"""
+                    Analyze this CV and provide skill scores.
+                    
+                    CV Content: {cv_text[:4000]}
+                    
+                    Return ONLY a JSON object with these exact fields:
+                    {{
+                        "predictive_score": (number 0-100, overall job market readiness),
+                        "tech_score": (number 0-100, technical skills strength),
+                        "leader_score": (number 0-100, leadership/soft skills),
+                        "weakest_link_skill": (string, the skill area needing most improvement)
+                    }}
+                    
+                    Be realistic and critical in your assessment.
+                    """
+                    
+                    completion = groq_client.chat.completions.create(
+                        messages=[{"role": "user", "content": prompt}],
+                        model="llama-3.3-70b-versatile"
+                    )
+                    
+                    response = completion.choices[0].message.content
+                    # Extract JSON
+                    start = response.find('{')
+                    end = response.rfind('}') + 1
+                    if start != -1 and end > start:
+                        new_report = json.loads(response[start:end])
+                        st.session_state['skill_gap_report'] = new_report
+                        
+                        # Save to database
+                        if supabase:
+                            try:
+                                supabase.table("analyses").insert({
+                                    "user_id": st.session_state.user_id,
+                                    "report_json": new_report
+                                }).execute()
+                            except: pass
+                        
+                        st.success("✅ New CV analyzed! Results updated below.")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Analysis error: {e}")
+        elif not cv_text:
+            st.error("Could not extract text from CV.")
+        else:
+            st.error("AI service unavailable.")
+    
+    st.markdown("---")
+
     # Load Data
     report = st.session_state.get('skill_gap_report') or fetch_latest_report(st.session_state.user_id)
     
     if not report:
-        st.info("👋 No analysis found. Go to Dashboard and run 'Generate Strategy' first.")
+        st.info("👋 No analysis found. Upload a CV above or go to Dashboard and run 'Generate Strategy'.")
         return
     
     # Store for other components
