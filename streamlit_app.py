@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import pypdf
+import json
 from dotenv import load_dotenv
 from agent import JobSearchAgent
 from supabase import create_client, Client
@@ -51,23 +52,21 @@ load_dotenv()
 def extract_text(file):
     """Extracts text from uploaded PDF or TXT files"""
     try:
-        if file is None:
-            return ""
+        if file is None: return ""
         if file.type == "application/pdf":
             reader = pypdf.PdfReader(file)
             return "".join([p.extract_text() for p in reader.pages])
         return file.read().decode("utf-8")
-    except Exception as e:
-        return ""
+    except: return ""
 
 def create_pdf(text):
-    """Safe PDF Generator - Fixes 'bytearray' crash"""
+    """Safe PDF Generator - Fixes White Screen Crash"""
     try:
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Courier", size=11)
         
-        # 1. Sanitize Text
+        # 1. Sanitize Text (Replace crash-prone characters)
         replacements = {
             '’': "'", '‘': "'", '“': '"', '”': '"', '–': '-', '—': '-',
             '•': '-', '…': '...', '\u2022': '-' 
@@ -79,7 +78,7 @@ def create_pdf(text):
         clean_text = text.encode('latin-1', 'replace').decode('latin-1')
         pdf.multi_cell(0, 10, clean_text)
         
-        # 3. CRITICAL FIX: Convert bytearray to immutable bytes
+        # 3. CRITICAL FIX: Explicitly convert to bytes
         return bytes(pdf.output())
         
     except Exception as e:
@@ -151,23 +150,57 @@ def logout():
 
 # --- 5. APP PAGES ---
 
+def page_skill_migration():
+    st.header("📈 Skill Migration Analysis")
+    
+    # Try to get data from Session, otherwise fetch from DB
+    report = None
+    if "results" in st.session_state and "rep" in st.session_state.results:
+        report = st.session_state.results["rep"]
+    elif supabase and st.session_state.user_id:
+        try:
+            # Fetch last analysis
+            data = supabase.table("analyses").select("*").eq("user_id", st.session_state.user_id).order("created_at", desc=True).limit(1).execute()
+            if data.data:
+                # Handle potentially stringified JSON
+                raw_json = data.data[0]['report_json']
+                if isinstance(raw_json, str):
+                    report = json.loads(raw_json)
+                else:
+                    report = raw_json
+        except Exception as e:
+            st.error(f"Could not load history: {e}")
+
+    if report:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            score = report.get('predictive_score', 0)
+            st.metric("Predictive Match", f"{score}%")
+            st.progress(score / 100)
+        with c2:
+            tech = report.get('tech_score', 0)
+            st.metric("Technical Depth", f"{tech}%")
+            st.progress(tech / 100)
+        with c3:
+            st.error(f"Weakest Link: {report.get('weakest_link_skill', 'N/A')}")
+            st.caption("Focus your learning here.")
+            
+        st.divider()
+        st.info("💡 To generate a new analysis, go to the Dashboard and upload a CV.")
+    else:
+        st.warning("No analysis found.")
+        st.write("Go to the **Dashboard** and click 'Generate Strategy' to see your Skill Migration report.")
+
 def page_cover_letter():
     st.header("✍️ Instant Cover Letter")
-    st.caption("Generates a tailored cover letter in seconds.")
     
     c1, c2 = st.columns(2)
-    with c1:
-        jd_text = st.text_area("Paste Job Description:", height=300)
-    with c2:
-        uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cl_uploader")
+    with c1: jd_text = st.text_area("Paste Job Description:", height=300)
+    with c2: uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cl_uploader")
     
     if st.button("Generate Letter", type="primary"):
-        if not st.session_state.groq:
-            st.error("Groq API Key missing.")
-            return
-        if not uploaded_file:
-            st.warning("Please upload your CV.")
-            return
+        if not st.session_state.groq: return st.error("Groq API Key missing.")
+        if not uploaded_file: return st.warning("Please upload your CV.")
 
         try:
             user_cv_text = extract_text(uploaded_file)
@@ -177,17 +210,12 @@ def page_cover_letter():
                     You are an expert career coach. Write a professional cover letter.
                     CANDIDATE INFO: {user_cv_text[:4000]} 
                     JOB DESCRIPTION: {jd_text}
-                    INSTRUCTIONS:
-                    1. Match candidate skills to the job.
-                    2. Professional, enthusiastic tone.
-                    3. Do not use placeholders like '[Your Name]'.
+                    INSTRUCTIONS: Match skills to job. Professional tone. No placeholders.
                     """
-                    
                     completion = st.session_state.groq.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
                         model="llama-3.3-70b-versatile" 
                     )
-                    
                     letter = completion.choices[0].message.content
                     st.subheader("Draft:")
                     st.write(letter)
@@ -196,26 +224,19 @@ def page_cover_letter():
                     if pdf_bytes:
                         st.download_button("📥 Download PDF", pdf_bytes, "cover_letter.pdf", "application/pdf")
                     else:
-                        st.warning("PDF generation failed. Copy the text manually.")
-            else:
-                st.warning("Please provide both CV and Job Description.")
-        except Exception as e:
-            st.error(f"Error: {e}")
+                        st.download_button("📥 Download Text (Fallback)", letter, "cover_letter.txt", "text/plain")
+            else: st.warning("Please provide both CV and Job Description.")
+        except Exception as e: st.error(f"Error: {e}")
 
 def page_cv_tailor():
     st.header("🎯 Smart CV Tailor")
-    st.caption("Rewrites your bullet points to match the Job Description keywords.")
     
     jd = st.text_area("Paste Job Description:", height=150)
-    uploaded_file = st.file_uploader("Upload your CV (PDF) to optimize", type=["pdf"], key="cv_uploader")
+    uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cv_uploader")
     
     if st.button("Optimize Bullets", type="primary"):
-        if not st.session_state.groq:
-            st.error("Groq API Key missing.")
-            return
-        if not uploaded_file:
-            st.warning("Please upload a CV.")
-            return
+        if not st.session_state.groq: return st.error("Groq API Key missing.")
+        if not uploaded_file: return st.warning("Please upload a CV.")
 
         try:
             cv_text = extract_text(uploaded_file)
@@ -224,20 +245,13 @@ def page_cv_tailor():
                     prompt = f"""
                     Act as an ATS Optimization Expert.
                     JOB DESCRIPTION: {jd}
-                    CURRENT CV CONTENT: {cv_text[:4000]}
-                    
-                    TASK:
-                    1. Extract top 5 keywords from the JD.
-                    2. Rewrite the CV bullet points to include these keywords naturally.
-                    3. Use strong action verbs.
-                    4. Output ONLY the rewritten bullet points in Markdown format.
+                    CURRENT CV: {cv_text[:4000]}
+                    TASK: Rewrite bullets to include JD keywords. Output ONLY bullets in Markdown.
                     """
-                    
                     completion = st.session_state.groq.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
                         model="llama-3.3-70b-versatile"
                     )
-                    
                     optimized = completion.choices[0].message.content
                     
                     c1, c2 = st.columns(2)
@@ -250,39 +264,34 @@ def page_cv_tailor():
                     
                     pdf_bytes = create_pdf(optimized)
                     if pdf_bytes:
-                        st.download_button("📥 Download Optimized PDF", pdf_bytes, "optimized_cv.pdf", "application/pdf")
+                        st.download_button("📥 Download PDF", pdf_bytes, "optimized_cv.pdf", "application/pdf")
                     else:
-                        st.warning("PDF generation failed. Copy text manually.")
-            else:
-                st.warning("Please paste the Job Description.")
-        except Exception as e:
-            st.error(f"Error: {e}")
+                        st.download_button("📥 Download Text (Fallback)", optimized, "optimized_cv.txt", "text/plain")
+            else: st.warning("Please paste the Job Description.")
+        except Exception as e: st.error(f"Error: {e}")
 
 def page_interview_sim():
     st.header("🎤 Voice Interview Simulator")
-    st.caption("Speak your answers. AI (Whisper) listens and rates you.")
     
     if 'interview_q' not in st.session_state:
-        st.session_state.interview_q = "Tell me about yourself and why you want this role?"
+        st.session_state.interview_q = "Tell me about yourself?"
     
-    jd_context = st.text_input("Enter Job Role (e.g. 'Senior Python Dev') to generate a specific question:")
-    if st.button("Generate New Question"):
+    jd_context = st.text_input("Enter Job Role (e.g. 'Senior Python Dev'):")
+    if st.button("Generate Question"):
         if st.session_state.groq:
             try:
                 q_resp = st.session_state.groq.chat.completions.create(
-                    messages=[{"role": "user", "content": f"Ask a tough behavioural interview question for a {jd_context}."}],
+                    messages=[{"role": "user", "content": f"Ask a tough behavioural question for {jd_context}."}],
                     model="llama-3.1-8b-instant"
                 )
                 st.session_state.interview_q = q_resp.choices[0].message.content
             except Exception as e: st.error(f"Error: {e}")
     
     st.markdown(f"### 🤖 AI asks: *{st.session_state.interview_q}*")
-    
     audio_val = st.audio_input("Record your answer")
     
     if audio_val:
-        if not st.session_state.groq:
-            st.error("Groq API Key missing.")
+        if not st.session_state.groq: st.error("Groq API Key missing.")
         else:
             with st.spinner("Analyzing..."):
                 try:
@@ -292,21 +301,13 @@ def page_interview_sim():
                         response_format="text"
                     )
                     st.info(f"🗣 You said: '{transcription}'")
-                    
-                    feedback_prompt = f"""
-                    Question: {st.session_state.interview_q}
-                    Answer: {transcription}
-                    Task: Rate answer 1-10. Give 1 pro and 1 con.
-                    """
-                    
                     feedback = st.session_state.groq.chat.completions.create(
-                        messages=[{"role": "user", "content": feedback_prompt}],
+                        messages=[{"role": "user", "content": f"Rate this interview answer 1-10: '{transcription}' for question '{st.session_state.interview_q}'"}],
                         model="llama-3.1-8b-instant"
                     )
                     st.success("Feedback:")
                     st.write(feedback.choices[0].message.content)
-                except Exception as e:
-                    st.error(f"Voice Error: {e}")
+                except Exception as e: st.error(f"Error: {e}")
 
 # --- 6. MAIN APP ---
 
@@ -330,6 +331,7 @@ def main():
         st.subheader(f"User: {st.session_state.user.split('@')[0]}")
         nav = st.radio("Menu", [
             "Dashboard", 
+            "Skill Migration",
             "Smart CV Tailor", 
             "Instant Cover Letter", 
             "Voice Interview Sim"
@@ -337,10 +339,7 @@ def main():
         st.divider()
         if st.button("Logout"): logout()
 
-    if nav == "Smart CV Tailor": page_cv_tailor()
-    elif nav == "Instant Cover Letter": page_cover_letter()
-    elif nav == "Voice Interview Sim": page_interview_sim()
-    elif nav == "Dashboard":
+    if nav == "Dashboard":
         st.title("🚀 Career Strategy Dashboard")
         with st.container():
             c1, c2 = st.columns([2,1])
@@ -355,6 +354,15 @@ def main():
                             txt = extract_text(f)
                             md, rep, src = st.session_state.agent.generate_strategy(txt, role)
                             st.session_state.results = {"md": md, "rep": rep, "src": src}
+                            
+                            # Save to Supabase
+                            if supabase and st.session_state.user_id:
+                                try:
+                                    supabase.table("analyses").insert({
+                                        "user_id": st.session_state.user_id,
+                                        "report_json": rep
+                                    }).execute()
+                                except: pass
                             st.rerun()
 
         if "results" in st.session_state:
@@ -362,6 +370,11 @@ def main():
             with st.container():
                 st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
                 st.markdown(res['md'])
+                
+    elif nav == "Skill Migration": page_skill_migration()
+    elif nav == "Smart CV Tailor": page_cv_tailor()
+    elif nav == "Instant Cover Letter": page_cover_letter()
+    elif nav == "Voice Interview Sim": page_interview_sim()
 
 if __name__ == "__main__":
     main()
