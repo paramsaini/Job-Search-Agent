@@ -9,7 +9,7 @@ from groq import Groq
 from fpdf import FPDF
 
 # --- 1. CONFIG & STYLING ---
-st.set_page_config(page_title="Aequor Career Agent", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Job-Search-Agent", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
