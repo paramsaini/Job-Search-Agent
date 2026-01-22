@@ -228,84 +228,227 @@ def page_cover_letter():
             else: st.warning("Please provide both CV and Job Description.")
         except Exception as e: st.error(f"Error: {e}")
 
-def page_cv_tailor():
-    st.header("🎯 Smart CV Tailor")
+import re
+import numpy as np
+import pandas as pd
+
+# --- CV Compiler Helper Functions ---
+def calculate_ats_compliance(cv_text, jd_text):
+    """Calculate ATS keyword match percentage"""
+    if not cv_text or not jd_text: return 0
+    cv_words = set(re.findall(r'\b\w{3,}\b', cv_text.lower()))
+    jd_words = set(re.findall(r'\b\w{3,}\b', jd_text.lower()))
+    intersection = len(cv_words.intersection(jd_words))
+    union = len(cv_words.union(jd_words))
+    score = (intersection / union) * 100 if union > 0 else 0
+    return int(np.clip(score, 0, 100))
+
+def calculate_human_clarity(text):
+    """Calculate readability/clarity score"""
+    if not text: return 0
+    metric_count = len(re.findall(r'\d[\d,\.]*', text))
+    sentences = re.split(r'[.!?]', text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+    total_words = len(re.findall(r'\b\w+\b', text))
+    avg_words = total_words / len(sentences) if sentences else 0
+    clarity = 50
+    if 0 < avg_words < 15:
+        clarity += (15 - avg_words) * 1.0
+    clarity += min(30, metric_count * 5)
+    return int(np.clip(clarity, 40, 100))
+
+def fetch_application_ledger(user_id):
+    """Fetch user's application history"""
+    if not supabase: return pd.DataFrame()
+    try:
+        res = supabase.table("applications").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        if res.data:
+            df = pd.DataFrame(res.data)
+            df = df.rename(columns={
+                "created_at": "Date", "company_name": "Company", "job_id": "JobID",
+                "compliance_score": "Compliance", "clarity_score": "Clarity", "outcome": "Outcome"
+            })
+            return df
+    except: pass
+    return pd.DataFrame()
+
+def save_application(user_id, company, job_id, comp, clar):
+    """Save application to database"""
+    if not supabase: return False
+    try:
+        supabase.table("applications").insert({
+            "user_id": user_id, "company_name": company, "job_id": job_id,
+            "compliance_score": comp, "clarity_score": clar, "outcome": "Pending"
+        }).execute()
+        return True
+    except: return False
+
+def update_application_status(app_id, new_status):
+    """Update application outcome"""
+    if not supabase: return
+    try:
+        supabase.table("applications").update({"outcome": new_status}).eq("id", app_id).execute()
+    except: pass
+
+# --- CV Compiler Page ---
+def page_cv_compiler():
+    st.header("🤖 CV Compiler & Optimizer")
+    st.caption("All-in-one: Optimize your CV, check ATS compliance, and track applications")
     
-    jd = st.text_area("Paste Job Description:", height=150)
-    uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cv_uploader")
+    # --- SECTION 1: Smart CV Tailor ---
+    st.subheader("1️⃣ Smart CV Tailor")
     
-    if st.button("Optimize Bullets", type="primary"):
+    col_upload, col_jd = st.columns(2)
+    with col_upload:
+        uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="compiler_cv_upload")
+    with col_jd:
+        jd_text = st.text_area("Paste Job Description:", height=150, key="compiler_jd")
+    
+    # Extract CV text
+    cv_text = ""
+    if uploaded_file:
+        cv_text = extract_text(uploaded_file)
+        st.session_state['compiler_cv_text'] = cv_text
+    elif 'compiler_cv_text' in st.session_state:
+        cv_text = st.session_state['compiler_cv_text']
+    
+    if st.button("🚀 Optimize Bullets", type="primary", use_container_width=True):
         if not st.session_state.groq:
             st.error("Groq API Key missing.")
-            return
-        if not uploaded_file:
+        elif not cv_text or cv_text.strip() == "":
             st.warning("Please upload a CV.")
-            return
-        if not jd or jd.strip() == "":
+        elif not jd_text or jd_text.strip() == "":
             st.warning("Please paste the Job Description.")
-            return
-
-        try:
-            cv_text = extract_text(uploaded_file)
-            if not cv_text or cv_text.strip() == "":
-                st.error("Could not extract text from CV. Please try a different file.")
-                return
-                
-            with st.spinner("Analyzing..."):
-                prompt = f"""
-                Act as an ATS Optimization Expert.
-                JOB DESCRIPTION: {jd}
-                CURRENT CV: {cv_text[:4000]}
-                TASK: Rewrite bullets to include JD keywords. Output ONLY bullets in Markdown.
-                """
-                try:
+        else:
+            try:
+                with st.spinner("AI is optimizing your CV..."):
+                    prompt = f"""
+                    Act as an ATS Optimization Expert.
+                    JOB DESCRIPTION: {jd_text}
+                    CURRENT CV: {cv_text[:4000]}
+                    TASK: Rewrite bullets to include JD keywords. Output ONLY bullets in Markdown.
+                    """
                     completion = st.session_state.groq.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
                         model="llama-3.3-70b-versatile"
                     )
-                except Exception as api_err:
-                    st.error(f"API Error: {api_err}")
-                    return
-                
-                if not completion or not completion.choices:
-                    st.error("No response received from AI. Please try again.")
-                    return
-                    
-                optimized = completion.choices[0].message.content
-                
-                if not optimized or optimized.strip() == "":
-                    st.error("Empty response from AI. Please try again.")
-                    return
-                
-                # Store in session state to prevent loss on rerun
-                st.session_state['cv_tailor_original'] = cv_text[:1000]
-                st.session_state['cv_tailor_optimized'] = optimized
-                
-        except Exception as e:
-            st.error(f"Error processing request: {e}")
-            return
+                    if completion and completion.choices:
+                        optimized = completion.choices[0].message.content
+                        if optimized and optimized.strip():
+                            st.session_state['compiler_optimized'] = optimized
+                            st.session_state['compiler_original'] = cv_text[:1000]
+                            st.session_state['compiler_jd_stored'] = jd_text
+                        else:
+                            st.error("Empty response from AI.")
+                    else:
+                        st.error("No response received.")
+            except Exception as e:
+                st.error(f"Error: {e}")
     
-    # Display results from session state (survives reruns)
-    if 'cv_tailor_optimized' in st.session_state:
-        optimized = st.session_state['cv_tailor_optimized']
-        cv_text_preview = st.session_state.get('cv_tailor_original', '')
+    # Display optimization results
+    if 'compiler_optimized' in st.session_state:
+        st.markdown("---")
+        col_orig, col_opt = st.columns(2)
+        with col_orig:
+            st.info("📄 Original CV Preview")
+            st.text(st.session_state.get('compiler_original', '')[:800] + "...")
+        with col_opt:
+            st.success("✨ Optimized Bullets")
+            st.code(st.session_state['compiler_optimized'], language='markdown')
         
-        c1, c2 = st.columns(2)
-        with c1:
-            st.info("Original")
-            st.text(cv_text_preview + "...") 
-        with c2:
-            st.success("Optimized")
-            st.code(optimized, language='markdown')
+        # Download buttons
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            try:
+                pdf_bytes = create_pdf(st.session_state['compiler_optimized'])
+                if pdf_bytes:
+                    st.download_button("📥 Download Optimized PDF", pdf_bytes, "optimized_cv.pdf", "application/pdf", use_container_width=True)
+            except:
+                pass
+        with col_dl2:
+            st.download_button("📥 Download as Text", st.session_state['compiler_optimized'], "optimized_cv.txt", "text/plain", use_container_width=True)
+    
+    # --- SECTION 2: Dual Optimization Dashboard ---
+    st.markdown("---")
+    st.subheader("2️⃣ Dual Optimization Dashboard")
+    
+    # Use stored JD if available, otherwise use current input
+    jd_for_analysis = st.session_state.get('compiler_jd_stored', jd_text)
+    
+    if cv_text and jd_for_analysis:
+        ats_score = calculate_ats_compliance(cv_text, jd_for_analysis)
+        clarity_score = calculate_human_clarity(cv_text)
         
-        try:
-            pdf_bytes = create_pdf(optimized)
-            if pdf_bytes:
-                st.download_button("📥 Download PDF", pdf_bytes, "optimized_cv.pdf", "application/pdf")
+        col_ats, col_clarity = st.columns(2)
+        
+        with col_ats:
+            delta_ats = "✅ Good!" if ats_score >= 70 else f"↑ Target: 95%"
+            st.metric("ATS Compliance", f"{ats_score}%", delta=delta_ats)
+            st.progress(ats_score / 100)
+            if ats_score < 70:
+                st.caption("💡 Tip: Add more keywords from the job description")
+        
+        with col_clarity:
+            delta_clarity = "✅ Good!" if clarity_score >= 75 else f"↑ Target: 75%"
+            st.metric("Human Clarity", f"{clarity_score}%", delta=delta_clarity)
+            st.progress(clarity_score / 100)
+            if clarity_score < 75:
+                st.caption("💡 Tip: Use shorter sentences and add metrics")
+    else:
+        st.info("Upload a CV and paste a Job Description to see your optimization scores.")
+        ats_score = 0
+        clarity_score = 0
+    
+    # --- SECTION 3: Log Finalized Application ---
+    st.markdown("---")
+    st.subheader("3️⃣ Log Finalized Application")
+    
+    col_company, col_job, col_log = st.columns([2, 2, 1])
+    company_name = col_company.text_input("Company Name", key="log_company")
+    job_title = col_job.text_input("Job Title/ID", key="log_job")
+    
+    with col_log:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("📝 Log Application", type="secondary", use_container_width=True):
+            if company_name and job_title:
+                if save_application(st.session_state.user_id, company_name, job_title, ats_score, clarity_score):
+                    st.success("✅ Application logged!")
+                    st.rerun()
+                else:
+                    st.error("Failed to save.")
             else:
-                st.download_button("📥 Download Text (Fallback)", optimized, "optimized_cv.txt", "text/plain")
-        except Exception as pdf_err:
-            st.download_button("📥 Download Text (Fallback)", optimized, "optimized_cv.txt", "text/plain")
+                st.warning("Enter company and job title.")
+    
+    # --- SECTION 4: Application History Ledger ---
+    st.markdown("---")
+    st.subheader("4️⃣ Application History Ledger")
+    
+    df_ledger = fetch_application_ledger(st.session_state.user_id)
+    
+    if not df_ledger.empty:
+        # Display table
+        st.dataframe(
+            df_ledger[['Company', 'JobID', 'Outcome', 'Compliance', 'Clarity']],
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Update outcome
+        st.caption("Update Application Status")
+        col_sel, col_status, col_update = st.columns([3, 2, 1])
+        
+        options = {f"{row['Company']} - {row['JobID']}": row['id'] for _, row in df_ledger.iterrows()}
+        selected = col_sel.selectbox("Select Application", list(options.keys()), key="update_select")
+        new_status = col_status.selectbox("New Status", ['Pending', 'Interview', 'Rejected', 'Offer'], key="update_status")
+        
+        with col_update:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Update", use_container_width=True):
+                update_application_status(options[selected], new_status)
+                st.success("Updated!")
+                st.rerun()
+    else:
+        st.info("No applications logged yet. Start tracking your job applications above!")
 
 def page_interview_sim():
     st.header("🎤 Voice Interview Simulator")
@@ -368,7 +511,7 @@ def main():
         st.subheader(f"User: {st.session_state.user.split('@')[0]}")
         nav = st.radio("Menu", [
             "Dashboard", 
-            "Smart CV Tailor", 
+            "CV Compiler",
             "Instant Cover Letter", 
             "Voice Interview Sim"
         ])
@@ -407,7 +550,7 @@ def main():
                 st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
                 st.markdown(res['md'])
                 
-    elif nav == "Smart CV Tailor": page_cv_tailor()
+    elif nav == "CV Compiler": page_cv_compiler()
     elif nav == "Instant Cover Letter": page_cover_letter()
     elif nav == "Voice Interview Sim": page_interview_sim()
 
