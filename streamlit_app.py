@@ -12,14 +12,11 @@ st.set_page_config(page_title="Aequor Career Agent", page_icon="🚀", layout="w
 
 st.markdown("""
     <style>
-    /* Main Background */
     .stApp {
         background: linear-gradient(to bottom right, #0f172a, #1e1b4b);
         background-attachment: fixed;
         color: #e2e8f0;
     }
-
-    /* Glassmorphism Containers */
     div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stMetric"],
     div[data-testid="stExpanderDetails"],
@@ -32,19 +29,13 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         padding: 15px;
     }
-
-    /* Typography & Metrics */
     h1, h2, h3, p, label, .stMarkdown { color: #e2e8f0 !important; }
     div[data-testid="stMetricValue"] { color: #00e0ff !important; text-shadow: 0 0 10px rgba(0, 224, 255, 0.6); }
-    
-    /* Input Fields */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         background-color: rgba(30, 41, 59, 0.8) !important;
         color: white !important;
         border: 1px solid rgba(88, 116, 176, 0.3) !important;
     }
-    
-    /* Buttons */
     .stButton>button {
         background: linear-gradient(90deg, #0062ff, #00c6ff);
         color: white !important;
@@ -67,17 +58,16 @@ def extract_text(file):
             return "".join([p.extract_text() for p in reader.pages])
         return file.read().decode("utf-8")
     except Exception as e:
-        print(f"Error extracting text: {e}")
         return ""
 
 def create_pdf(text):
-    """Safe PDF Generator that sanitizes text to prevent crashes"""
+    """Safe PDF Generator - Fixes 'bytearray' crash"""
     try:
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Courier", size=11) # Courier is safer for special chars
+        pdf.set_font("Courier", size=11)
         
-        # 1. Sanitize Text: Replace characters that often crash PDF generators
+        # 1. Sanitize Text
         replacements = {
             '’': "'", '‘': "'", '“': '"', '”': '"', '–': '-', '—': '-',
             '•': '-', '…': '...', '\u2022': '-' 
@@ -85,16 +75,15 @@ def create_pdf(text):
         for old, new in replacements.items():
             text = text.replace(old, new)
 
-        # 2. Force encode to ASCII/Latin-1 to strip emojis/unsupported symbols
-        # 'replace' will turn emojis into '?' instead of crashing
+        # 2. Encode to Latin-1
         clean_text = text.encode('latin-1', 'replace').decode('latin-1')
-        
         pdf.multi_cell(0, 10, clean_text)
         
-        # 3. Return bytes directly (Correct for FPDF2)
-        return pdf.output()
+        # 3. CRITICAL FIX: Convert bytearray to immutable bytes
+        return bytes(pdf.output())
+        
     except Exception as e:
-        print(f"PDF Generation Failed: {e}")
+        print(f"PDF Gen Error: {e}")
         return None
 
 def get_secret(key):
@@ -103,8 +92,6 @@ def get_secret(key):
     except: return None
 
 # --- 3. INITIALIZATION ---
-
-# A. Supabase
 @st.cache_resource
 def init_supabase():
     url = get_secret("SUPABASE_URL")
@@ -112,28 +99,20 @@ def init_supabase():
     if not url or not key: return None
     return create_client(url, key)
 
-try:
-    supabase = init_supabase()
-except Exception as e:
-    supabase = None
+try: supabase = init_supabase()
+except: supabase = None
 
-# B. Gemini Agent
 if 'agent' not in st.session_state:
     api = get_secret("GEMINI_API_KEY")
     qh = get_secret("QDRANT_HOST")
     qk = get_secret("QDRANT_API_KEY")
-    if api and qh:
-        st.session_state.agent = JobSearchAgent(api, qh, qk)
-    else:
-        st.session_state.agent = None
+    if api and qh: st.session_state.agent = JobSearchAgent(api, qh, qk)
+    else: st.session_state.agent = None
 
-# C. Groq Client
 if 'groq' not in st.session_state:
     groq_key = get_secret("GROQ_API_KEY")
-    if groq_key:
-        st.session_state.groq = Groq(api_key=groq_key)
-    else:
-        st.session_state.groq = None
+    if groq_key: st.session_state.groq = Groq(api_key=groq_key)
+    else: st.session_state.groq = None
 
 # --- 4. AUTH & LOGIC ---
 if 'user' not in st.session_state: st.session_state.user = None
@@ -183,20 +162,17 @@ def page_cover_letter():
         uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cl_uploader")
     
     if st.button("Generate Letter", type="primary"):
-        # CRASH PREVENTION: Wrap in try/except
+        if not st.session_state.groq:
+            st.error("Groq API Key missing.")
+            return
+        if not uploaded_file:
+            st.warning("Please upload your CV.")
+            return
+
         try:
-            if not st.session_state.groq:
-                st.error("Groq API Key missing.")
-                return
-
-            if not uploaded_file:
-                st.warning("Please upload your CV first.")
-                return
-
             user_cv_text = extract_text(uploaded_file)
-
             if jd_text and user_cv_text:
-                with st.spinner("Writing your letter..."):
+                with st.spinner("Writing..."):
                     prompt = f"""
                     You are an expert career coach. Write a professional cover letter.
                     CANDIDATE INFO: {user_cv_text[:4000]} 
@@ -220,11 +196,11 @@ def page_cover_letter():
                     if pdf_bytes:
                         st.download_button("📥 Download PDF", pdf_bytes, "cover_letter.pdf", "application/pdf")
                     else:
-                        st.download_button("📥 Download Text", letter, "cover_letter.txt", "text/plain")
+                        st.warning("PDF generation failed. Copy the text manually.")
             else:
                 st.warning("Please provide both CV and Job Description.")
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            st.error(f"Error: {e}")
 
 def page_cv_tailor():
     st.header("🎯 Smart CV Tailor")
@@ -234,20 +210,17 @@ def page_cv_tailor():
     uploaded_file = st.file_uploader("Upload your CV (PDF) to optimize", type=["pdf"], key="cv_uploader")
     
     if st.button("Optimize Bullets", type="primary"):
-        # CRASH PREVENTION: Wrap in try/except
+        if not st.session_state.groq:
+            st.error("Groq API Key missing.")
+            return
+        if not uploaded_file:
+            st.warning("Please upload a CV.")
+            return
+
         try:
-            if not st.session_state.groq:
-                st.error("Groq API Key missing.")
-                return
-            
-            if not uploaded_file:
-                st.warning("Please upload a CV PDF first.")
-                return
-
             cv_text = extract_text(uploaded_file)
-
             if jd and cv_text:
-                with st.spinner("Analyzing keywords & rewriting..."):
+                with st.spinner("Analyzing..."):
                     prompt = f"""
                     Act as an ATS Optimization Expert.
                     JOB DESCRIPTION: {jd}
@@ -269,21 +242,21 @@ def page_cv_tailor():
                     
                     c1, c2 = st.columns(2)
                     with c1:
-                        st.info("Original (Extracted)")
+                        st.info("Original")
                         st.text(cv_text[:1000] + "...") 
                     with c2:
-                        st.success("Optimized Version")
+                        st.success("Optimized")
                         st.code(optimized, language='markdown')
                     
                     pdf_bytes = create_pdf(optimized)
                     if pdf_bytes:
                         st.download_button("📥 Download Optimized PDF", pdf_bytes, "optimized_cv.pdf", "application/pdf")
                     else:
-                        st.download_button("📥 Download Text", optimized, "optimized_cv.txt", "text/plain")
+                        st.warning("PDF generation failed. Copy text manually.")
             else:
                 st.warning("Please paste the Job Description.")
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            st.error(f"Error: {e}")
 
 def page_interview_sim():
     st.header("🎤 Voice Interview Simulator")
@@ -311,14 +284,13 @@ def page_interview_sim():
         if not st.session_state.groq:
             st.error("Groq API Key missing.")
         else:
-            with st.spinner("Transcribing & Analyzing..."):
+            with st.spinner("Analyzing..."):
                 try:
                     transcription = st.session_state.groq.audio.transcriptions.create(
                         file=("audio.wav", audio_val, "audio/wav"),
                         model="whisper-large-v3", 
                         response_format="text"
                     )
-                    
                     st.info(f"🗣 You said: '{transcription}'")
                     
                     feedback_prompt = f"""
@@ -331,7 +303,6 @@ def page_interview_sim():
                         messages=[{"role": "user", "content": feedback_prompt}],
                         model="llama-3.1-8b-instant"
                     )
-                    
                     st.success("Feedback:")
                     st.write(feedback.choices[0].message.content)
                 except Exception as e:
@@ -357,7 +328,6 @@ def main():
 
     with st.sidebar:
         st.subheader(f"User: {st.session_state.user.split('@')[0]}")
-        # EMOTIONAL TRACKER REMOVED FROM MENU
         nav = st.radio("Menu", [
             "Dashboard", 
             "Smart CV Tailor", 
@@ -367,12 +337,9 @@ def main():
         st.divider()
         if st.button("Logout"): logout()
 
-    if nav == "Smart CV Tailor":
-        page_cv_tailor()
-    elif nav == "Instant Cover Letter":
-        page_cover_letter()
-    elif nav == "Voice Interview Sim":
-        page_interview_sim()
+    if nav == "Smart CV Tailor": page_cv_tailor()
+    elif nav == "Instant Cover Letter": page_cover_letter()
+    elif nav == "Voice Interview Sim": page_interview_sim()
     elif nav == "Dashboard":
         st.title("🚀 Career Strategy Dashboard")
         with st.container():
