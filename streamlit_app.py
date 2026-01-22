@@ -140,9 +140,20 @@ def signup(email, password, username):
     try:
         res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": {"username": username}}})
         if res.user:
-            supabase.table("profiles").insert({"id": res.user.id, "username": username, "email": email}).execute()
-        st.success("Account created! Confirm email to login.")
-    except Exception as e: st.error(f"Signup failed: {e}")
+            # Check if profile already exists (handles edge cases)
+            try:
+                existing = supabase.table("profiles").select("id").eq("id", res.user.id).execute()
+                if not existing.data:
+                    supabase.table("profiles").insert({"id": res.user.id, "username": username, "email": email}).execute()
+            except:
+                pass  # Profile insert failed, but auth succeeded - user can still login
+        st.success("Account created! Check your email to confirm, then login.")
+    except Exception as e:
+        error_msg = str(e)
+        if "already registered" in error_msg.lower() or "already exists" in error_msg.lower():
+            st.warning("This email is already registered. Please login instead.")
+        else:
+            st.error(f"Signup failed: {e}")
 
 def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
