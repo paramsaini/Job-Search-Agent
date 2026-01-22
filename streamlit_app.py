@@ -67,14 +67,21 @@ def extract_text(file):
     except: return ""
 
 def create_pdf(text):
-    """Helper to convert text to PDF bytes"""
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    # Encode to latin-1 to handle standard characters, replacing unknown ones
-    clean_text = text.encode('latin-1', 'replace').decode('latin-1')
-    pdf.multi_cell(0, 10, clean_text)
-    return pdf.output(dest='S').encode('latin-1')
+    """Helper to convert text to PDF bytes - FIXED FOR FPDF2"""
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        # Encode to latin-1 to handle standard characters, replacing unknown ones
+        # This prevents crashes with emojis or special bullets
+        clean_text = text.encode('latin-1', 'replace').decode('latin-1')
+        pdf.multi_cell(0, 10, clean_text)
+        
+        # FIX: Directly return bytes, do NOT call .encode() on the result
+        return bytes(pdf.output()) 
+    except Exception as e:
+        st.error(f"PDF Generation Error: {e}")
+        return b""
 
 def get_secret(key):
     if key in os.environ: return os.environ[key]
@@ -130,10 +137,8 @@ def login(email, password):
             pid = res.user.id
             prof = supabase.table("profiles").select("*").eq("id", pid).execute()
             if not prof.data:
-                # If profile missing, create it now
                 supabase.table("profiles").insert({"id": pid, "username": email.split('@')[0], "email": email}).execute()
             else:
-                # If email is NULL, update it now
                 if not prof.data[0].get('email'):
                     supabase.table("profiles").update({"email": email}).eq("id", pid).execute()
         except: pass
@@ -153,7 +158,7 @@ def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 5. NEW FEATURE FUNCTIONS (FIXED MODEL NAMES) ---
+# --- 5. NEW FEATURE FUNCTIONS (FIXED) ---
 
 def page_cover_letter():
     st.header("✍️ Instant Cover Letter")
@@ -188,7 +193,6 @@ def page_cover_letter():
                 3. Do not use placeholders like '[Your Name]' - use 'The Applicant' if name is missing.
                 """
                 
-                # FIXED MODEL NAME HERE
                 completion = st.session_state.groq.chat.completions.create(
                     messages=[{"role": "user", "content": prompt}],
                     model="llama-3.3-70b-versatile" 
@@ -198,12 +202,15 @@ def page_cover_letter():
                 st.subheader("Draft:")
                 st.write(letter)
                 
-                st.download_button(
-                    label="📥 Download PDF",
-                    data=create_pdf(letter),
-                    file_name="cover_letter.pdf",
-                    mime="application/pdf"
-                )
+                # Fixed PDF Generation Call
+                pdf_bytes = create_pdf(letter)
+                if pdf_bytes:
+                    st.download_button(
+                        label="📥 Download PDF",
+                        data=pdf_bytes,
+                        file_name="cover_letter.pdf",
+                        mime="application/pdf"
+                    )
         else:
             st.warning("Please upload your CV and paste the Job Description.")
 
@@ -237,7 +244,6 @@ def page_cv_tailor():
                 4. Output ONLY the rewritten bullet points in Markdown.
                 """
                 
-                # FIXED MODEL NAME HERE
                 completion = st.session_state.groq.chat.completions.create(
                     messages=[{"role": "user", "content": prompt}],
                     model="llama-3.3-70b-versatile"
@@ -253,12 +259,15 @@ def page_cv_tailor():
                     st.success("Optimized Version")
                     st.code(optimized, language='markdown')
                 
-                st.download_button(
-                    label="📥 Download Optimized Text",
-                    data=create_pdf(optimized),
-                    file_name="optimized_cv.pdf",
-                    mime="application/pdf"
-                )
+                # Fixed PDF Generation Call
+                pdf_bytes = create_pdf(optimized)
+                if pdf_bytes:
+                    st.download_button(
+                        label="📥 Download Optimized Text",
+                        data=pdf_bytes,
+                        file_name="optimized_cv.pdf",
+                        mime="application/pdf"
+                    )
         else:
             st.warning("Please upload your CV and paste the Job Description.")
 
@@ -272,7 +281,7 @@ def page_interview_sim():
     jd_context = st.text_input("Enter Job Role (e.g. 'Senior Python Dev') to generate a specific question:")
     if st.button("Generate New Question"):
         if st.session_state.groq:
-            # FIXED MODEL NAME HERE
+            # Using stable model for logic
             q_resp = st.session_state.groq.chat.completions.create(
                 messages=[{"role": "user", "content": f"Ask a tough behavioural interview question for a {jd_context}."}],
                 model="llama-3.1-8b-instant"
@@ -288,31 +297,33 @@ def page_interview_sim():
             st.error("Groq API Key missing.")
         else:
             with st.spinner("Transcribing & Analyzing..."):
-                # A. Transcribe (Whisper V3 is still valid)
-                transcription = st.session_state.groq.audio.transcriptions.create(
-                    file=("audio.wav", audio_val, "audio/wav"),
-                    model="distil-whisper-large-v3-en-main",
-                    response_format="text"
-                )
-                
-                st.info(f"🗣 You said: '{transcription}'")
-                
-                # B. Analyze
-                feedback_prompt = f"""
-                Question: {st.session_state.interview_q}
-                Answer: {transcription}
-                
-                Task: Rate answer 1-10. Give 1 pro and 1 con.
-                """
-                
-                # FIXED MODEL NAME HERE
-                feedback = st.session_state.groq.chat.completions.create(
-                    messages=[{"role": "user", "content": feedback_prompt}],
-                    model="llama-3.1-8b-instant"
-                )
-                
-                st.success("Feedback:")
-                st.write(feedback.choices[0].message.content)
+                try:
+                    # UPDATED MODEL NAME: whisper-large-v3
+                    transcription = st.session_state.groq.audio.transcriptions.create(
+                        file=("audio.wav", audio_val, "audio/wav"),
+                        model="whisper-large-v3", 
+                        response_format="text"
+                    )
+                    
+                    st.info(f"🗣 You said: '{transcription}'")
+                    
+                    # Analyze Answer
+                    feedback_prompt = f"""
+                    Question: {st.session_state.interview_q}
+                    Answer: {transcription}
+                    
+                    Task: Rate answer 1-10. Give 1 pro and 1 con.
+                    """
+                    
+                    feedback = st.session_state.groq.chat.completions.create(
+                        messages=[{"role": "user", "content": feedback_prompt}],
+                        model="llama-3.1-8b-instant"
+                    )
+                    
+                    st.success("Feedback:")
+                    st.write(feedback.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"Voice Error: {e}")
 
 # --- 6. MAIN APP ---
 
@@ -341,8 +352,7 @@ def main():
             "Smart CV Tailor", 
             "Instant Cover Letter", 
             "Voice Interview Sim",
-            "Emotional Tracker",
-            "CV Compiler"
+            "Emotional Tracker"
         ])
         st.divider()
         if st.button("Logout"): logout()
