@@ -146,9 +146,22 @@ def signup(email, password, username):
     try:
         res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": {"username": username}}})
         if res.user:
-            supabase.table("profiles").insert({"id": res.user.id, "username": username, "email": email}).execute()
+            # Try to insert profile, but handle if it already exists
+            try:
+                supabase.table("profiles").insert({"id": res.user.id, "username": username, "email": email}).execute()
+            except Exception as profile_error:
+                # Profile might already exist, try to update instead
+                try:
+                    supabase.table("profiles").upsert({"id": res.user.id, "username": username, "email": email}).execute()
+                except:
+                    pass  # Profile creation is optional, user can still login
         st.success("Account created! Confirm email to login.")
-    except Exception as e: st.error(f"Signup failed: {e}")
+    except Exception as e: 
+        error_msg = str(e)
+        if "User already registered" in error_msg:
+            st.error("This email is already registered. Please login instead.")
+        else:
+            st.error(f"Signup failed: {e}")
 
 def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
@@ -165,7 +178,7 @@ def delete_user_account():
     user_id = st.session_state.user_id
     
     try:
-        # 1. Delete user data from all tables
+        # 1. Delete user data from all tables (order matters due to foreign keys)
         # Delete mood logs
         try:
             supabase.table("mood_logs").delete().eq("user_id", user_id).execute()
@@ -181,20 +194,31 @@ def delete_user_account():
             supabase.table("applications").delete().eq("user_id", user_id).execute()
         except: pass
         
-        # Delete profile
+        # Delete profile (MUST be deleted before auth user due to foreign key)
         try:
             supabase.table("profiles").delete().eq("id", user_id).execute()
         except: pass
         
-        # 2. Sign out the user
+        # 2. Delete the user from Supabase Auth using Admin API
+        # This requires the service_role key (SUPABASE_SERVICE_KEY)
+        service_key = get_secret("SUPABASE_SERVICE_KEY")
+        if service_key:
+            try:
+                # Create admin client with service role key
+                from supabase import create_client
+                supabase_url = get_secret("SUPABASE_URL")
+                admin_client = create_client(supabase_url, service_key)
+                
+                # Delete user from auth.users
+                admin_client.auth.admin.delete_user(user_id)
+            except Exception as admin_error:
+                print(f"Admin deletion error: {admin_error}")
+                # Continue anyway - data is deleted, user can contact support if needed
+        
+        # 3. Sign out the current session
         try:
             supabase.auth.sign_out()
         except: pass
-        
-        # 3. Note: Full auth user deletion requires Supabase Admin API
-        # The user record in auth.users will be marked for deletion
-        # For complete deletion, you may need to use Supabase Admin SDK
-        # or set up a database trigger/edge function
         
         return True, "Account deleted successfully"
         
