@@ -64,24 +64,31 @@ def extract_text(file):
             reader = pypdf.PdfReader(file)
             return "".join([p.extract_text() for p in reader.pages])
         return file.read().decode("utf-8")
-    except: return ""
+    except Exception as e:
+        return ""
 
 def create_pdf(text):
-    """Helper to convert text to PDF bytes - FIXED FOR FPDF2"""
+    """Safe PDF Generator that avoids crashes"""
     try:
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        # Encode to latin-1 to handle standard characters, replacing unknown ones
-        # This prevents crashes with emojis or special bullets
-        clean_text = text.encode('latin-1', 'replace').decode('latin-1')
+        # Use Courier which handles spacing better for plain text
+        pdf.set_font("Courier", size=11)
+        
+        # 1. Replace special characters that crash fpdf
+        clean_text = text.replace('’', "'").replace('“', '"').replace('”', '"').replace('–', '-')
+        
+        # 2. Force encode to latin-1 to strip unknown emojis/symbols
+        clean_text = clean_text.encode('latin-1', 'replace').decode('latin-1')
+        
         pdf.multi_cell(0, 10, clean_text)
         
-        # FIX: Directly return bytes, do NOT call .encode() on the result
-        return bytes(pdf.output()) 
+        # 3. Return bytes safely
+        return bytes(pdf.output())
     except Exception as e:
-        st.error(f"PDF Generation Error: {e}")
-        return b""
+        # If PDF fails, return None so the app doesn't crash
+        print(f"PDF Error: {e}")
+        return None
 
 def get_secret(key):
     if key in os.environ: return os.environ[key]
@@ -158,7 +165,7 @@ def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 5. NEW FEATURE FUNCTIONS (FIXED) ---
+# --- 5. NEW FEATURE FUNCTIONS ---
 
 def page_cover_letter():
     st.header("✍️ Instant Cover Letter")
@@ -184,7 +191,7 @@ def page_cover_letter():
                 prompt = f"""
                 You are an expert career coach. Write a professional cover letter.
                 
-                CANDIDATE INFO (Extracted from PDF): {user_cv_text[:3000]} 
+                CANDIDATE INFO (Extracted from PDF): {user_cv_text[:4000]} 
                 JOB DESCRIPTION: {jd_text}
                 
                 INSTRUCTIONS:
@@ -193,24 +200,35 @@ def page_cover_letter():
                 3. Do not use placeholders like '[Your Name]' - use 'The Applicant' if name is missing.
                 """
                 
-                completion = st.session_state.groq.chat.completions.create(
-                    messages=[{"role": "user", "content": prompt}],
-                    model="llama-3.3-70b-versatile" 
-                )
-                
-                letter = completion.choices[0].message.content
-                st.subheader("Draft:")
-                st.write(letter)
-                
-                # Fixed PDF Generation Call
-                pdf_bytes = create_pdf(letter)
-                if pdf_bytes:
-                    st.download_button(
-                        label="📥 Download PDF",
-                        data=pdf_bytes,
-                        file_name="cover_letter.pdf",
-                        mime="application/pdf"
+                try:
+                    completion = st.session_state.groq.chat.completions.create(
+                        messages=[{"role": "user", "content": prompt}],
+                        model="llama-3.3-70b-versatile" 
                     )
+                    
+                    letter = completion.choices[0].message.content
+                    st.subheader("Draft:")
+                    st.write(letter)
+                    
+                    # Safe PDF Download
+                    pdf_bytes = create_pdf(letter)
+                    if pdf_bytes:
+                        st.download_button(
+                            label="📥 Download PDF",
+                            data=pdf_bytes,
+                            file_name="cover_letter.pdf",
+                            mime="application/pdf"
+                        )
+                    else:
+                        st.warning("Could not generate PDF (font issue). Downloading as Text instead.")
+                        st.download_button(
+                            label="📥 Download Text File",
+                            data=letter,
+                            file_name="cover_letter.txt",
+                            mime="text/plain"
+                        )
+                except Exception as e:
+                    st.error(f"Generation Error: {e}")
         else:
             st.warning("Please upload your CV and paste the Job Description.")
 
@@ -235,7 +253,7 @@ def page_cv_tailor():
                 prompt = f"""
                 Act as an ATS Optimization Expert.
                 JOB DESCRIPTION: {jd}
-                CURRENT CV CONTENT: {cv_text[:3000]}
+                CURRENT CV CONTENT: {cv_text[:4000]}
                 
                 TASK:
                 1. Extract top 5 keywords from the JD.
@@ -244,30 +262,41 @@ def page_cv_tailor():
                 4. Output ONLY the rewritten bullet points in Markdown.
                 """
                 
-                completion = st.session_state.groq.chat.completions.create(
-                    messages=[{"role": "user", "content": prompt}],
-                    model="llama-3.3-70b-versatile"
-                )
-                
-                optimized = completion.choices[0].message.content
-                
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.info("Original (Extracted)")
-                    st.text(cv_text[:1000] + "...") 
-                with c2:
-                    st.success("Optimized Version")
-                    st.code(optimized, language='markdown')
-                
-                # Fixed PDF Generation Call
-                pdf_bytes = create_pdf(optimized)
-                if pdf_bytes:
-                    st.download_button(
-                        label="📥 Download Optimized Text",
-                        data=pdf_bytes,
-                        file_name="optimized_cv.pdf",
-                        mime="application/pdf"
+                try:
+                    completion = st.session_state.groq.chat.completions.create(
+                        messages=[{"role": "user", "content": prompt}],
+                        model="llama-3.3-70b-versatile"
                     )
+                    
+                    optimized = completion.choices[0].message.content
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.info("Original (Extracted)")
+                        st.text(cv_text[:1000] + "...") 
+                    with c2:
+                        st.success("Optimized Version")
+                        st.code(optimized, language='markdown')
+                    
+                    # Safe PDF Download
+                    pdf_bytes = create_pdf(optimized)
+                    if pdf_bytes:
+                        st.download_button(
+                            label="📥 Download Optimized PDF",
+                            data=pdf_bytes,
+                            file_name="optimized_cv.pdf",
+                            mime="application/pdf"
+                        )
+                    else:
+                        st.warning("PDF generation skipped (special char issue). Download Text instead.")
+                        st.download_button(
+                            label="📥 Download Optimized Text",
+                            data=optimized,
+                            file_name="optimized_cv.txt",
+                            mime="text/plain"
+                        )
+                except Exception as e:
+                    st.error(f"Optimization Error: {e}")
         else:
             st.warning("Please upload your CV and paste the Job Description.")
 
@@ -281,12 +310,14 @@ def page_interview_sim():
     jd_context = st.text_input("Enter Job Role (e.g. 'Senior Python Dev') to generate a specific question:")
     if st.button("Generate New Question"):
         if st.session_state.groq:
-            # Using stable model for logic
-            q_resp = st.session_state.groq.chat.completions.create(
-                messages=[{"role": "user", "content": f"Ask a tough behavioural interview question for a {jd_context}."}],
-                model="llama-3.1-8b-instant"
-            )
-            st.session_state.interview_q = q_resp.choices[0].message.content
+            try:
+                q_resp = st.session_state.groq.chat.completions.create(
+                    messages=[{"role": "user", "content": f"Ask a tough behavioural interview question for a {jd_context}."}],
+                    model="llama-3.1-8b-instant"
+                )
+                st.session_state.interview_q = q_resp.choices[0].message.content
+            except Exception as e:
+                st.error(f"Error: {e}")
     
     st.markdown(f"### 🤖 AI asks: *{st.session_state.interview_q}*")
     
@@ -352,10 +383,7 @@ def main():
             "Smart CV Tailor", 
             "Instant Cover Letter", 
             "Voice Interview Sim",
-            "Emotional Tracker",
-            "CV Compiler",
-            "Feedback Loop",
-            "Skill Migration"
+            "Emotional Tracker"
         ])
         st.divider()
         if st.button("Logout"): logout()
