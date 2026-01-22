@@ -352,7 +352,10 @@ def main():
             "Smart CV Tailor", 
             "Instant Cover Letter", 
             "Voice Interview Sim",
-            "Emotional Tracker"
+            "Emotional Tracker",
+            "CV Compiler",
+            "Feedback Loop",
+            "Skill Migration"
         ])
         st.divider()
         if st.button("Logout"): logout()
