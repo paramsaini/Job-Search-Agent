@@ -8,7 +8,7 @@ from groq import Groq
 from fpdf import FPDF
 
 # --- 1. CONFIG & STYLING ---
-st.set_page_config(page_title="Job-Search-Agent", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Aequor Career Agent", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -60,34 +60,41 @@ load_dotenv()
 def extract_text(file):
     """Extracts text from uploaded PDF or TXT files"""
     try:
+        if file is None:
+            return ""
         if file.type == "application/pdf":
             reader = pypdf.PdfReader(file)
             return "".join([p.extract_text() for p in reader.pages])
         return file.read().decode("utf-8")
     except Exception as e:
+        print(f"Error extracting text: {e}")
         return ""
 
 def create_pdf(text):
-    """Safe PDF Generator that avoids crashes"""
+    """Safe PDF Generator that sanitizes text to prevent crashes"""
     try:
         pdf = FPDF()
         pdf.add_page()
-        # Use Courier which handles spacing better for plain text
-        pdf.set_font("Courier", size=11)
+        pdf.set_font("Courier", size=11) # Courier is safer for special chars
         
-        # 1. Replace special characters that crash fpdf
-        clean_text = text.replace('’', "'").replace('“', '"').replace('”', '"').replace('–', '-')
-        
-        # 2. Force encode to latin-1 to strip unknown emojis/symbols
-        clean_text = clean_text.encode('latin-1', 'replace').decode('latin-1')
+        # 1. Sanitize Text: Replace characters that often crash PDF generators
+        replacements = {
+            '’': "'", '‘': "'", '“': '"', '”': '"', '–': '-', '—': '-',
+            '•': '-', '…': '...', '\u2022': '-' 
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+
+        # 2. Force encode to ASCII/Latin-1 to strip emojis/unsupported symbols
+        # 'replace' will turn emojis into '?' instead of crashing
+        clean_text = text.encode('latin-1', 'replace').decode('latin-1')
         
         pdf.multi_cell(0, 10, clean_text)
         
-        # 3. Return bytes safely
-        return bytes(pdf.output())
+        # 3. Return bytes directly (Correct for FPDF2)
+        return pdf.output()
     except Exception as e:
-        # If PDF fails, return None so the app doesn't crash
-        print(f"PDF Error: {e}")
+        print(f"PDF Generation Failed: {e}")
         return None
 
 def get_secret(key):
@@ -95,7 +102,7 @@ def get_secret(key):
     try: return st.secrets[key]
     except: return None
 
-# --- 3. INITIALIZATION (SUPABASE, AGENT, GROQ) ---
+# --- 3. INITIALIZATION ---
 
 # A. Supabase
 @st.cache_resource
@@ -110,7 +117,7 @@ try:
 except Exception as e:
     supabase = None
 
-# B. Gemini Agent (For Job Search)
+# B. Gemini Agent
 if 'agent' not in st.session_state:
     api = get_secret("GEMINI_API_KEY")
     qh = get_secret("QDRANT_HOST")
@@ -120,7 +127,7 @@ if 'agent' not in st.session_state:
     else:
         st.session_state.agent = None
 
-# C. Groq Client (For Open Source Features)
+# C. Groq Client
 if 'groq' not in st.session_state:
     groq_key = get_secret("GROQ_API_KEY")
     if groq_key:
@@ -128,7 +135,7 @@ if 'groq' not in st.session_state:
     else:
         st.session_state.groq = None
 
-# --- 4. AUTHENTICATION LOGIC ---
+# --- 4. AUTH & LOGIC ---
 if 'user' not in st.session_state: st.session_state.user = None
 if 'user_id' not in st.session_state: st.session_state.user_id = None
 
@@ -138,16 +145,14 @@ def login(email, password):
         res = supabase.auth.sign_in_with_password({"email": email, "password": password})
         st.session_state.user = res.user.email
         st.session_state.user_id = res.user.id
-        
-        # Self-Healing Profile Check
+        # Self-Healing
         try:
             pid = res.user.id
             prof = supabase.table("profiles").select("*").eq("id", pid).execute()
             if not prof.data:
                 supabase.table("profiles").insert({"id": pid, "username": email.split('@')[0], "email": email}).execute()
-            else:
-                if not prof.data[0].get('email'):
-                    supabase.table("profiles").update({"email": email}).eq("id", pid).execute()
+            elif not prof.data[0].get('email'):
+                supabase.table("profiles").update({"email": email}).eq("id", pid).execute()
         except: pass
         st.rerun()
     except Exception as e: st.error(f"Login failed: {e}")
@@ -165,11 +170,11 @@ def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- 5. NEW FEATURE FUNCTIONS ---
+# --- 5. APP PAGES ---
 
 def page_cover_letter():
     st.header("✍️ Instant Cover Letter")
-    st.caption("Generates a tailored cover letter in seconds using Open Source AI.")
+    st.caption("Generates a tailored cover letter in seconds.")
     
     c1, c2 = st.columns(2)
     with c1:
@@ -178,29 +183,30 @@ def page_cover_letter():
         uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cl_uploader")
     
     if st.button("Generate Letter", type="primary"):
-        if not st.session_state.groq:
-            st.error("Groq API Key missing.")
-            return
+        # CRASH PREVENTION: Wrap in try/except
+        try:
+            if not st.session_state.groq:
+                st.error("Groq API Key missing.")
+                return
 
-        user_cv_text = ""
-        if uploaded_file:
+            if not uploaded_file:
+                st.warning("Please upload your CV first.")
+                return
+
             user_cv_text = extract_text(uploaded_file)
 
-        if jd_text and user_cv_text:
-            with st.spinner("Llama 3.3 is reading your PDF & writing..."):
-                prompt = f"""
-                You are an expert career coach. Write a professional cover letter.
-                
-                CANDIDATE INFO (Extracted from PDF): {user_cv_text[:4000]} 
-                JOB DESCRIPTION: {jd_text}
-                
-                INSTRUCTIONS:
-                1. Match candidate skills to the job requirements.
-                2. Professional, enthusiastic tone.
-                3. Do not use placeholders like '[Your Name]' - use 'The Applicant' if name is missing.
-                """
-                
-                try:
+            if jd_text and user_cv_text:
+                with st.spinner("Writing your letter..."):
+                    prompt = f"""
+                    You are an expert career coach. Write a professional cover letter.
+                    CANDIDATE INFO: {user_cv_text[:4000]} 
+                    JOB DESCRIPTION: {jd_text}
+                    INSTRUCTIONS:
+                    1. Match candidate skills to the job.
+                    2. Professional, enthusiastic tone.
+                    3. Do not use placeholders like '[Your Name]'.
+                    """
+                    
                     completion = st.session_state.groq.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
                         model="llama-3.3-70b-versatile" 
@@ -210,59 +216,50 @@ def page_cover_letter():
                     st.subheader("Draft:")
                     st.write(letter)
                     
-                    # Safe PDF Download
                     pdf_bytes = create_pdf(letter)
                     if pdf_bytes:
-                        st.download_button(
-                            label="📥 Download PDF",
-                            data=pdf_bytes,
-                            file_name="cover_letter.pdf",
-                            mime="application/pdf"
-                        )
+                        st.download_button("📥 Download PDF", pdf_bytes, "cover_letter.pdf", "application/pdf")
                     else:
-                        st.warning("Could not generate PDF (font issue). Downloading as Text instead.")
-                        st.download_button(
-                            label="📥 Download Text File",
-                            data=letter,
-                            file_name="cover_letter.txt",
-                            mime="text/plain"
-                        )
-                except Exception as e:
-                    st.error(f"Generation Error: {e}")
-        else:
-            st.warning("Please upload your CV and paste the Job Description.")
+                        st.download_button("📥 Download Text", letter, "cover_letter.txt", "text/plain")
+            else:
+                st.warning("Please provide both CV and Job Description.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
 def page_cv_tailor():
-    st.header("🎯 Smart CV Tailor (ATS Optimized)")
+    st.header("🎯 Smart CV Tailor")
     st.caption("Rewrites your bullet points to match the Job Description keywords.")
     
     jd = st.text_area("Paste Job Description:", height=150)
     uploaded_file = st.file_uploader("Upload your CV (PDF) to optimize", type=["pdf"], key="cv_uploader")
     
     if st.button("Optimize Bullets", type="primary"):
-        if not st.session_state.groq:
-            st.error("Groq API Key missing.")
-            return
+        # CRASH PREVENTION: Wrap in try/except
+        try:
+            if not st.session_state.groq:
+                st.error("Groq API Key missing.")
+                return
+            
+            if not uploaded_file:
+                st.warning("Please upload a CV PDF first.")
+                return
 
-        cv_text = ""
-        if uploaded_file:
             cv_text = extract_text(uploaded_file)
 
-        if jd and cv_text:
-            with st.spinner("Analyzing keywords & rewriting..."):
-                prompt = f"""
-                Act as an ATS Optimization Expert.
-                JOB DESCRIPTION: {jd}
-                CURRENT CV CONTENT: {cv_text[:4000]}
-                
-                TASK:
-                1. Extract top 5 keywords from the JD.
-                2. Rewrite the CV bullet points to naturally include these keywords.
-                3. Use strong action verbs.
-                4. Output ONLY the rewritten bullet points in Markdown.
-                """
-                
-                try:
+            if jd and cv_text:
+                with st.spinner("Analyzing keywords & rewriting..."):
+                    prompt = f"""
+                    Act as an ATS Optimization Expert.
+                    JOB DESCRIPTION: {jd}
+                    CURRENT CV CONTENT: {cv_text[:4000]}
+                    
+                    TASK:
+                    1. Extract top 5 keywords from the JD.
+                    2. Rewrite the CV bullet points to include these keywords naturally.
+                    3. Use strong action verbs.
+                    4. Output ONLY the rewritten bullet points in Markdown format.
+                    """
+                    
                     completion = st.session_state.groq.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
                         model="llama-3.3-70b-versatile"
@@ -278,27 +275,15 @@ def page_cv_tailor():
                         st.success("Optimized Version")
                         st.code(optimized, language='markdown')
                     
-                    # Safe PDF Download
                     pdf_bytes = create_pdf(optimized)
                     if pdf_bytes:
-                        st.download_button(
-                            label="📥 Download Optimized PDF",
-                            data=pdf_bytes,
-                            file_name="optimized_cv.pdf",
-                            mime="application/pdf"
-                        )
+                        st.download_button("📥 Download Optimized PDF", pdf_bytes, "optimized_cv.pdf", "application/pdf")
                     else:
-                        st.warning("PDF generation skipped (special char issue). Download Text instead.")
-                        st.download_button(
-                            label="📥 Download Optimized Text",
-                            data=optimized,
-                            file_name="optimized_cv.txt",
-                            mime="text/plain"
-                        )
-                except Exception as e:
-                    st.error(f"Optimization Error: {e}")
-        else:
-            st.warning("Please upload your CV and paste the Job Description.")
+                        st.download_button("📥 Download Text", optimized, "optimized_cv.txt", "text/plain")
+            else:
+                st.warning("Please paste the Job Description.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
 def page_interview_sim():
     st.header("🎤 Voice Interview Simulator")
@@ -316,8 +301,7 @@ def page_interview_sim():
                     model="llama-3.1-8b-instant"
                 )
                 st.session_state.interview_q = q_resp.choices[0].message.content
-            except Exception as e:
-                st.error(f"Error: {e}")
+            except Exception as e: st.error(f"Error: {e}")
     
     st.markdown(f"### 🤖 AI asks: *{st.session_state.interview_q}*")
     
@@ -329,7 +313,6 @@ def page_interview_sim():
         else:
             with st.spinner("Transcribing & Analyzing..."):
                 try:
-                    # UPDATED MODEL NAME: whisper-large-v3
                     transcription = st.session_state.groq.audio.transcriptions.create(
                         file=("audio.wav", audio_val, "audio/wav"),
                         model="whisper-large-v3", 
@@ -338,11 +321,9 @@ def page_interview_sim():
                     
                     st.info(f"🗣 You said: '{transcription}'")
                     
-                    # Analyze Answer
                     feedback_prompt = f"""
                     Question: {st.session_state.interview_q}
                     Answer: {transcription}
-                    
                     Task: Rate answer 1-10. Give 1 pro and 1 con.
                     """
                     
@@ -359,12 +340,11 @@ def page_interview_sim():
 # --- 6. MAIN APP ---
 
 def main():
-    # A. Login Screen
     if not st.session_state.user:
         with st.container():
             c1, c2, c3 = st.columns([1,1,1])
             with c2:
-                st.header("Job-Search-Agent Login")
+                st.header("Aequor Login")
                 mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
                 email = st.text_input("Email")
                 pwd = st.text_input("Password", type="password")
@@ -375,30 +355,24 @@ def main():
                     if st.button("Login"): login(email, pwd)
         return
 
-    # B. Sidebar Navigation
     with st.sidebar:
         st.subheader(f"User: {st.session_state.user.split('@')[0]}")
+        # EMOTIONAL TRACKER REMOVED FROM MENU
         nav = st.radio("Menu", [
             "Dashboard", 
             "Smart CV Tailor", 
             "Instant Cover Letter", 
-            "Voice Interview Sim",
-            "Emotional Tracker"
+            "Voice Interview Sim"
         ])
         st.divider()
         if st.button("Logout"): logout()
 
-    # C. Routing
     if nav == "Smart CV Tailor":
         page_cv_tailor()
     elif nav == "Instant Cover Letter":
         page_cover_letter()
     elif nav == "Voice Interview Sim":
         page_interview_sim()
-    elif nav == "Emotional Tracker":
-        try: st.switch_page("pages/1_Emotional_Tracker.py")
-        except: st.info("Emotional Tracker module not found.")
-    
     elif nav == "Dashboard":
         st.title("🚀 Career Strategy Dashboard")
         with st.container():
