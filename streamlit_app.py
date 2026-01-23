@@ -2,7 +2,6 @@ import streamlit as st
 import os
 import pypdf
 import json
-import plotly.graph_objects as go
 from dotenv import load_dotenv
 from agent import JobSearchAgent
 from supabase import create_client, Client
@@ -44,11 +43,6 @@ st.markdown("""
         border: none;
         box-shadow: 0 0 10px rgba(0, 98, 255, 0.5);
     }
-    /* Delete Account Button Styling */
-    .delete-btn button {
-        background: linear-gradient(90deg, #dc2626, #ef4444) !important;
-        box-shadow: 0 0 10px rgba(220, 38, 38, 0.5) !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -74,7 +68,7 @@ def create_pdf(text):
         
         # 1. Sanitize Text (Replace crash-prone characters)
         replacements = {
-            ''': "'", ''': "'", '"': '"', '"': '"', '–': '-', '—': '-',
+            '’': "'", '‘': "'", '“': '"', '”': '"', '–': '-', '—': '-',
             '•': '-', '…': '...', '\u2022': '-' 
         }
         for old, new in replacements.items():
@@ -122,7 +116,6 @@ if 'groq' not in st.session_state:
 # --- 4. AUTH & LOGIC ---
 if 'user' not in st.session_state: st.session_state.user = None
 if 'user_id' not in st.session_state: st.session_state.user_id = None
-if 'show_delete_confirmation' not in st.session_state: st.session_state.show_delete_confirmation = False
 
 def login(email, password):
     if not supabase: return st.error("Database error.")
@@ -147,20 +140,18 @@ def signup(email, password, username):
     try:
         res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": {"username": username}}})
         if res.user:
-            # Try to insert profile, but handle if it already exists
+            # Check if profile already exists (handles edge cases)
             try:
-                supabase.table("profiles").insert({"id": res.user.id, "username": username, "email": email}).execute()
-            except Exception as profile_error:
-                # Profile might already exist, try to update instead
-                try:
-                    supabase.table("profiles").upsert({"id": res.user.id, "username": username, "email": email}).execute()
-                except:
-                    pass  # Profile creation is optional, user can still login
-        st.success("Account created! Confirm email to login.")
-    except Exception as e: 
+                existing = supabase.table("profiles").select("id").eq("id", res.user.id).execute()
+                if not existing.data:
+                    supabase.table("profiles").insert({"id": res.user.id, "username": username, "email": email}).execute()
+            except:
+                pass  # Profile insert failed, but auth succeeded - user can still login
+        st.success("Account created! Check your email to confirm, then login.")
+    except Exception as e:
         error_msg = str(e)
-        if "User already registered" in error_msg:
-            st.error("This email is already registered. Please login instead.")
+        if "already registered" in error_msg.lower() or "already exists" in error_msg.lower():
+            st.warning("This email is already registered. Please login instead.")
         else:
             st.error(f"Signup failed: {e}")
 
@@ -168,171 +159,13 @@ def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-def delete_user_account():
-    """
-    PERMANENTLY deletes user account and ALL associated data from Supabase.
-    This includes: analyses, applications, mood_logs, profiles, AND auth.users
-    Required for Apple App Store Guideline 5.1.1(v) compliance.
-    """
-    if not st.session_state.user_id:
-        return False, "Not authenticated"
-    
-    user_id = st.session_state.user_id
-    
-    # Get service role key for admin operations (REQUIRED for auth deletion)
-    service_key = get_secret("SUPABASE_SERVICE_KEY")
-    supabase_url = get_secret("SUPABASE_URL")
-    
-    if not service_key or not supabase_url:
-        return False, "Server configuration error. Please contact support."
-    
-    try:
-        # Create admin client with service_role key (has full database access)
-        from supabase import create_client
-        admin_client = create_client(supabase_url, service_key)
-        
-        # ========================================
-        # STEP 1: Delete ALL user data from tables
-        # ========================================
-        
-        # Delete from mood_logs
-        try:
-            admin_client.table("mood_logs").delete().eq("user_id", user_id).execute()
-        except Exception as e:
-            print(f"mood_logs deletion: {e}")
-        
-        # Delete from analyses
-        try:
-            admin_client.table("analyses").delete().eq("user_id", user_id).execute()
-        except Exception as e:
-            print(f"analyses deletion: {e}")
-        
-        # Delete from applications
-        try:
-            admin_client.table("applications").delete().eq("user_id", user_id).execute()
-        except Exception as e:
-            print(f"applications deletion: {e}")
-        
-        # Delete from profiles (MUST be before auth.users due to foreign key)
-        try:
-            admin_client.table("profiles").delete().eq("id", user_id).execute()
-        except Exception as e:
-            print(f"profiles deletion: {e}")
-        
-        # ========================================
-        # STEP 2: Delete from Supabase Authentication
-        # ========================================
-        try:
-            admin_client.auth.admin.delete_user(user_id)
-        except Exception as e:
-            print(f"auth deletion: {e}")
-            return False, f"Failed to delete authentication: {e}"
-        
-        # ========================================
-        # STEP 3: Sign out current session
-        # ========================================
-        try:
-            supabase.auth.sign_out()
-        except:
-            pass
-        
-        return True, "Account and all data permanently deleted"
-        
-    except Exception as e:
-        return False, f"Error deleting account: {e}"
-
 # --- 5. APP PAGES ---
-
-def page_delete_account():
-    """Account Deletion Page - Required for Apple App Store compliance"""
-    st.header("🗑️ Delete Account")
-    
-    st.markdown("""
-    <div style="background: rgba(220, 38, 38, 0.1); border: 1px solid #dc2626; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
-        <h3 style="color: #dc2626 !important; margin-top: 0;">⚠️ Warning: This action is permanent</h3>
-        <p style="color: #fca5a5 !important;">Deleting your account will:</p>
-        <ul style="color: #fca5a5 !important;">
-            <li>Permanently delete all your personal data</li>
-            <li>Remove all your saved analyses and reports</li>
-            <li>Delete your application history and tracking data</li>
-            <li>Remove all mood logs and emotional tracking data</li>
-            <li>This action <strong>cannot be undone</strong></li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Show current user info
-    st.markdown(f"**Account to be deleted:** `{st.session_state.user}`")
-    
-    st.markdown("---")
-    
-    # Confirmation flow
-    if not st.session_state.show_delete_confirmation:
-        st.markdown("To proceed with account deletion, click the button below:")
-        
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("🗑️ I want to delete my account", type="primary", use_container_width=True):
-                st.session_state.show_delete_confirmation = True
-                st.rerun()
-    else:
-        # Second confirmation step
-        st.markdown("""
-        <div style="background: rgba(220, 38, 38, 0.2); border: 2px solid #dc2626; border-radius: 10px; padding: 20px; text-align: center;">
-            <h3 style="color: #dc2626 !important;">🚨 Final Confirmation Required</h3>
-            <p style="color: white !important;">Are you absolutely sure? This will permanently delete your account and all data.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Type confirmation
-        confirm_text = st.text_input(
-            "Type 'DELETE' to confirm:",
-            placeholder="Type DELETE here",
-            key="delete_confirm_input"
-        )
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("❌ Cancel", use_container_width=True):
-                st.session_state.show_delete_confirmation = False
-                st.rerun()
-        
-        with col2:
-            delete_disabled = confirm_text.upper() != "DELETE"
-            
-            if st.button(
-                "🗑️ Permanently Delete Account", 
-                type="primary", 
-                use_container_width=True,
-                disabled=delete_disabled
-            ):
-                if confirm_text.upper() == "DELETE":
-                    with st.spinner("Deleting your account..."):
-                        success, message = delete_user_account()
-                        
-                        if success:
-                            st.success("✅ Your account has been deleted.")
-                            st.info("You will be redirected to the login page...")
-                            # Clear all session state and redirect
-                            for key in list(st.session_state.keys()): 
-                                del st.session_state[key]
-                            st.rerun()
-                        else:
-                            st.error(f"❌ {message}")
-                            st.info("Please try again or contact support.")
 
 def page_skill_migration():
     st.header("📈 Skill Migration Analysis")
     
     # Try to get data from Session, otherwise fetch from DB
     report = None
-    cv_text = st.session_state.get('last_cv_text', '')  # Get CV text if available
-    
     if "results" in st.session_state and "rep" in st.session_state.results:
         report = st.session_state.results["rep"]
     elif supabase and st.session_state.user_id:
@@ -357,125 +190,14 @@ def page_skill_migration():
             st.progress(score / 100)
         with c2:
             tech = report.get('tech_score', 0)
-            st.metric("Skills Strength", f"{tech}%")
+            st.metric("Technical Depth", f"{tech}%")
             st.progress(tech / 100)
         with c3:
-            weakest = report.get('weakest_link_skill', 'N/A')
-            st.error(f"Focus Area: {weakest}")
-            st.caption("Prioritize improving this skill.")
-        
+            st.error(f"Weakest Link: {report.get('weakest_link_skill', 'N/A')}")
+            st.caption("Focus your learning here.")
+            
         st.divider()
-        
-        # Dynamic Career Paths based on detected industry
-        st.subheader("🎯 Career Trajectory Paths")
-        
-        # Detect industry from weakest_link_skill or other indicators
-        weakest_lower = weakest.lower() if weakest else ""
-        
-        # Healthcare/Care Worker industry detection
-        healthcare_keywords = ['care', 'patient', 'health', 'medical', 'nursing', 'clinical', 'empathy', 'compassion']
-        tech_keywords = ['python', 'java', 'cloud', 'aws', 'coding', 'programming', 'software', 'data', 'machine learning']
-        
-        is_healthcare = any(kw in weakest_lower for kw in healthcare_keywords)
-        is_tech = any(kw in weakest_lower for kw in tech_keywords)
-        
-        # Default to showing relevant career paths
-        if is_healthcare or (not is_tech and 'care' in str(report).lower()):
-            # Healthcare/Care Worker Career Paths
-            st.markdown("### 🏥 Healthcare & Care Industry Paths")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, #10B981, #059669); padding: 20px; border-radius: 12px; height: 200px;">
-                    <h4 style="color: white; margin: 0;">Senior Care Worker</h4>
-                    <p style="color: #D1FAE5; font-size: 0.9em;">→ Team Leader / Supervisor</p>
-                    <p style="color: white; font-weight: bold;">85% success rate</p>
-                    <p style="color: #D1FAE5; font-size: 0.8em;">~6-12 months</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, #3B82F6, #1D4ED8); padding: 20px; border-radius: 12px; height: 200px;">
-                    <h4 style="color: white; margin: 0;">Care Coordinator</h4>
-                    <p style="color: #DBEAFE; font-size: 0.9em;">→ Care Manager / Director</p>
-                    <p style="color: white; font-weight: bold;">70% success rate</p>
-                    <p style="color: #DBEAFE; font-size: 0.8em;">~12-18 months</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col3:
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, #8B5CF6, #6D28D9); padding: 20px; border-radius: 12px; height: 200px;">
-                    <h4 style="color: white; margin: 0;">Healthcare Assistant</h4>
-                    <p style="color: #EDE9FE; font-size: 0.9em;">→ Registered Nurse (with training)</p>
-                    <p style="color: white; font-weight: bold;">60% success rate</p>
-                    <p style="color: #EDE9FE; font-size: 0.8em;">~2-3 years</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("---")
-            st.subheader("📊 Key Skills for Care Industry")
-            
-            skills_data = {
-                'Skill': ['Patient Care', 'Communication', 'First Aid/CPR', 'Documentation', 'Empathy', 'Time Management'],
-                'Market Demand': [90, 85, 80, 75, 95, 70],
-                'Your Level': [report.get('tech_score', 50), 75, 60, 65, 80, 70]
-            }
-            
-            fig = go.Figure(data=[
-                go.Bar(name='Market Demand', x=skills_data['Skill'], y=skills_data['Market Demand'], marker_color='#00E0FF'),
-                go.Bar(name='Your Level', x=skills_data['Skill'], y=skills_data['Your Level'], marker_color='#FF8C00')
-            ])
-            fig.update_layout(
-                barmode='group',
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                height=400
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-        else:
-            # Tech/Software Industry Career Paths (original)
-            st.markdown("### 💻 Technology Industry Paths")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, #10B981, #059669); padding: 20px; border-radius: 12px; height: 200px;">
-                    <h4 style="color: white; margin: 0;">Management Track</h4>
-                    <p style="color: #D1FAE5; font-size: 0.9em;">→ Engineering Manager / Director</p>
-                    <p style="color: white; font-weight: bold;">90% success rate</p>
-                    <p style="color: #D1FAE5; font-size: 0.8em;">~8 months</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, #3B82F6, #1D4ED8); padding: 20px; border-radius: 12px; height: 200px;">
-                    <h4 style="color: white; margin: 0;">Technical Leadership</h4>
-                    <p style="color: #DBEAFE; font-size: 0.9em;">→ Tech Lead / Principal Engineer</p>
-                    <p style="color: white; font-weight: bold;">60% success rate</p>
-                    <p style="color: #DBEAFE; font-size: 0.8em;">~10 months</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col3:
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, #8B5CF6, #6D28D9); padding: 20px; border-radius: 12px; height: 200px;">
-                    <h4 style="color: white; margin: 0;">Domain Expert</h4>
-                    <p style="color: #EDE9FE; font-size: 0.9em;">→ Consultant / Advisor</p>
-                    <p style="color: white; font-weight: bold;">55% success rate</p>
-                    <p style="color: #EDE9FE; font-size: 0.8em;">~12 months</p>
-                </div>
-                """, unsafe_allow_html=True)
-        
-        st.divider()
-        st.info("💡 To generate a new analysis with different career paths, go to the Dashboard and upload a CV.")
+        st.info("💡 To generate a new analysis, go to the Dashboard and upload a CV.")
     else:
         st.warning("No analysis found.")
         st.write("Go to the **Dashboard** and click 'Generate Strategy' to see your Skill Migration report.")
@@ -516,6 +238,242 @@ def page_cover_letter():
                         st.download_button("📥 Download Text (Fallback)", letter, "cover_letter.txt", "text/plain")
             else: st.warning("Please provide both CV and Job Description.")
         except Exception as e: st.error(f"Error: {e}")
+
+import re
+import numpy as np
+import pandas as pd
+
+# --- CV Compiler Helper Functions ---
+def calculate_ats_compliance(cv_text, jd_text):
+    """Calculate ATS keyword match percentage"""
+    if not cv_text or not jd_text: return 0
+    cv_words = set(re.findall(r'\b\w{3,}\b', cv_text.lower()))
+    jd_words = set(re.findall(r'\b\w{3,}\b', jd_text.lower()))
+    intersection = len(cv_words.intersection(jd_words))
+    union = len(cv_words.union(jd_words))
+    score = (intersection / union) * 100 if union > 0 else 0
+    return int(np.clip(score, 0, 100))
+
+def calculate_human_clarity(text):
+    """Calculate readability/clarity score"""
+    if not text: return 0
+    metric_count = len(re.findall(r'\d[\d,\.]*', text))
+    sentences = re.split(r'[.!?]', text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+    total_words = len(re.findall(r'\b\w+\b', text))
+    avg_words = total_words / len(sentences) if sentences else 0
+    clarity = 50
+    if 0 < avg_words < 15:
+        clarity += (15 - avg_words) * 1.0
+    clarity += min(30, metric_count * 5)
+    return int(np.clip(clarity, 40, 100))
+
+def fetch_application_ledger(user_id):
+    """Fetch user's application history"""
+    if not supabase: return pd.DataFrame()
+    try:
+        res = supabase.table("applications").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        if res.data:
+            df = pd.DataFrame(res.data)
+            df = df.rename(columns={
+                "created_at": "Date", "company_name": "Company", "job_id": "JobID",
+                "compliance_score": "Compliance", "clarity_score": "Clarity", "outcome": "Outcome"
+            })
+            return df
+    except: pass
+    return pd.DataFrame()
+
+def save_application(user_id, company, job_id, comp, clar):
+    """Save application to database"""
+    if not supabase: return False
+    try:
+        supabase.table("applications").insert({
+            "user_id": user_id, "company_name": company, "job_id": job_id,
+            "compliance_score": comp, "clarity_score": clar, "outcome": "Pending"
+        }).execute()
+        return True
+    except: return False
+
+def update_application_status(app_id, new_status):
+    """Update application outcome"""
+    if not supabase: return
+    try:
+        supabase.table("applications").update({"outcome": new_status}).eq("id", app_id).execute()
+    except: pass
+
+# --- CV Compiler Page ---
+def page_cv_compiler():
+    st.header("🤖 CV Compiler & Optimizer")
+    st.caption("All-in-one: Optimize your CV, check ATS compliance, and track applications")
+    
+    # --- SECTION 1: Smart CV Tailor ---
+    st.subheader("1️⃣ Smart CV Tailor")
+    
+    col_upload, col_jd = st.columns(2)
+    with col_upload:
+        uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="compiler_cv_upload")
+    with col_jd:
+        jd_text = st.text_area("Paste Job Description:", height=150, key="compiler_jd")
+    
+    # Extract CV text
+    cv_text = ""
+    if uploaded_file:
+        cv_text = extract_text(uploaded_file)
+        st.session_state['compiler_cv_text'] = cv_text
+    elif 'compiler_cv_text' in st.session_state:
+        cv_text = st.session_state['compiler_cv_text']
+    
+    if st.button("🚀 Optimize Bullets", type="primary", use_container_width=True):
+        if not st.session_state.groq:
+            st.error("Groq API Key missing.")
+        elif not cv_text or cv_text.strip() == "":
+            st.warning("Please upload a CV.")
+        elif not jd_text or jd_text.strip() == "":
+            st.warning("Please paste the Job Description.")
+        else:
+            try:
+                with st.spinner("AI is optimizing your CV..."):
+                    prompt = f"""
+                    Act as an ATS Optimization Expert.
+                    JOB DESCRIPTION: {jd_text}
+                    CURRENT CV: {cv_text[:4000]}
+                    
+                    TASK: Rewrite the CV bullet points to include relevant keywords from the job description.
+                    
+                    IMPORTANT FORMATTING RULES:
+                    - Output ONLY plain text bullet points
+                    - Start each bullet with a dash (-) or bullet (•)
+                    - DO NOT use any markdown formatting like ** or * or # or __
+                    - DO NOT use bold, italic, or any special formatting
+                    - Keep each bullet concise and professional
+                    - Focus on action verbs and quantified achievements
+                    
+                    Output the optimized bullets now:
+                    """
+                    completion = st.session_state.groq.chat.completions.create(
+                        messages=[{"role": "user", "content": prompt}],
+                        model="llama-3.3-70b-versatile"
+                    )
+                    if completion and completion.choices:
+                        optimized = completion.choices[0].message.content
+                        # Clean any remaining markdown formatting
+                        optimized = optimized.replace('**', '').replace('__', '').replace('*', '•')
+                        if optimized and optimized.strip():
+                            st.session_state['compiler_optimized'] = optimized
+                            st.session_state['compiler_original'] = cv_text[:1000]
+                            st.session_state['compiler_jd_stored'] = jd_text
+                        else:
+                            st.error("Empty response from AI.")
+                    else:
+                        st.error("No response received.")
+            except Exception as e:
+                st.error(f"Error: {e}")
+    
+    # Display optimization results
+    if 'compiler_optimized' in st.session_state:
+        st.markdown("---")
+        col_orig, col_opt = st.columns(2)
+        with col_orig:
+            st.info("📄 Original CV Preview")
+            st.text(st.session_state.get('compiler_original', '')[:800] + "...")
+        with col_opt:
+            st.success("✨ Optimized Bullets")
+            # Display as plain text in a text area for clean output
+            st.text_area("", st.session_state['compiler_optimized'], height=300, disabled=True, label_visibility="collapsed")
+        
+        # Download buttons
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            try:
+                pdf_bytes = create_pdf(st.session_state['compiler_optimized'])
+                if pdf_bytes:
+                    st.download_button("📥 Download Optimized PDF", pdf_bytes, "optimized_cv.pdf", "application/pdf", use_container_width=True)
+            except:
+                pass
+        with col_dl2:
+            st.download_button("📥 Download as Text", st.session_state['compiler_optimized'], "optimized_cv.txt", "text/plain", use_container_width=True)
+    
+    # --- SECTION 2: Dual Optimization Dashboard ---
+    st.markdown("---")
+    st.subheader("2️⃣ Dual Optimization Dashboard")
+    
+    # Use stored JD if available, otherwise use current input
+    jd_for_analysis = st.session_state.get('compiler_jd_stored', jd_text)
+    
+    if cv_text and jd_for_analysis:
+        ats_score = calculate_ats_compliance(cv_text, jd_for_analysis)
+        clarity_score = calculate_human_clarity(cv_text)
+        
+        col_ats, col_clarity = st.columns(2)
+        
+        with col_ats:
+            delta_ats = "✅ Good!" if ats_score >= 70 else f"↑ Target: 95%"
+            st.metric("ATS Compliance", f"{ats_score}%", delta=delta_ats)
+            st.progress(ats_score / 100)
+            if ats_score < 70:
+                st.caption("💡 Tip: Add more keywords from the job description")
+        
+        with col_clarity:
+            delta_clarity = "✅ Good!" if clarity_score >= 75 else f"↑ Target: 75%"
+            st.metric("Human Clarity", f"{clarity_score}%", delta=delta_clarity)
+            st.progress(clarity_score / 100)
+            if clarity_score < 75:
+                st.caption("💡 Tip: Use shorter sentences and add metrics")
+    else:
+        st.info("Upload a CV and paste a Job Description to see your optimization scores.")
+        ats_score = 0
+        clarity_score = 0
+    
+    # --- SECTION 3: Log Finalized Application ---
+    st.markdown("---")
+    st.subheader("3️⃣ Log Finalized Application")
+    
+    col_company, col_job, col_log = st.columns([2, 2, 1])
+    company_name = col_company.text_input("Company Name", key="log_company")
+    job_title = col_job.text_input("Job Title/ID", key="log_job")
+    
+    with col_log:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("📝 Log Application", type="secondary", use_container_width=True):
+            if company_name and job_title:
+                if save_application(st.session_state.user_id, company_name, job_title, ats_score, clarity_score):
+                    st.success("✅ Application logged!")
+                    st.rerun()
+                else:
+                    st.error("Failed to save.")
+            else:
+                st.warning("Enter company and job title.")
+    
+    # --- SECTION 4: Application History Ledger ---
+    st.markdown("---")
+    st.subheader("4️⃣ Application History Ledger")
+    
+    df_ledger = fetch_application_ledger(st.session_state.user_id)
+    
+    if not df_ledger.empty:
+        # Display table
+        st.dataframe(
+            df_ledger[['Company', 'JobID', 'Outcome', 'Compliance', 'Clarity']],
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Update outcome
+        st.caption("Update Application Status")
+        col_sel, col_status, col_update = st.columns([3, 2, 1])
+        
+        options = {f"{row['Company']} - {row['JobID']}": row['id'] for _, row in df_ledger.iterrows()}
+        selected = col_sel.selectbox("Select Application", list(options.keys()), key="update_select")
+        new_status = col_status.selectbox("New Status", ['Pending', 'Interview', 'Rejected', 'Offer'], key="update_status")
+        
+        with col_update:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Update", use_container_width=True):
+                update_application_status(options[selected], new_status)
+                st.success("Updated!")
+                st.rerun()
+    else:
+        st.info("No applications logged yet. Start tracking your job applications above!")
 
 def page_interview_sim():
     st.header("🎤 Voice Interview Simulator")
@@ -578,10 +536,8 @@ def main():
         st.subheader(f"User: {st.session_state.user.split('@')[0]}")
         nav = st.radio("Menu", [
             "Dashboard", 
-            "Skill Migration",
             "Instant Cover Letter", 
-            "Voice Interview Sim",
-            "⚙️ Account Settings"
+            "Voice Interview Sim"
         ])
         st.divider()
         if st.button("Logout"): logout()
@@ -618,10 +574,8 @@ def main():
                 st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
                 st.markdown(res['md'])
                 
-    elif nav == "Skill Migration": page_skill_migration()
     elif nav == "Instant Cover Letter": page_cover_letter()
     elif nav == "Voice Interview Sim": page_interview_sim()
-    elif nav == "⚙️ Account Settings": page_delete_account()
 
 if __name__ == "__main__":
     main()
