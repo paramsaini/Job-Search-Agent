@@ -116,6 +116,7 @@ if 'groq' not in st.session_state:
 # --- 4. AUTH & LOGIC ---
 if 'user' not in st.session_state: st.session_state.user = None
 if 'user_id' not in st.session_state: st.session_state.user_id = None
+if 'show_delete_confirmation' not in st.session_state: st.session_state.show_delete_confirmation = False
 
 def login(email, password):
     if not supabase: return st.error("Database error.")
@@ -159,10 +160,161 @@ def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
+def delete_user_account():
+    """
+    PERMANENTLY deletes user account and ALL associated data from Supabase.
+    This includes: analyses, applications, mood_logs, profiles, AND auth.users
+    Required for Apple App Store Guideline 5.1.1(v) compliance.
+    """
+    if not st.session_state.user_id:
+        return False, "Not authenticated"
+    
+    user_id = st.session_state.user_id
+    
+    # Get service role key for admin operations (REQUIRED for auth deletion)
+    service_key = get_secret("SUPABASE_SERVICE_KEY")
+    supabase_url = get_secret("SUPABASE_URL")
+    
+    if not service_key or not supabase_url:
+        return False, "Server configuration error. Please contact support."
+    
+    try:
+        # Create admin client with service_role key (has full database access)
+        from supabase import create_client
+        admin_client = create_client(supabase_url, service_key)
+        
+        # STEP 1: Delete ALL user data from tables
+        try:
+            admin_client.table("mood_logs").delete().eq("user_id", user_id).execute()
+        except Exception as e:
+            print(f"mood_logs deletion: {e}")
+        
+        try:
+            admin_client.table("analyses").delete().eq("user_id", user_id).execute()
+        except Exception as e:
+            print(f"analyses deletion: {e}")
+        
+        try:
+            admin_client.table("applications").delete().eq("user_id", user_id).execute()
+        except Exception as e:
+            print(f"applications deletion: {e}")
+        
+        try:
+            admin_client.table("profiles").delete().eq("id", user_id).execute()
+        except Exception as e:
+            print(f"profiles deletion: {e}")
+        
+        # STEP 2: Delete from Supabase Authentication
+        try:
+            admin_client.auth.admin.delete_user(user_id)
+        except Exception as e:
+            print(f"auth deletion: {e}")
+            return False, f"Failed to delete authentication: {e}"
+        
+        # STEP 3: Sign out current session
+        try:
+            supabase.auth.sign_out()
+        except:
+            pass
+        
+        return True, "Account and all data permanently deleted"
+        
+    except Exception as e:
+        return False, f"Error deleting account: {e}"
+
+def page_delete_account():
+    """Account Deletion Page - Required for Apple App Store compliance"""
+    st.header("🗑️ Delete Account")
+    
+    st.markdown("""
+    <div style="background: rgba(220, 38, 38, 0.1); border: 1px solid #dc2626; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+        <h3 style="color: #dc2626 !important; margin-top: 0;">⚠️ Warning: This action is permanent</h3>
+        <p style="color: #fca5a5 !important;">Deleting your account will:</p>
+        <ul style="color: #fca5a5 !important;">
+            <li>Permanently delete all your personal data</li>
+            <li>Remove all your saved analyses and reports</li>
+            <li>Delete your application history and tracking data</li>
+            <li>Remove all mood logs and emotional tracking data</li>
+            <li>This action <strong>cannot be undone</strong></li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    st.markdown(f"**Account to be deleted:** `{st.session_state.user}`")
+    st.markdown("---")
+    
+    if not st.session_state.show_delete_confirmation:
+        st.markdown("To proceed with account deletion, click the button below:")
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🗑️ I want to delete my account", type="primary", use_container_width=True):
+                st.session_state.show_delete_confirmation = True
+                st.rerun()
+    else:
+        st.markdown("""
+        <div style="background: rgba(220, 38, 38, 0.2); border: 2px solid #dc2626; border-radius: 10px; padding: 20px; text-align: center;">
+            <h3 style="color: #dc2626 !important;">🚨 Final Confirmation Required</h3>
+            <p style="color: white !important;">Are you absolutely sure? This will permanently delete your account and all data.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        confirm_text = st.text_input("Type 'DELETE' to confirm:", placeholder="Type DELETE here", key="delete_confirm_input")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("❌ Cancel", use_container_width=True):
+                st.session_state.show_delete_confirmation = False
+                st.rerun()
+        
+        with col2:
+            delete_disabled = confirm_text.upper() != "DELETE"
+            if st.button("🗑️ Permanently Delete Account", type="primary", use_container_width=True, disabled=delete_disabled):
+                if confirm_text.upper() == "DELETE":
+                    with st.spinner("Deleting your account..."):
+                        success, message = delete_user_account()
+                        if success:
+                            st.success("✅ Your account has been deleted.")
+                            st.info("You will be redirected to the login page...")
+                            for key in list(st.session_state.keys()): 
+                                del st.session_state[key]
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {message}")
+                            st.info("Please try again or contact support.")
+
 # --- 5. APP PAGES ---
 
 def page_skill_migration():
     st.header("📈 Skill Migration Analysis")
+    
+    # --- CV Upload Section ---
+    st.subheader("Upload CV for Analysis")
+    uploaded_cv = st.file_uploader("Upload your CV (PDF/TXT)", type=["pdf", "txt"], key="skill_migration_cv")
+    
+    if uploaded_cv:
+        cv_text = extract_text(uploaded_cv)
+        if cv_text and st.session_state.agent:
+            if st.button("🚀 Analyze CV", type="primary"):
+                with st.spinner("Analyzing your CV..."):
+                    try:
+                        md, rep, src = st.session_state.agent.generate_strategy(cv_text, "All")
+                        st.session_state.results = {"md": md, "rep": rep, "src": src}
+                        
+                        # Save to Supabase
+                        if supabase and st.session_state.user_id:
+                            try:
+                                supabase.table("analyses").insert({
+                                    "user_id": st.session_state.user_id,
+                                    "report_json": rep
+                                }).execute()
+                            except: pass
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Analysis failed: {e}")
+    
+    st.markdown("---")
     
     # Try to get data from Session, otherwise fetch from DB
     report = None
@@ -537,7 +689,8 @@ def main():
         nav = st.radio("Menu", [
             "Dashboard", 
             "Instant Cover Letter", 
-            "Voice Interview Sim"
+            "Voice Interview Sim",
+            "⚙️ Account Settings"
         ])
         st.divider()
         if st.button("Logout"): logout()
@@ -576,6 +729,7 @@ def main():
                 
     elif nav == "Instant Cover Letter": page_cover_letter()
     elif nav == "Voice Interview Sim": page_interview_sim()
+    elif nav == "⚙️ Account Settings": page_delete_account()
 
 if __name__ == "__main__":
     main()
