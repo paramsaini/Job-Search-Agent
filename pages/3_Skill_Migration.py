@@ -62,28 +62,557 @@ def extract_text(file):
         return file.read().decode("utf-8")
     except: return ""
 
-# --- Industry Detection ---
-def detect_industry(report, cv_text=""):
-    """Detect the industry from the CV analysis report"""
+# --- Industry Detection with Career Paths ---
+def detect_industry_and_paths(report, cv_text=""):
+    """Detect the industry from the CV and return industry-specific career paths"""
     
     industries = {
-        'healthcare': ['care', 'patient', 'health', 'medical', 'nursing', 'clinical', 'empathy', 
-                      'compassion', 'carer', 'nurse', 'hospital', 'elderly', 'disability', 'support worker'],
-        'technology': ['python', 'java', 'cloud', 'aws', 'coding', 'programming', 'software', 
-                      'data', 'machine learning', 'developer', 'engineer', 'devops', 'api'],
-        'finance': ['accounting', 'finance', 'banking', 'investment', 'audit', 'tax', 'financial'],
-        'education': ['teacher', 'teaching', 'education', 'school', 'tutor', 'curriculum', 'student'],
-        'retail': ['sales', 'retail', 'customer service', 'shop', 'store', 'merchandise'],
-        'hospitality': ['hotel', 'restaurant', 'chef', 'hospitality', 'catering', 'tourism']
+        'construction': {
+            'keywords': ['carpenter', 'carpentry', 'construction', 'builder', 'joinery', 'woodwork', 
+                        'timber', 'framing', 'roofing', 'flooring', 'cabinet', 'furniture', 'plumber',
+                        'electrician', 'mason', 'bricklayer', 'plasterer', 'painter', 'decorator',
+                        'site', 'foreman', 'apprentice', 'tradesman', 'tools', 'safety', 'building',
+                        'renovation', 'remodel', 'install', 'fitting', 'measure', 'cut', 'saw'],
+            'title': '🔨 Construction & Trades Industry',
+            'career_paths': {
+                "Senior Tradesperson": {
+                    "color": "#10B981",
+                    "success_rate": 85,
+                    "timeline": "6-12 months",
+                    "target_role": "Lead Carpenter / Site Supervisor",
+                    "required_skills": ["Advanced Trade Skills", "Team Leadership", "Quality Control"],
+                    "skill_gaps": [
+                        {"skill": "Site Supervision", "gap": 25, "priority": "High"},
+                        {"skill": "Team Leadership", "gap": 20, "priority": "Medium"},
+                        {"skill": "Health & Safety Compliance", "gap": 15, "priority": "Low"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-2", "task": "Complete advanced trade certifications (NVQ Level 3+)"},
+                        {"month": "Month 3-4", "task": "Lead small team projects"},
+                        {"month": "Month 5-6", "task": "Obtain CSCS Gold Card / Supervisor card"},
+                        {"month": "Month 7-9", "task": "Manage quality control on projects"},
+                        {"month": "Month 10-12", "task": "Apply for Lead Tradesperson positions"}
+                    ]
+                },
+                "Site Management": {
+                    "color": "#3B82F6",
+                    "success_rate": 70,
+                    "timeline": "12-18 months",
+                    "target_role": "Site Manager / Project Coordinator",
+                    "required_skills": ["Project Management", "Budget Control", "Client Relations"],
+                    "skill_gaps": [
+                        {"skill": "Project Planning", "gap": 35, "priority": "High"},
+                        {"skill": "Budget Management", "gap": 40, "priority": "High"},
+                        {"skill": "Contractor Coordination", "gap": 25, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-3", "task": "SMSTS (Site Management Safety Training Scheme)"},
+                        {"month": "Month 4-6", "task": "Learn project management software"},
+                        {"month": "Month 7-9", "task": "Shadow existing site managers"},
+                        {"month": "Month 10-12", "task": "Manage sub-contractors on projects"},
+                        {"month": "Month 13-18", "task": "Transition to Site Manager role"}
+                    ]
+                },
+                "Business Owner": {
+                    "color": "#8B5CF6",
+                    "success_rate": 55,
+                    "timeline": "18-24 months",
+                    "target_role": "Self-Employed Contractor / Business Owner",
+                    "required_skills": ["Business Management", "Marketing", "Financial Planning"],
+                    "skill_gaps": [
+                        {"skill": "Business Planning", "gap": 50, "priority": "High"},
+                        {"skill": "Marketing & Sales", "gap": 45, "priority": "High"},
+                        {"skill": "Accounting Basics", "gap": 35, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-4", "task": "Complete business management course"},
+                        {"month": "Month 5-8", "task": "Build client network and portfolio"},
+                        {"month": "Month 9-12", "task": "Register business and get insurance"},
+                        {"month": "Month 13-18", "task": "Start taking independent contracts"},
+                        {"month": "Month 19-24", "task": "Scale business and hire apprentices"}
+                    ]
+                }
+            },
+            'skills': ['Trade Expertise', 'Safety Compliance', 'Blueprint Reading', 'Tool Proficiency', 'Physical Stamina', 'Time Management'],
+            'decay_skills': ['Safety Certifications', 'Building Regulations Knowledge', 'Tool Technology']
+        },
+        'healthcare': {
+            'keywords': ['care', 'patient', 'health', 'medical', 'nursing', 'clinical', 'empathy', 
+                        'compassion', 'carer', 'nurse', 'hospital', 'elderly', 'disability', 'support worker',
+                        'nhs', 'doctor', 'therapist', 'pharmacist', 'midwife'],
+            'title': '🏥 Healthcare & Care Industry',
+            'career_paths': {
+                "Senior Care Worker": {
+                    "color": "#10B981",
+                    "success_rate": 85,
+                    "timeline": "6-12 months",
+                    "target_role": "Team Leader / Care Supervisor",
+                    "required_skills": ["Advanced Patient Care", "Team Leadership", "Documentation"],
+                    "skill_gaps": [
+                        {"skill": "Leadership Skills", "gap": 25, "priority": "High"},
+                        {"skill": "Care Planning", "gap": 20, "priority": "Medium"},
+                        {"skill": "Medication Administration", "gap": 15, "priority": "Low"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-2", "task": "Complete NVQ Level 3 in Health & Social Care"},
+                        {"month": "Month 3-4", "task": "Shadow senior care workers"},
+                        {"month": "Month 5-6", "task": "Lead shift handovers"},
+                        {"month": "Month 7-9", "task": "Manage care plans independently"},
+                        {"month": "Month 10-12", "task": "Apply for Team Leader positions"}
+                    ]
+                },
+                "Care Management": {
+                    "color": "#3B82F6",
+                    "success_rate": 70,
+                    "timeline": "12-18 months",
+                    "target_role": "Care Manager / Registered Manager",
+                    "required_skills": ["Staff Management", "CQC Compliance", "Budget Management"],
+                    "skill_gaps": [
+                        {"skill": "Regulatory Compliance", "gap": 35, "priority": "High"},
+                        {"skill": "Staff Recruitment", "gap": 30, "priority": "High"},
+                        {"skill": "Budget Control", "gap": 25, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-3", "task": "Level 5 Diploma in Leadership for Health & Social Care"},
+                        {"month": "Month 4-6", "task": "Learn CQC requirements thoroughly"},
+                        {"month": "Month 7-9", "task": "Assist with staff management duties"},
+                        {"month": "Month 10-12", "task": "Handle family liaison and care reviews"},
+                        {"month": "Month 13-18", "task": "Register as Care Manager with CQC"}
+                    ]
+                },
+                "Clinical Specialist": {
+                    "color": "#8B5CF6",
+                    "success_rate": 60,
+                    "timeline": "24-36 months",
+                    "target_role": "Registered Nurse / Clinical Lead",
+                    "required_skills": ["Clinical Knowledge", "Medical Procedures", "Critical Thinking"],
+                    "skill_gaps": [
+                        {"skill": "Clinical Expertise", "gap": 50, "priority": "High"},
+                        {"skill": "Medical Knowledge", "gap": 45, "priority": "High"},
+                        {"skill": "Emergency Response", "gap": 30, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-6", "task": "Enroll in nursing degree or equivalent"},
+                        {"month": "Month 7-12", "task": "Complete clinical placements"},
+                        {"month": "Month 13-24", "task": "Pass NMC registration requirements"},
+                        {"month": "Month 25-30", "task": "Work as newly qualified nurse"},
+                        {"month": "Month 31-36", "task": "Specialize in chosen clinical area"}
+                    ]
+                }
+            },
+            'skills': ['Patient Care', 'Communication', 'First Aid/CPR', 'Documentation', 'Empathy', 'Time Management'],
+            'decay_skills': ['First Aid Certification', 'Medication Training', 'Safeguarding Updates']
+        },
+        'technology': {
+            'keywords': ['python', 'java', 'cloud', 'aws', 'coding', 'programming', 'software', 
+                        'data', 'machine learning', 'developer', 'engineer', 'devops', 'api',
+                        'javascript', 'react', 'database', 'agile', 'scrum', 'web', 'mobile', 'app'],
+            'title': '💻 Technology Industry',
+            'career_paths': {
+                "Senior Developer": {
+                    "color": "#10B981",
+                    "success_rate": 85,
+                    "timeline": "6-12 months",
+                    "target_role": "Senior Engineer / Tech Lead",
+                    "required_skills": ["Advanced Programming", "System Design", "Code Review"],
+                    "skill_gaps": [
+                        {"skill": "System Architecture", "gap": 25, "priority": "High"},
+                        {"skill": "Technical Leadership", "gap": 20, "priority": "Medium"},
+                        {"skill": "Performance Optimization", "gap": 15, "priority": "Low"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-2", "task": "Master advanced design patterns"},
+                        {"month": "Month 3-4", "task": "Lead code reviews and mentoring"},
+                        {"month": "Month 5-6", "task": "Architect a major feature"},
+                        {"month": "Month 7-9", "task": "Present technical decisions to stakeholders"},
+                        {"month": "Month 10-12", "task": "Apply for Senior/Lead positions"}
+                    ]
+                },
+                "Engineering Management": {
+                    "color": "#3B82F6",
+                    "success_rate": 70,
+                    "timeline": "12-18 months",
+                    "target_role": "Engineering Manager / Director",
+                    "required_skills": ["People Management", "Strategic Planning", "Stakeholder Management"],
+                    "skill_gaps": [
+                        {"skill": "People Management", "gap": 40, "priority": "High"},
+                        {"skill": "Strategic Planning", "gap": 35, "priority": "High"},
+                        {"skill": "Budget Management", "gap": 25, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-3", "task": "Complete leadership training"},
+                        {"month": "Month 4-6", "task": "Manage sprint planning and retrospectives"},
+                        {"month": "Month 7-9", "task": "Handle 1:1s and performance reviews"},
+                        {"month": "Month 10-12", "task": "Own team roadmap and hiring"},
+                        {"month": "Month 13-18", "task": "Transition to full management role"}
+                    ]
+                },
+                "Technical Architect": {
+                    "color": "#8B5CF6",
+                    "success_rate": 60,
+                    "timeline": "18-24 months",
+                    "target_role": "Solutions Architect / Principal Engineer",
+                    "required_skills": ["Enterprise Architecture", "Cloud Platforms", "Technical Strategy"],
+                    "skill_gaps": [
+                        {"skill": "Enterprise Patterns", "gap": 45, "priority": "High"},
+                        {"skill": "Cloud Architecture", "gap": 40, "priority": "High"},
+                        {"skill": "Technical Writing", "gap": 30, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-4", "task": "AWS/Azure Solutions Architect certification"},
+                        {"month": "Month 5-8", "task": "Design enterprise-scale systems"},
+                        {"month": "Month 9-12", "task": "Lead architecture review boards"},
+                        {"month": "Month 13-18", "task": "Define technical standards"},
+                        {"month": "Month 19-24", "task": "Become go-to technical authority"}
+                    ]
+                }
+            },
+            'skills': ['Programming', 'Cloud/DevOps', 'System Design', 'Problem Solving', 'Communication', 'Agile/Scrum'],
+            'decay_skills': ['Framework Versions', 'Security Best Practices', 'Cloud Services Updates']
+        },
+        'finance': {
+            'keywords': ['accounting', 'finance', 'banking', 'investment', 'audit', 'tax', 'financial',
+                        'bookkeeping', 'payroll', 'budget', 'accounts', 'ledger', 'reconciliation'],
+            'title': '💰 Finance & Accounting Industry',
+            'career_paths': {
+                "Senior Accountant": {
+                    "color": "#10B981",
+                    "success_rate": 80,
+                    "timeline": "6-12 months",
+                    "target_role": "Senior Accountant / Finance Lead",
+                    "required_skills": ["Advanced Accounting", "Financial Reporting", "Analysis"],
+                    "skill_gaps": [
+                        {"skill": "Financial Analysis", "gap": 25, "priority": "High"},
+                        {"skill": "Reporting Standards", "gap": 20, "priority": "Medium"},
+                        {"skill": "Software Proficiency", "gap": 15, "priority": "Low"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-2", "task": "Complete ACCA/CIMA modules"},
+                        {"month": "Month 3-4", "task": "Lead month-end close process"},
+                        {"month": "Month 5-6", "task": "Prepare board-level reports"},
+                        {"month": "Month 7-9", "task": "Mentor junior accountants"},
+                        {"month": "Month 10-12", "task": "Apply for Senior positions"}
+                    ]
+                },
+                "Finance Management": {
+                    "color": "#3B82F6",
+                    "success_rate": 65,
+                    "timeline": "12-24 months",
+                    "target_role": "Finance Manager / Financial Controller",
+                    "required_skills": ["Team Leadership", "Strategic Finance", "Stakeholder Management"],
+                    "skill_gaps": [
+                        {"skill": "Strategic Planning", "gap": 35, "priority": "High"},
+                        {"skill": "Team Management", "gap": 30, "priority": "High"},
+                        {"skill": "Business Partnering", "gap": 25, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-4", "task": "Complete professional qualification (ACA/ACCA/CIMA)"},
+                        {"month": "Month 5-8", "task": "Lead budget planning cycles"},
+                        {"month": "Month 9-12", "task": "Manage finance team members"},
+                        {"month": "Month 13-18", "task": "Present to senior leadership"},
+                        {"month": "Month 19-24", "task": "Take on Controller responsibilities"}
+                    ]
+                },
+                "CFO Track": {
+                    "color": "#8B5CF6",
+                    "success_rate": 45,
+                    "timeline": "36-60 months",
+                    "target_role": "CFO / Finance Director",
+                    "required_skills": ["Executive Leadership", "Corporate Strategy", "Investor Relations"],
+                    "skill_gaps": [
+                        {"skill": "Executive Presence", "gap": 50, "priority": "High"},
+                        {"skill": "Corporate Strategy", "gap": 45, "priority": "High"},
+                        {"skill": "Board Relations", "gap": 40, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-12", "task": "MBA or executive education program"},
+                        {"month": "Month 13-24", "task": "Lead major transformation projects"},
+                        {"month": "Month 25-36", "task": "Build investor/stakeholder relationships"},
+                        {"month": "Month 37-48", "task": "Serve on subsidiary boards"},
+                        {"month": "Month 49-60", "task": "Transition to FD/CFO role"}
+                    ]
+                }
+            },
+            'skills': ['Financial Analysis', 'Excel/Modeling', 'Accounting Standards', 'Communication', 'Attention to Detail', 'Regulatory Knowledge'],
+            'decay_skills': ['Tax Regulations', 'Accounting Standards Updates', 'Financial Software']
+        },
+        'retail': {
+            'keywords': ['sales', 'retail', 'customer service', 'shop', 'store', 'merchandise', 'stock',
+                        'cashier', 'supervisor', 'inventory', 'visual merchandising', 'till'],
+            'title': '🛒 Retail & Sales Industry',
+            'career_paths': {
+                "Senior Sales Associate": {
+                    "color": "#10B981",
+                    "success_rate": 85,
+                    "timeline": "6-12 months",
+                    "target_role": "Team Leader / Supervisor",
+                    "required_skills": ["Sales Excellence", "Customer Service", "Team Support"],
+                    "skill_gaps": [
+                        {"skill": "Sales Techniques", "gap": 20, "priority": "High"},
+                        {"skill": "Conflict Resolution", "gap": 25, "priority": "Medium"},
+                        {"skill": "Product Knowledge", "gap": 15, "priority": "Low"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-2", "task": "Consistently exceed sales targets"},
+                        {"month": "Month 3-4", "task": "Train new team members"},
+                        {"month": "Month 5-6", "task": "Handle customer escalations"},
+                        {"month": "Month 7-9", "task": "Lead visual merchandising"},
+                        {"month": "Month 10-12", "task": "Apply for Supervisor role"}
+                    ]
+                },
+                "Store Management": {
+                    "color": "#3B82F6",
+                    "success_rate": 70,
+                    "timeline": "12-18 months",
+                    "target_role": "Store Manager / Assistant Manager",
+                    "required_skills": ["Staff Management", "P&L Responsibility", "Operations"],
+                    "skill_gaps": [
+                        {"skill": "People Management", "gap": 35, "priority": "High"},
+                        {"skill": "Financial Acumen", "gap": 30, "priority": "High"},
+                        {"skill": "Inventory Management", "gap": 25, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-3", "task": "Complete retail management training"},
+                        {"month": "Month 4-6", "task": "Manage staff rotas and schedules"},
+                        {"month": "Month 7-9", "task": "Own store KPIs and targets"},
+                        {"month": "Month 10-12", "task": "Handle recruitment and HR issues"},
+                        {"month": "Month 13-18", "task": "Transition to Store Manager"}
+                    ]
+                },
+                "Regional Manager": {
+                    "color": "#8B5CF6",
+                    "success_rate": 50,
+                    "timeline": "24-36 months",
+                    "target_role": "Area Manager / Regional Director",
+                    "required_skills": ["Multi-site Management", "Strategic Planning", "Business Development"],
+                    "skill_gaps": [
+                        {"skill": "Multi-store Operations", "gap": 45, "priority": "High"},
+                        {"skill": "Strategic Thinking", "gap": 40, "priority": "High"},
+                        {"skill": "Change Management", "gap": 35, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-6", "task": "Excel as Store Manager"},
+                        {"month": "Month 7-12", "task": "Support underperforming stores"},
+                        {"month": "Month 13-18", "task": "Lead regional initiatives"},
+                        {"month": "Month 19-24", "task": "Manage multiple store openings"},
+                        {"month": "Month 25-36", "task": "Become Area/Regional Manager"}
+                    ]
+                }
+            },
+            'skills': ['Sales Skills', 'Customer Service', 'Visual Merchandising', 'Stock Management', 'Communication', 'Cash Handling'],
+            'decay_skills': ['Product Knowledge', 'POS Systems', 'Company Policies']
+        },
+        'hospitality': {
+            'keywords': ['hotel', 'restaurant', 'chef', 'hospitality', 'catering', 'tourism', 'bar',
+                        'waiter', 'waitress', 'kitchen', 'food', 'beverage', 'front desk', 'concierge'],
+            'title': '🏨 Hospitality & Tourism Industry',
+            'career_paths': {
+                "Senior Staff": {
+                    "color": "#10B981",
+                    "success_rate": 80,
+                    "timeline": "6-12 months",
+                    "target_role": "Shift Supervisor / Head Waiter",
+                    "required_skills": ["Service Excellence", "Team Coordination", "Guest Relations"],
+                    "skill_gaps": [
+                        {"skill": "Leadership", "gap": 25, "priority": "High"},
+                        {"skill": "Problem Solving", "gap": 20, "priority": "Medium"},
+                        {"skill": "Upselling", "gap": 15, "priority": "Low"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-2", "task": "Master all service standards"},
+                        {"month": "Month 3-4", "task": "Train new team members"},
+                        {"month": "Month 5-6", "task": "Handle VIP guests and complaints"},
+                        {"month": "Month 7-9", "task": "Lead shifts independently"},
+                        {"month": "Month 10-12", "task": "Apply for Supervisor position"}
+                    ]
+                },
+                "Department Management": {
+                    "color": "#3B82F6",
+                    "success_rate": 65,
+                    "timeline": "12-24 months",
+                    "target_role": "Restaurant Manager / F&B Manager",
+                    "required_skills": ["Operations Management", "Staff Development", "Cost Control"],
+                    "skill_gaps": [
+                        {"skill": "Financial Management", "gap": 35, "priority": "High"},
+                        {"skill": "Staff Scheduling", "gap": 30, "priority": "High"},
+                        {"skill": "Vendor Relations", "gap": 25, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-4", "task": "Hospitality management certification"},
+                        {"month": "Month 5-8", "task": "Manage department budgets"},
+                        {"month": "Month 9-12", "task": "Lead staff recruitment"},
+                        {"month": "Month 13-18", "task": "Oversee department operations"},
+                        {"month": "Month 19-24", "task": "Become Department Manager"}
+                    ]
+                },
+                "General Management": {
+                    "color": "#8B5CF6",
+                    "success_rate": 45,
+                    "timeline": "36-48 months",
+                    "target_role": "Hotel General Manager",
+                    "required_skills": ["Executive Leadership", "Revenue Management", "Brand Standards"],
+                    "skill_gaps": [
+                        {"skill": "P&L Management", "gap": 50, "priority": "High"},
+                        {"skill": "Revenue Strategy", "gap": 45, "priority": "High"},
+                        {"skill": "Owner Relations", "gap": 40, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-12", "task": "Hospitality degree or executive program"},
+                        {"month": "Month 13-24", "task": "Manage multiple departments"},
+                        {"month": "Month 25-36", "task": "Lead hotel-wide initiatives"},
+                        {"month": "Month 37-42", "task": "Serve as Acting GM"},
+                        {"month": "Month 43-48", "task": "Become General Manager"}
+                    ]
+                }
+            },
+            'skills': ['Customer Service', 'Food Safety', 'Communication', 'Multitasking', 'Attention to Detail', 'Teamwork'],
+            'decay_skills': ['Food Hygiene Certificate', 'Health & Safety', 'Menu Knowledge']
+        },
+        'education': {
+            'keywords': ['teacher', 'teaching', 'education', 'school', 'tutor', 'curriculum', 'student',
+                        'classroom', 'learning', 'instructor', 'lecturer', 'training', 'academic'],
+            'title': '📚 Education Industry',
+            'career_paths': {
+                "Senior Teacher": {
+                    "color": "#10B981",
+                    "success_rate": 75,
+                    "timeline": "12-24 months",
+                    "target_role": "Head of Department / Lead Teacher",
+                    "required_skills": ["Curriculum Development", "Mentoring", "Assessment"],
+                    "skill_gaps": [
+                        {"skill": "Curriculum Design", "gap": 25, "priority": "High"},
+                        {"skill": "Staff Mentoring", "gap": 20, "priority": "Medium"},
+                        {"skill": "Data Analysis", "gap": 15, "priority": "Low"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-4", "task": "Complete NPQ or equivalent qualification"},
+                        {"month": "Month 5-8", "task": "Lead curriculum improvements"},
+                        {"month": "Month 9-12", "task": "Mentor NQTs/new teachers"},
+                        {"month": "Month 13-18", "task": "Coordinate department initiatives"},
+                        {"month": "Month 19-24", "task": "Apply for HoD positions"}
+                    ]
+                },
+                "School Leadership": {
+                    "color": "#3B82F6",
+                    "success_rate": 55,
+                    "timeline": "36-48 months",
+                    "target_role": "Assistant Head / Deputy Head",
+                    "required_skills": ["School Management", "Policy Development", "Stakeholder Engagement"],
+                    "skill_gaps": [
+                        {"skill": "Strategic Leadership", "gap": 40, "priority": "High"},
+                        {"skill": "Budget Management", "gap": 35, "priority": "High"},
+                        {"skill": "Ofsted Preparation", "gap": 30, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-12", "task": "NPQSL qualification"},
+                        {"month": "Month 13-24", "task": "Lead whole-school initiatives"},
+                        {"month": "Month 25-36", "task": "Manage significant budgets"},
+                        {"month": "Month 37-42", "task": "Support SLT responsibilities"},
+                        {"month": "Month 43-48", "task": "Transition to Assistant Head"}
+                    ]
+                },
+                "Headteacher": {
+                    "color": "#8B5CF6",
+                    "success_rate": 40,
+                    "timeline": "60-84 months",
+                    "target_role": "Headteacher / Principal",
+                    "required_skills": ["Executive Leadership", "Governance", "Community Relations"],
+                    "skill_gaps": [
+                        {"skill": "School Vision", "gap": 50, "priority": "High"},
+                        {"skill": "Governor Relations", "gap": 45, "priority": "High"},
+                        {"skill": "Crisis Management", "gap": 40, "priority": "Medium"}
+                    ],
+                    "milestones": [
+                        {"month": "Month 1-24", "task": "NPQH qualification"},
+                        {"month": "Month 25-48", "task": "Serve as Deputy Head"},
+                        {"month": "Month 49-60", "task": "Act as Headteacher"},
+                        {"month": "Month 61-72", "task": "Apply for Headships"},
+                        {"month": "Month 73-84", "task": "Establish as Headteacher"}
+                    ]
+                }
+            },
+            'skills': ['Teaching Methods', 'Curriculum Design', 'Student Engagement', 'Communication', 'Technology Integration', 'Assessment'],
+            'decay_skills': ['Safeguarding Training', 'EdTech Tools', 'Curriculum Updates']
+        }
     }
     
+    # Default/general industry
+    default_industry = {
+        'keywords': [],
+        'title': '🎯 General Career Paths',
+        'career_paths': {
+            "Senior Role": {
+                "color": "#10B981",
+                "success_rate": 80,
+                "timeline": "6-12 months",
+                "target_role": "Team Lead / Senior Position",
+                "required_skills": ["Core Expertise", "Leadership", "Communication"],
+                "skill_gaps": [
+                    {"skill": "Leadership Skills", "gap": 25, "priority": "High"},
+                    {"skill": "Project Management", "gap": 20, "priority": "Medium"},
+                    {"skill": "Communication", "gap": 15, "priority": "Low"}
+                ],
+                "milestones": [
+                    {"month": "Month 1-2", "task": "Excel in current role"},
+                    {"month": "Month 3-4", "task": "Take on additional responsibilities"},
+                    {"month": "Month 5-6", "task": "Lead small projects"},
+                    {"month": "Month 7-9", "task": "Mentor colleagues"},
+                    {"month": "Month 10-12", "task": "Apply for senior positions"}
+                ]
+            },
+            "Management Track": {
+                "color": "#3B82F6",
+                "success_rate": 65,
+                "timeline": "12-18 months",
+                "target_role": "Manager / Department Head",
+                "required_skills": ["People Management", "Strategic Thinking", "Budget Awareness"],
+                "skill_gaps": [
+                    {"skill": "People Management", "gap": 35, "priority": "High"},
+                    {"skill": "Strategic Planning", "gap": 30, "priority": "High"},
+                    {"skill": "Financial Acumen", "gap": 25, "priority": "Medium"}
+                ],
+                "milestones": [
+                    {"month": "Month 1-3", "task": "Complete management training"},
+                    {"month": "Month 4-6", "task": "Lead team projects"},
+                    {"month": "Month 7-9", "task": "Handle team coordination"},
+                    {"month": "Month 10-12", "task": "Manage team performance"},
+                    {"month": "Month 13-18", "task": "Transition to Manager role"}
+                ]
+            },
+            "Specialist Expert": {
+                "color": "#8B5CF6",
+                "success_rate": 55,
+                "timeline": "18-24 months",
+                "target_role": "Subject Matter Expert / Consultant",
+                "required_skills": ["Deep Expertise", "Training Skills", "Industry Knowledge"],
+                "skill_gaps": [
+                    {"skill": "Domain Expertise", "gap": 40, "priority": "High"},
+                    {"skill": "Presentation Skills", "gap": 35, "priority": "High"},
+                    {"skill": "Consulting Skills", "gap": 30, "priority": "Medium"}
+                ],
+                "milestones": [
+                    {"month": "Month 1-4", "task": "Deepen specialist knowledge"},
+                    {"month": "Month 5-8", "task": "Create training materials"},
+                    {"month": "Month 9-12", "task": "Present at industry events"},
+                    {"month": "Month 13-18", "task": "Build expert reputation"},
+                    {"month": "Month 19-24", "task": "Establish as go-to expert"}
+                ]
+            }
+        },
+        'skills': ['Communication', 'Problem Solving', 'Teamwork', 'Time Management', 'Adaptability', 'Learning Agility'],
+        'decay_skills': ['Industry Knowledge', 'Software Tools', 'Best Practices']
+    }
+    
+    # Combine report text and CV text for detection
     report_text = str(report).lower() + " " + cv_text.lower()
     
-    for industry, keywords in industries.items():
-        if any(kw in report_text for kw in keywords):
-            return industry
+    # Find matching industry
+    for industry_key, industry_data in industries.items():
+        keyword_matches = sum(1 for kw in industry_data['keywords'] if kw in report_text)
+        if keyword_matches >= 2:
+            return industry_key, industry_data
     
-    return 'general'
+    return 'general', default_industry
 
 def fetch_latest_report():
     """Retrieves the latest analysis report from Supabase"""
@@ -123,10 +652,10 @@ def skill_migration_page():
         st.session_state.completed_tasks = set()
     if 'skill_migration_report' not in st.session_state:
         st.session_state.skill_migration_report = None
+    if 'cv_text_for_migration' not in st.session_state:
+        st.session_state.cv_text_for_migration = ""
 
-    # =======================================================
     # SECTION 1: ALWAYS VISIBLE - CV Upload Feature
-    # =======================================================
     st.subheader("1️⃣ Upload Your Document")
     st.caption("Upload your CV to analyze your skills and generate personalized career paths")
     
@@ -143,27 +672,24 @@ def skill_migration_page():
     with col_buttons:
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Analyze CV Button
         analyze_disabled = uploaded_cv is None
         if st.button("🚀 Analyze CV", type="primary", use_container_width=True, disabled=analyze_disabled):
             if uploaded_cv:
                 cv_text = extract_text(uploaded_cv)
                 if cv_text:
-                    # Check if agent exists in session state
+                    st.session_state.cv_text_for_migration = cv_text
+                    
                     if st.session_state.get('agent'):
                         with st.spinner("🔍 Analyzing your CV..."):
                             try:
                                 md, rep, src = st.session_state.agent.generate_strategy(cv_text, "All")
                                 st.session_state.skill_migration_report = rep
-                                st.session_state.cv_text_for_migration = cv_text
                                 
-                                # Reset sprint and career path selections for fresh analysis
                                 st.session_state.selected_career_path = None
                                 st.session_state.sprint_generated = False
                                 st.session_state.sprint_plan = None
                                 st.session_state.completed_tasks = set()
                                 
-                                # Save to Supabase
                                 if supabase and st.session_state.user_id:
                                     try:
                                         supabase.table("analyses").insert({
@@ -181,15 +707,13 @@ def skill_migration_page():
                 else:
                     st.warning("Could not extract text from the uploaded file.")
         
-        # Reset Button
         if st.button("🔄 Reset", use_container_width=True, help="Clear current analysis and start fresh"):
             st.session_state.skill_migration_report = None
+            st.session_state.cv_text_for_migration = ""
             st.session_state.selected_career_path = None
             st.session_state.sprint_generated = False
             st.session_state.sprint_plan = None
             st.session_state.completed_tasks = set()
-            if 'skill_migration_cv_upload' in st.session_state:
-                del st.session_state['skill_migration_cv_upload']
             st.success("🔄 Reset complete! Upload a new CV to start fresh analysis.")
             st.rerun()
     
@@ -198,44 +722,43 @@ def skill_migration_page():
     
     st.markdown("---")
 
-    # =======================================================
-    # Try to load existing report from session or database
-    # =======================================================
+    # Load existing report
     report = st.session_state.get('skill_migration_report')
+    cv_text = st.session_state.get('cv_text_for_migration', '')
     
     if not report:
-        # Try to fetch from main app's session state
         if "results" in st.session_state and "rep" in st.session_state.results:
             report = st.session_state.results["rep"]
             st.session_state.skill_migration_report = report
         else:
-            # Try to fetch from database
             with st.spinner("Loading your latest analysis..."):
                 report = fetch_latest_report()
                 if report:
                     st.session_state.skill_migration_report = report
     
-    # =======================================================
-    # Show message if no analysis exists yet
-    # =======================================================
     if not report:
         st.markdown("""
         <div style="background: rgba(255, 140, 0, 0.1); border: 1px solid #FF8C00; border-radius: 12px; padding: 30px; text-align: center; margin: 20px 0;">
             <h3 style="color: #FF8C00;">📊 No Analysis Found</h3>
             <p style="color: #ccc;">Upload your CV above and click <strong>"Analyze CV"</strong> to see your personalized:</p>
             <ul style="text-align: left; color: #aaa; max-width: 400px; margin: 0 auto;">
-                <li>Career trajectory recommendations</li>
-                <li>90-day skill sprint plan</li>
-                <li>Skill gap analysis</li>
-                <li>Skill decay warnings</li>
+                <li>Industry-specific career trajectory recommendations</li>
+                <li>90-day skill sprint plan tailored to your profession</li>
+                <li>Skill gap analysis based on your experience</li>
+                <li>Skill decay warnings relevant to your field</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
         return
 
-    # =======================================================
+    # DETECT INDUSTRY AND GET PERSONALIZED DATA
+    industry_key, industry_data = detect_industry_and_paths(report, cv_text)
+    career_paths = industry_data['career_paths']
+    industry_skills = industry_data['skills']
+    decay_skills = industry_data['decay_skills']
+    industry_title = industry_data['title']
+
     # SECTION 2: Profile Scores
-    # =======================================================
     st.subheader("2️⃣ Your Profile Scores")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -253,80 +776,18 @@ def skill_migration_page():
 
     st.markdown("---")
     
-    # =======================================================
-    # SECTION 3: Interactive Career Path Visualizer (CLICKABLE)
-    # =======================================================
-    st.subheader("3️⃣ Interactive Career Path Visualizer")
+    # SECTION 3: Interactive Career Path Visualizer (INDUSTRY-SPECIFIC)
+    st.subheader(f"3️⃣ {industry_title} - Career Paths")
     st.caption("👆 Click on a career path to see detailed requirements and timeline")
     
-    # Define career paths with detailed data
-    career_paths = {
-        "Senior Specialist": {
-            "color": "#10B981",
-            "success_rate": 85,
-            "timeline": "6-12 months",
-            "target_role": "Team Lead / Senior Engineer",
-            "required_skills": ["Advanced Technical Skills", "Project Management", "Mentoring"],
-            "skill_gaps": [
-                {"skill": "System Design", "gap": 25, "priority": "High"},
-                {"skill": "Leadership", "gap": 30, "priority": "Medium"},
-                {"skill": "Communication", "gap": 15, "priority": "Low"}
-            ],
-            "milestones": [
-                {"month": "Month 1-2", "task": "Complete advanced certifications"},
-                {"month": "Month 3-4", "task": "Lead a small project"},
-                {"month": "Month 5-6", "task": "Mentor junior team members"},
-                {"month": "Month 7-9", "task": "Take ownership of critical systems"},
-                {"month": "Month 10-12", "task": "Apply for senior positions"}
-            ]
-        },
-        "Management Track": {
-            "color": "#3B82F6",
-            "success_rate": 70,
-            "timeline": "12-18 months",
-            "target_role": "Engineering Manager / Director",
-            "required_skills": ["People Management", "Strategic Planning", "Budget Management"],
-            "skill_gaps": [
-                {"skill": "People Management", "gap": 40, "priority": "High"},
-                {"skill": "Strategic Thinking", "gap": 35, "priority": "High"},
-                {"skill": "Stakeholder Management", "gap": 25, "priority": "Medium"}
-            ],
-            "milestones": [
-                {"month": "Month 1-3", "task": "Leadership training courses"},
-                {"month": "Month 4-6", "task": "Shadow current managers"},
-                {"month": "Month 7-9", "task": "Lead cross-functional projects"},
-                {"month": "Month 10-12", "task": "Manage a small team"},
-                {"month": "Month 13-18", "task": "Transition to full management role"}
-            ]
-        },
-        "Domain Expert": {
-            "color": "#8B5CF6",
-            "success_rate": 60,
-            "timeline": "18-24 months",
-            "target_role": "Consultant / Advisor / Architect",
-            "required_skills": ["Deep Domain Knowledge", "Public Speaking", "Thought Leadership"],
-            "skill_gaps": [
-                {"skill": "Industry Expertise", "gap": 45, "priority": "High"},
-                {"skill": "Public Speaking", "gap": 50, "priority": "High"},
-                {"skill": "Writing/Content", "gap": 30, "priority": "Medium"}
-            ],
-            "milestones": [
-                {"month": "Month 1-4", "task": "Earn industry certifications"},
-                {"month": "Month 5-8", "task": "Publish articles/blog posts"},
-                {"month": "Month 9-12", "task": "Speak at local meetups"},
-                {"month": "Month 13-18", "task": "Build consulting portfolio"},
-                {"month": "Month 19-24", "task": "Establish thought leadership"}
-            ]
-        }
-    }
-    
-    # Display clickable career path cards
     cols = st.columns(3)
-    for idx, (path_name, path_data) in enumerate(career_paths.items()):
+    path_names = list(career_paths.keys())
+    
+    for idx, path_name in enumerate(path_names):
+        path_data = career_paths[path_name]
         with cols[idx]:
             card_selected = st.session_state.selected_career_path == path_name
             border_width = "3px" if card_selected else "1px"
-            opacity = "1" if card_selected else "0.5"
             
             st.markdown(f"""
             <div style="background: linear-gradient(135deg, {path_data['color']}40, {path_data['color']}20); 
@@ -349,10 +810,8 @@ def skill_migration_page():
                     st.session_state.selected_career_path = path_name
                 st.rerun()
     
-    # =======================================================
     # Display selected career path details
-    # =======================================================
-    if st.session_state.selected_career_path:
+    if st.session_state.selected_career_path and st.session_state.selected_career_path in career_paths:
         selected_path = career_paths[st.session_state.selected_career_path]
         
         st.markdown("---")
@@ -396,11 +855,9 @@ def skill_migration_page():
 
     st.markdown("---")
     
-    # =======================================================
     # SECTION 4: AI-Powered 90-Day Skill Sprint Generator
-    # =======================================================
     st.subheader("4️⃣ AI-Powered 90-Day Skill Sprint Generator")
-    st.caption(f"📚 Personalized learning plan based on your weakest skill: **{weakest_skill}**")
+    st.caption(f"📚 Personalized learning plan for **{industry_title}** based on your weakest skill: **{weakest_skill}**")
     
     col_generate, col_reset_sprint = st.columns([3, 1])
     
@@ -409,48 +866,52 @@ def skill_migration_page():
             with st.spinner("🤖 AI is creating your personalized learning plan..."):
                 if st.session_state.get('groq'):
                     try:
-                        prompt = f"""
-                        Create a detailed 90-day skill sprint plan for someone who needs to improve their "{weakest_skill}" skill.
-                        
-                        Format the response EXACTLY as follows (use this exact structure):
-                        
-                        WEEK 1-2: Foundation
-                        - Task: [Specific task]
-                        - Resource: [Free course or resource with actual URL if possible]
-                        - Project: [Small project to practice]
-                        
-                        WEEK 3-4: Building Blocks
-                        - Task: [Specific task]
-                        - Resource: [Free course or resource]
-                        - Project: [Project to build]
-                        
-                        WEEK 5-6: Intermediate Skills
-                        - Task: [Specific task]
-                        - Resource: [Free course or resource]
-                        - Project: [Project to build]
-                        
-                        WEEK 7-8: Advanced Concepts
-                        - Task: [Specific task]
-                        - Resource: [Free course or resource]
-                        - Project: [Project to build]
-                        
-                        WEEK 9-10: Real-World Application
-                        - Task: [Specific task]
-                        - Resource: [Free course or resource]
-                        - Project: [Portfolio project]
-                        
-                        WEEK 11-12: Certification & Portfolio
-                        - Task: [Get certified]
-                        - Certification: [Recommended certification]
-                        - Final Project: [Capstone project]
-                        
-                        RECOMMENDED CERTIFICATIONS:
-                        1. [Certification name and provider]
-                        2. [Certification name and provider]
-                        3. [Certification name and provider]
-                        
-                        Keep it practical with free resources from Coursera, YouTube, freeCodeCamp, etc.
-                        """
+                        prompt = f"""Create a detailed 90-day skill sprint plan for someone in the {industry_title} industry who needs to improve their "{weakest_skill}" skill.
+
+The person's current profile:
+- Industry: {industry_title}
+- Weakest Skill: {weakest_skill}
+- Current Skills Score: {report.get('tech_score', 50)}%
+- Key skills in this industry: {', '.join(industry_skills)}
+
+Format the response EXACTLY as follows:
+
+WEEK 1-2: Foundation
+- Task: [Specific task relevant to {industry_title}]
+- Resource: [Free course or resource - Coursera, YouTube, industry-specific]
+- Project: [Small project to practice]
+
+WEEK 3-4: Building Blocks
+- Task: [Specific task]
+- Resource: [Free course or resource]
+- Project: [Project to build]
+
+WEEK 5-6: Intermediate Skills
+- Task: [Specific task]
+- Resource: [Free course or resource]
+- Project: [Project to build]
+
+WEEK 7-8: Advanced Concepts
+- Task: [Specific task]
+- Resource: [Free course or resource]
+- Project: [Project to build]
+
+WEEK 9-10: Real-World Application
+- Task: [Specific task]
+- Resource: [Free course or resource]
+- Project: [Portfolio project]
+
+WEEK 11-12: Certification & Portfolio
+- Task: [Get certified]
+- Certification: [Recommended certification for {industry_title}]
+- Final Project: [Capstone project]
+
+RECOMMENDED CERTIFICATIONS:
+1. [Certification relevant to {industry_title}]
+2. [Certification name and provider]
+3. [Certification name and provider]
+
+Keep it practical with free resources. Make all recommendations relevant to {industry_title}."""
                         
                         completion = st.session_state.groq.chat.completions.create(
                             messages=[{"role": "user", "content": prompt}],
@@ -463,43 +924,40 @@ def skill_migration_page():
                     except Exception as e:
                         st.error(f"Failed to generate plan: {e}")
                 else:
-                    # Fallback static plan
-                    st.session_state.sprint_plan = f"""
-WEEK 1-2: Foundation
-- Task: Understand core concepts of {weakest_skill}
-- Resource: YouTube - Search "{weakest_skill} for beginners"
-- Project: Create a simple demo project
+                    st.session_state.sprint_plan = f"""WEEK 1-2: Foundation
+- Task: Understand core concepts of {weakest_skill} in {industry_title}
+- Resource: YouTube - Search "{weakest_skill} {industry_key} training"
+- Project: Create a simple demonstration of {weakest_skill} skills
 
 WEEK 3-4: Building Blocks
-- Task: Learn intermediate techniques
-- Resource: Coursera - Free courses on {weakest_skill}
-- Project: Build a practical application
+- Task: Learn intermediate {weakest_skill} techniques for {industry_title}
+- Resource: Coursera/LinkedIn Learning - Free courses on {weakest_skill}
+- Project: Apply skills in a real {industry_key} scenario
 
 WEEK 5-6: Intermediate Skills
-- Task: Deep dive into best practices
-- Resource: freeCodeCamp tutorials
-- Project: Contribute to open source
+- Task: Deep dive into {industry_title} best practices for {weakest_skill}
+- Resource: Industry association training materials
+- Project: Contribute to a team project using {weakest_skill}
 
 WEEK 7-8: Advanced Concepts
-- Task: Master advanced patterns
-- Resource: Official documentation
-- Project: Complex real-world project
+- Task: Master advanced {weakest_skill} patterns in {industry_title}
+- Resource: Professional development courses
+- Project: Complex real-world {industry_key} project
 
 WEEK 9-10: Real-World Application
-- Task: Apply skills in professional context
-- Resource: Industry blogs and case studies
-- Project: Portfolio-worthy project
+- Task: Apply {weakest_skill} in professional {industry_title} context
+- Resource: Industry case studies and mentorship
+- Project: Portfolio-worthy project for {industry_title}
 
 WEEK 11-12: Certification & Portfolio
-- Task: Get certified and polish portfolio
-- Certification: Research top certifications for {weakest_skill}
-- Final Project: Capstone demonstrating all skills
+- Task: Get certified in {weakest_skill} for {industry_title}
+- Certification: Research top {industry_title} certifications
+- Final Project: Capstone demonstrating all competencies
 
 RECOMMENDED CERTIFICATIONS:
-1. Check Coursera for {weakest_skill} certifications
-2. LinkedIn Learning certificates
-3. Industry-specific certifications
-                    """
+1. Industry-specific {weakest_skill} certification
+2. Professional body accreditation for {industry_title}
+3. Specialist qualification in {weakest_skill}"""
                     st.session_state.sprint_generated = True
                     st.session_state.completed_tasks = set()
                     st.rerun()
@@ -512,15 +970,11 @@ RECOMMENDED CERTIFICATIONS:
                 st.session_state.completed_tasks = set()
                 st.rerun()
     
-    # Display generated sprint plan with progress tracker
     if st.session_state.sprint_generated and st.session_state.sprint_plan:
         st.markdown("---")
-        st.markdown("### 📚 Your Personalized 90-Day Plan")
+        st.markdown(f"### 📚 Your Personalized 90-Day Plan for {industry_title}")
         
-        # Parse and display with checkboxes
         plan_lines = st.session_state.sprint_plan.split('\n')
-        current_week = ""
-        task_count = 0
         
         for i, line in enumerate(plan_lines):
             line = line.strip()
@@ -533,9 +987,7 @@ RECOMMENDED CERTIFICATIONS:
             elif line.startswith('- ') or line.startswith('• '):
                 task_key = f"sprint_task_{i}"
                 task_text = line[2:].strip()
-                task_count += 1
                 
-                # Checkbox for progress tracking
                 completed = st.checkbox(
                     task_text, 
                     key=task_key,
@@ -551,7 +1003,6 @@ RECOMMENDED CERTIFICATIONS:
             elif line.startswith('1.') or line.startswith('2.') or line.startswith('3.'):
                 st.markdown(f"  {line}")
         
-        # Progress bar
         total_tasks = len([l for l in plan_lines if l.strip().startswith('- ') or l.strip().startswith('• ')])
         completed_count = len(st.session_state.completed_tasks)
         
@@ -569,15 +1020,10 @@ RECOMMENDED CERTIFICATIONS:
 
     st.markdown("---")
     
-    # =======================================================
     # SECTION 5: Skill Decay Warning System
-    # =======================================================
     st.subheader("5️⃣ Skill Decay Warning System")
-    st.caption("⚠️ Track skills that may need refreshing based on industry trends")
+    st.caption(f"⚠️ Track {industry_title} skills that may need refreshing")
     
-    tech_score = report.get('tech_score', 50)
-    
-    # Generate skill decay data based on analysis
     skill_decay_data = [
         {
             "skill": weakest_skill, 
@@ -587,18 +1033,18 @@ RECOMMENDED CERTIFICATIONS:
             "message": f"✅ Your {weakest_skill} knowledge is current based on recent analysis"
         },
         {
-            "skill": "Core Technical Skills", 
+            "skill": decay_skills[0] if decay_skills else "Core Skills", 
             "last_updated": "3 months ago", 
             "status": "moderate", 
             "decay_risk": "Medium",
-            "message": "⏰ Core technical skills could use a refresh - consider taking an updated course"
+            "message": f"⏰ {decay_skills[0] if decay_skills else 'Core skills'} may need refreshing - industry standards update regularly"
         },
         {
-            "skill": "Industry Knowledge", 
+            "skill": decay_skills[1] if len(decay_skills) > 1 else "Industry Knowledge", 
             "last_updated": "6+ months ago", 
             "status": "outdated", 
             "decay_risk": "High",
-            "message": "⚠️ Industry knowledge may be outdated - new trends and technologies have emerged"
+            "message": f"⚠️ {decay_skills[1] if len(decay_skills) > 1 else 'Industry knowledge'} may be outdated - new regulations/practices have emerged"
         },
     ]
     
@@ -626,42 +1072,36 @@ RECOMMENDED CERTIFICATIONS:
         </div>
         """, unsafe_allow_html=True)
     
-    # Refresh course suggestions
-    with st.expander("📖 Suggested Refresh Courses", expanded=False):
-        st.markdown("""
-        **🎓 Free Resources to Keep Your Skills Sharp:**
+    with st.expander(f"📖 Suggested Refresh Courses for {industry_title}", expanded=False):
+        st.markdown(f"""
+        **🎓 Free Resources to Keep Your {industry_title} Skills Sharp:**
         
         **Coursera** - Audit courses for free
-        - [Browse all free courses](https://www.coursera.org/courses?query=free)
+        - [Browse {industry_key} courses](https://www.coursera.org/courses?query={industry_key})
         
         **📺 YouTube Channels:**
-        - Traversy Media (Web Development)
-        - Tech With Tim (Python)
-        - freeCodeCamp (Full tutorials)
-        - NetworkChuck (IT & Networking)
+        - Search for "{industry_key} training" and "{industry_key} skills"
+        - Industry-specific tutorial channels
         
         **📚 Other Free Resources:**
-        - [freeCodeCamp](https://www.freecodecamp.org/)
-        - [The Odin Project](https://www.theodinproject.com/)
-        - [Khan Academy](https://www.khanacademy.org/)
-        - [edX Free Courses](https://www.edx.org/search?tab=course)
-        - [Codecademy Free Tier](https://www.codecademy.com/)
+        - LinkedIn Learning - Free with many library cards
+        - Industry association websites and training
+        - Government-funded training programs
+        - Professional body CPD resources
         """)
 
     st.markdown("---")
     
-    # =======================================================
     # SECTION 6: Skill Gap Analysis Summary
-    # =======================================================
     st.subheader("6️⃣ Skill Gap Analysis Summary")
-    st.caption("📊 Visual breakdown of your skill levels vs. target requirements")
+    st.caption(f"📊 Visual breakdown of your {industry_title} skill levels vs. target requirements")
     
-    # Create visual skill gap bars
+    tech = report.get('tech_score', 50)
     skills_to_analyze = [
-        {"name": "Technical Foundation", "current": tech_score, "target": 90},
-        {"name": "Leadership & Soft Skills", "current": report.get('leader_score', 50), "target": 80},
-        {"name": weakest_skill, "current": max(20, tech_score - 30), "target": 85},
-        {"name": "Industry Knowledge", "current": min(90, tech_score + 10), "target": 85},
+        {"name": industry_skills[0] if industry_skills else "Technical Foundation", "current": tech, "target": 90},
+        {"name": industry_skills[1] if len(industry_skills) > 1 else "Leadership & Soft Skills", "current": report.get('leader_score', tech - 15), "target": 80},
+        {"name": weakest_skill, "current": max(20, tech - 30), "target": 85},
+        {"name": industry_skills[2] if len(industry_skills) > 2 else "Industry Knowledge", "current": min(90, tech + 5), "target": 85},
     ]
     
     for skill in skills_to_analyze:
@@ -699,11 +1139,6 @@ RECOMMENDED CERTIFICATIONS:
                 st.markdown(f"<span style='color: #10b981; font-size: 0.8em;'>+{abs(gap)}% above target</span>", unsafe_allow_html=True)
     
     st.markdown("---")
-    
-    # Detect and display industry
-    cv_text = st.session_state.get('cv_text_for_migration', '')
-    industry = detect_industry(report, cv_text)
-    
-    st.info(f"🔍 **Detected Industry:** {industry.title()} | 💡 Upload a new CV anytime to refresh your analysis and track your progress!")
+    st.info(f"🔍 **Detected Industry:** {industry_title} | 💡 Upload a new CV anytime to refresh your analysis and track your progress!")
 
 skill_migration_page()
