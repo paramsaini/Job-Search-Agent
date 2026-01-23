@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import pypdf
 import json
+import pandas as pd
 from dotenv import load_dotenv
 from agent import JobSearchAgent
 from supabase import create_client, Client
@@ -289,8 +290,18 @@ def page_delete_account():
 def page_skill_migration():
     st.header("📈 Skill Migration Analysis")
     
-    # --- CV Upload Section ---
-    st.subheader("Upload CV for Analysis")
+    # Initialize session states for this page
+    if 'selected_career_path' not in st.session_state:
+        st.session_state.selected_career_path = None
+    if 'sprint_generated' not in st.session_state:
+        st.session_state.sprint_generated = False
+    if 'sprint_plan' not in st.session_state:
+        st.session_state.sprint_plan = None
+    if 'completed_tasks' not in st.session_state:
+        st.session_state.completed_tasks = set()
+    
+    # --- SECTION 1: CV Upload ---
+    st.subheader("1️⃣ Upload Your Document")
     uploaded_cv = st.file_uploader("Upload your CV (PDF/TXT)", type=["pdf", "txt"], key="skill_migration_cv")
     
     if uploaded_cv:
@@ -301,6 +312,7 @@ def page_skill_migration():
                     try:
                         md, rep, src = st.session_state.agent.generate_strategy(cv_text, "All")
                         st.session_state.results = {"md": md, "rep": rep, "src": src}
+                        st.session_state.cv_upload_time = json.dumps({"timestamp": str(pd.Timestamp.now())})
                         
                         # Save to Supabase
                         if supabase and st.session_state.user_id:
@@ -322,10 +334,8 @@ def page_skill_migration():
         report = st.session_state.results["rep"]
     elif supabase and st.session_state.user_id:
         try:
-            # Fetch last analysis
             data = supabase.table("analyses").select("*").eq("user_id", st.session_state.user_id).order("created_at", desc=True).limit(1).execute()
             if data.data:
-                # Handle potentially stringified JSON
                 raw_json = data.data[0]['report_json']
                 if isinstance(raw_json, str):
                     report = json.loads(raw_json)
@@ -335,6 +345,8 @@ def page_skill_migration():
             st.error(f"Could not load history: {e}")
 
     if report:
+        # --- SECTION 2: Profile Scores ---
+        st.subheader("2️⃣ Your Profile Scores")
         c1, c2, c3 = st.columns(3)
         with c1:
             score = report.get('predictive_score', 0)
@@ -342,17 +354,368 @@ def page_skill_migration():
             st.progress(score / 100)
         with c2:
             tech = report.get('tech_score', 0)
-            st.metric("Technical Depth", f"{tech}%")
+            st.metric("Skills Strength", f"{tech}%")
             st.progress(tech / 100)
         with c3:
-            st.error(f"Weakest Link: {report.get('weakest_link_skill', 'N/A')}")
-            st.caption("Focus your learning here.")
+            weakest_skill = report.get('weakest_link_skill', 'N/A')
+            st.error(f"Focus Area: {weakest_skill}")
+            st.caption("Prioritize improving this skill.")
+        
+        st.markdown("---")
+        
+        # --- SECTION 3: Interactive Career Path Visualizer ---
+        st.subheader("3️⃣ Interactive Career Path Visualizer")
+        st.caption("👆 Click on a career path to see detailed requirements and timeline")
+        
+        # Define career paths with detailed data
+        career_paths = {
+            "Senior Specialist": {
+                "color": "#10B981",
+                "success_rate": 85,
+                "timeline": "6-12 months",
+                "target_role": "Team Lead / Senior Engineer",
+                "required_skills": ["Advanced Technical Skills", "Project Management", "Mentoring"],
+                "skill_gaps": [
+                    {"skill": "System Design", "gap": 25, "priority": "High"},
+                    {"skill": "Leadership", "gap": 30, "priority": "Medium"},
+                    {"skill": "Communication", "gap": 15, "priority": "Low"}
+                ],
+                "milestones": [
+                    "Month 1-2: Complete advanced certifications",
+                    "Month 3-4: Lead a small project",
+                    "Month 5-6: Mentor junior team members",
+                    "Month 7-9: Take ownership of critical systems",
+                    "Month 10-12: Apply for senior positions"
+                ]
+            },
+            "Management Track": {
+                "color": "#3B82F6",
+                "success_rate": 70,
+                "timeline": "12-18 months",
+                "target_role": "Engineering Manager / Director",
+                "required_skills": ["People Management", "Strategic Planning", "Budget Management"],
+                "skill_gaps": [
+                    {"skill": "People Management", "gap": 40, "priority": "High"},
+                    {"skill": "Strategic Thinking", "gap": 35, "priority": "High"},
+                    {"skill": "Stakeholder Management", "gap": 25, "priority": "Medium"}
+                ],
+                "milestones": [
+                    "Month 1-3: Leadership training courses",
+                    "Month 4-6: Shadow current managers",
+                    "Month 7-9: Lead cross-functional projects",
+                    "Month 10-12: Manage a small team",
+                    "Month 13-18: Transition to full management role"
+                ]
+            },
+            "Domain Expert": {
+                "color": "#8B5CF6",
+                "success_rate": 60,
+                "timeline": "18-24 months",
+                "target_role": "Consultant / Advisor / Architect",
+                "required_skills": ["Deep Domain Knowledge", "Public Speaking", "Thought Leadership"],
+                "skill_gaps": [
+                    {"skill": "Industry Expertise", "gap": 45, "priority": "High"},
+                    {"skill": "Public Speaking", "gap": 50, "priority": "High"},
+                    {"skill": "Writing/Content", "gap": 30, "priority": "Medium"}
+                ],
+                "milestones": [
+                    "Month 1-4: Earn industry certifications",
+                    "Month 5-8: Publish articles/blog posts",
+                    "Month 9-12: Speak at local meetups",
+                    "Month 13-18: Build consulting portfolio",
+                    "Month 19-24: Establish thought leadership"
+                ]
+            }
+        }
+        
+        # Display clickable career path cards
+        cols = st.columns(3)
+        for idx, (path_name, path_data) in enumerate(career_paths.items()):
+            with cols[idx]:
+                # Create clickable card
+                card_selected = st.session_state.selected_career_path == path_name
+                border_style = f"3px solid {path_data['color']}" if card_selected else f"1px solid {path_data['color']}50"
+                
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, {path_data['color']}40, {path_data['color']}20); 
+                            padding: 20px; border-radius: 12px; border: {border_style}; 
+                            cursor: pointer; transition: all 0.3s;">
+                    <h4 style="color: {path_data['color']}; margin: 0;">{path_name}</h4>
+                    <p style="color: #ccc; font-size: 0.85em; margin: 8px 0;">→ {path_data['target_role']}</p>
+                    <p style="color: white; font-weight: bold; font-size: 1.2em;">{path_data['success_rate']}% success rate</p>
+                    <p style="color: #aaa; font-size: 0.8em;">⏱️ {path_data['timeline']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button(f"View Details", key=f"btn_{path_name}", use_container_width=True):
+                    st.session_state.selected_career_path = path_name
+                    st.rerun()
+        
+        # Display selected career path details
+        if st.session_state.selected_career_path:
+            selected_path = career_paths[st.session_state.selected_career_path]
             
-        st.divider()
-        st.info("💡 To generate a new analysis, go to the Dashboard and upload a CV.")
+            st.markdown("---")
+            st.markdown(f"### 📋 {st.session_state.selected_career_path} - Detailed View")
+            
+            detail_col1, detail_col2 = st.columns(2)
+            
+            with detail_col1:
+                st.markdown("**🎯 Required Skill Gaps to Close:**")
+                for gap in selected_path['skill_gaps']:
+                    priority_color = "#ef4444" if gap['priority'] == "High" else "#f59e0b" if gap['priority'] == "Medium" else "#10b981"
+                    st.markdown(f"""
+                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin: 5px 0; border-left: 4px solid {priority_color};">
+                        <strong>{gap['skill']}</strong>: {gap['gap']}% gap 
+                        <span style="color: {priority_color}; font-size: 0.8em;">({gap['priority']} Priority)</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            with detail_col2:
+                st.markdown("**📅 Timeline & Milestones:**")
+                for milestone in selected_path['milestones']:
+                    st.markdown(f"✅ {milestone}")
+        
+        st.markdown("---")
+        
+        # --- SECTION 4: 90-Day Skill Sprint Generator ---
+        st.subheader("4️⃣ AI-Powered 90-Day Skill Sprint Generator")
+        st.caption(f"Personalized learning plan based on your weakest skill: **{weakest_skill}**")
+        
+        if st.button("🚀 Generate 90-Day Sprint Plan", type="primary", use_container_width=True):
+            with st.spinner("AI is creating your personalized learning plan..."):
+                # Generate sprint plan using Groq if available
+                if st.session_state.groq:
+                    try:
+                        prompt = f"""
+                        Create a detailed 90-day skill sprint plan for someone who needs to improve their "{weakest_skill}" skill.
+                        
+                        Format the response EXACTLY as follows (use this exact structure):
+                        
+                        WEEK 1-2: Foundation
+                        - Task: [Specific task]
+                        - Resource: [Free course or resource with actual URL if possible]
+                        - Project: [Small project to practice]
+                        
+                        WEEK 3-4: Building Blocks
+                        - Task: [Specific task]
+                        - Resource: [Free course or resource]
+                        - Project: [Project to build]
+                        
+                        WEEK 5-6: Intermediate Skills
+                        - Task: [Specific task]
+                        - Resource: [Free course or resource]
+                        - Project: [Project to build]
+                        
+                        WEEK 7-8: Advanced Concepts
+                        - Task: [Specific task]
+                        - Resource: [Free course or resource]
+                        - Project: [Project to build]
+                        
+                        WEEK 9-10: Real-World Application
+                        - Task: [Specific task]
+                        - Resource: [Free course or resource]
+                        - Project: [Portfolio project]
+                        
+                        WEEK 11-12: Certification & Portfolio
+                        - Task: [Get certified]
+                        - Certification: [Recommended certification]
+                        - Final Project: [Capstone project]
+                        
+                        RECOMMENDED CERTIFICATIONS:
+                        1. [Certification name and provider]
+                        2. [Certification name and provider]
+                        3. [Certification name and provider]
+                        
+                        Keep it practical with free resources from Coursera, YouTube, freeCodeCamp, etc.
+                        """
+                        
+                        completion = st.session_state.groq.chat.completions.create(
+                            messages=[{"role": "user", "content": prompt}],
+                            model="llama-3.3-70b-versatile"
+                        )
+                        st.session_state.sprint_plan = completion.choices[0].message.content
+                        st.session_state.sprint_generated = True
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Failed to generate plan: {e}")
+                else:
+                    # Fallback static plan
+                    st.session_state.sprint_plan = f"""
+**WEEK 1-2: Foundation**
+- Task: Understand core concepts of {weakest_skill}
+- Resource: YouTube - Search "{weakest_skill} for beginners"
+- Project: Create a simple demo project
+
+**WEEK 3-4: Building Blocks**
+- Task: Learn intermediate techniques
+- Resource: Coursera - Free courses on {weakest_skill}
+- Project: Build a practical application
+
+**WEEK 5-6: Intermediate Skills**
+- Task: Deep dive into best practices
+- Resource: freeCodeCamp tutorials
+- Project: Contribute to open source
+
+**WEEK 7-8: Advanced Concepts**
+- Task: Master advanced patterns
+- Resource: Official documentation
+- Project: Complex real-world project
+
+**WEEK 9-10: Real-World Application**
+- Task: Apply skills in professional context
+- Resource: Industry blogs and case studies
+- Project: Portfolio-worthy project
+
+**WEEK 11-12: Certification & Portfolio**
+- Task: Get certified and polish portfolio
+- Certification: Research top certifications for {weakest_skill}
+- Final Project: Capstone demonstrating all skills
+
+**RECOMMENDED CERTIFICATIONS:**
+1. Check Coursera for {weakest_skill} certifications
+2. LinkedIn Learning certificates
+3. Industry-specific certifications
+                    """
+                    st.session_state.sprint_generated = True
+                    st.rerun()
+        
+        # Display generated sprint plan with progress tracker
+        if st.session_state.sprint_generated and st.session_state.sprint_plan:
+            st.markdown("---")
+            st.markdown("### 📚 Your Personalized 90-Day Plan")
+            
+            # Parse and display with checkboxes
+            plan_lines = st.session_state.sprint_plan.split('\n')
+            current_week = ""
+            
+            for i, line in enumerate(plan_lines):
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                if line.startswith('**WEEK') or line.startswith('WEEK'):
+                    current_week = line.replace('**', '').replace('*', '')
+                    st.markdown(f"#### {current_week}")
+                elif line.startswith('- ') or line.startswith('• '):
+                    task_key = f"task_{i}"
+                    task_text = line[2:].strip()
+                    
+                    # Checkbox for progress tracking
+                    completed = st.checkbox(
+                        task_text, 
+                        key=task_key,
+                        value=task_key in st.session_state.completed_tasks
+                    )
+                    if completed:
+                        st.session_state.completed_tasks.add(task_key)
+                    elif task_key in st.session_state.completed_tasks:
+                        st.session_state.completed_tasks.remove(task_key)
+                        
+                elif line.startswith('**RECOMMENDED') or line.startswith('RECOMMENDED'):
+                    st.markdown(f"#### 🏆 {line.replace('**', '')}")
+                elif line.startswith('1.') or line.startswith('2.') or line.startswith('3.'):
+                    st.markdown(f"  {line}")
+            
+            # Progress bar
+            total_tasks = len([l for l in plan_lines if l.strip().startswith('- ') or l.strip().startswith('• ')])
+            completed_count = len(st.session_state.completed_tasks)
+            if total_tasks > 0:
+                progress = completed_count / total_tasks
+                st.markdown("---")
+                st.markdown(f"**📊 Overall Progress: {completed_count}/{total_tasks} tasks completed**")
+                st.progress(progress)
+        
+        st.markdown("---")
+        
+        # --- SECTION 5: Skill Decay Warning System ---
+        st.subheader("5️⃣ Skill Decay Warning System")
+        st.caption("⚠️ Track skills that may need refreshing")
+        
+        # Simulated skill decay data (in production, this would come from user's activity history)
+        tech_score = report.get('tech_score', 50)
+        
+        skill_decay_data = [
+            {"skill": weakest_skill, "last_updated": "Recently analyzed", "status": "current", "decay_risk": "Low"},
+            {"skill": "Core Technical Skills", "last_updated": "3 months ago", "status": "moderate", "decay_risk": "Medium"},
+            {"skill": "Industry Knowledge", "last_updated": "6 months ago", "status": "outdated", "decay_risk": "High"},
+        ]
+        
+        for skill_data in skill_decay_data:
+            if skill_data['status'] == 'outdated':
+                color = "#ef4444"
+                icon = "🔴"
+                message = f"⚠️ Your {skill_data['skill']} knowledge may be outdated - last updated {skill_data['last_updated']}"
+            elif skill_data['status'] == 'moderate':
+                color = "#f59e0b"
+                icon = "🟡"
+                message = f"⏰ {skill_data['skill']} could use a refresh - last updated {skill_data['last_updated']}"
+            else:
+                color = "#10b981"
+                icon = "🟢"
+                message = f"✅ {skill_data['skill']} is up to date - {skill_data['last_updated']}"
+            
+            st.markdown(f"""
+            <div style="background: {color}15; border-left: 4px solid {color}; padding: 15px; margin: 10px 0; border-radius: 0 8px 8px 0;">
+                <strong>{icon} {skill_data['skill']}</strong><br>
+                <span style="color: #ccc;">{message}</span><br>
+                <span style="color: {color}; font-size: 0.85em;">Decay Risk: {skill_data['decay_risk']}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Refresh course suggestions
+        with st.expander("📖 Suggested Refresh Courses"):
+            st.markdown("""
+            **Free Resources to Keep Your Skills Sharp:**
+            
+            🎓 **Coursera** - Audit courses for free
+            - [Browse all free courses](https://www.coursera.org/courses?query=free)
+            
+            📺 **YouTube Channels:**
+            - Traversy Media (Web Development)
+            - Tech With Tim (Python)
+            - freeCodeCamp (Full tutorials)
+            
+            📚 **Other Free Resources:**
+            - [freeCodeCamp](https://www.freecodecamp.org/)
+            - [The Odin Project](https://www.theodinproject.com/)
+            - [Khan Academy](https://www.khanacademy.org/)
+            - [edX Free Courses](https://www.edx.org/search?tab=course)
+            """)
+        
+        st.markdown("---")
+        
+        # --- SECTION 6: Skill Gap Analysis Summary ---
+        st.subheader("6️⃣ Skill Gap Analysis Summary")
+        
+        # Create visual skill gap bars
+        skills_to_analyze = [
+            {"name": "Technical Foundation", "current": tech_score, "target": 90},
+            {"name": "Leadership & Soft Skills", "current": report.get('leader_score', 50), "target": 80},
+            {"name": weakest_skill, "current": max(20, tech_score - 30), "target": 85},
+            {"name": "Industry Knowledge", "current": min(90, tech_score + 10), "target": 85},
+        ]
+        
+        for skill in skills_to_analyze:
+            gap = skill['target'] - skill['current']
+            gap_color = "#ef4444" if gap > 30 else "#f59e0b" if gap > 15 else "#10b981"
+            
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"**{skill['name']}**")
+                st.progress(skill['current'] / 100)
+            with col2:
+                if gap > 0:
+                    st.markdown(f"<span style='color: {gap_color};'>Gap: {gap}%</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<span style='color: #10b981;'>✅ On target</span>", unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.info("💡 Upload a new CV anytime to refresh your analysis and track your progress!")
+        
     else:
         st.warning("No analysis found.")
-        st.write("Go to the **Dashboard** and click 'Generate Strategy' to see your Skill Migration report.")
+        st.write("Upload your CV above and click **'Analyze CV'** to see your Skill Migration report.")
 
 def page_cover_letter():
     st.header("✍️ Instant Cover Letter")
