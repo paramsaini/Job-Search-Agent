@@ -229,22 +229,36 @@ def check_password_reset_token():
 
 def inject_fragment_handler():
     """Inject JavaScript to handle URL fragments from Supabase password reset"""
-    # JS to convert Hash (#) to Query (?) which Streamlit can read
-    # We use window.location.hash directly as it is the most robust way
+    # Robust JS to convert Hash (#) to Query (?) using URL object
+    # This ensures parameters are correctly parsed and passed to Python
     js_code = """
     <script>
     (function() {
-        // Check if we have a hash with access_token (Supabase Auth format)
-        if (window.location.hash && window.location.hash.includes('access_token')) {
-            // Backup the hash content
-            var fragment = window.location.hash.substring(1);
-            
-            // Construct new URL with query parameters
-            // We force 'reset_mode=true' to help the Python script detect the state
-            var newUrl = window.location.pathname + "?reset_mode=true&" + fragment;
-            
-            // Redirect immediately to the new URL (reloads the page)
-            window.location.href = newUrl;
+        try {
+            // Check if we have a hash with access_token
+            if (window.location.hash && window.location.hash.includes('access_token')) {
+                // Parse the current URL
+                var url = new URL(window.location.href);
+                
+                // Get the hash parameters (removing the # symbol)
+                var hashParams = new URLSearchParams(url.hash.substring(1));
+                
+                // Move hash parameters to search (query) parameters
+                for (var pair of hashParams.entries()) {
+                    url.searchParams.set(pair[0], pair[1]);
+                }
+                
+                // Add the explicit reset_mode flag for our Python script
+                url.searchParams.set("reset_mode", "true");
+                
+                // Clear the hash to prevent infinite loops or confusion
+                url.hash = "";
+                
+                // Force a hard redirect to the new URL
+                window.location.assign(url.toString());
+            }
+        } catch (e) {
+            console.error("Fragment handler failed:", e);
         }
     })();
     </script>
