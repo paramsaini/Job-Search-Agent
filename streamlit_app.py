@@ -229,40 +229,22 @@ def check_password_reset_token():
 
 def inject_fragment_handler():
     """Inject JavaScript to handle URL fragments from Supabase password reset"""
+    # JS to convert Hash (#) to Query (?) which Streamlit can read
+    # We use window.location.hash directly as it is the most robust way
     js_code = """
     <script>
     (function() {
-        try {
-            var currentUrl = window.location.href;
+        // Check if we have a hash with access_token (Supabase Auth format)
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+            // Backup the hash content
+            var fragment = window.location.hash.substring(1);
             
-            // Check if URL has a hash fragment with access_token
-            if (currentUrl.includes('#') && currentUrl.includes('access_token')) {
-                var hashIndex = currentUrl.indexOf('#');
-                var fragment = currentUrl.substring(hashIndex + 1);
-                var params = new URLSearchParams(fragment);
-                var accessToken = params.get('access_token');
-                
-                // If we found an access token, redirect to query params so Python can see it
-                if (accessToken) {
-                    var baseUrl = currentUrl.substring(0, hashIndex);
-                    var newUrl = new URL(baseUrl);
-                    
-                    // Move all hash params to query/search params
-                    for (const [key, value] of params) {
-                        newUrl.searchParams.set(key, value);
-                    }
-                    
-                    // Optional: explicitly flag reset_mode if we see the recovery type
-                    if (params.get('type') === 'recovery') {
-                        newUrl.searchParams.set('reset_mode', 'true');
-                    }
-                    
-                    // Force the redirect
-                    window.location.assign(newUrl.toString());
-                }
-            }
-        } catch (e) {
-            console.error("Fragment handler error:", e);
+            // Construct new URL with query parameters
+            // We force 'reset_mode=true' to help the Python script detect the state
+            var newUrl = window.location.pathname + "?reset_mode=true&" + fragment;
+            
+            // Redirect immediately to the new URL (reloads the page)
+            window.location.href = newUrl;
         }
     })();
     </script>
