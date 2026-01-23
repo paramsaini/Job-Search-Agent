@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1
 import os
 import pypdf
 import json
@@ -194,30 +195,70 @@ def update_password(new_password):
         return False, f"Failed to update password: {e}"
 
 def check_password_reset_token():
-    """Check if user arrived from a password reset link"""
+    """Check if user arrived from a password reset link - handles URL fragments"""
     try:
-        # Get query parameters from URL
+        # First check query parameters
         query_params = st.query_params
         
-        # Check for Supabase auth tokens in URL (type=recovery indicates password reset)
-        if query_params.get("type") == "recovery" or "access_token" in query_params or "token" in query_params:
-            # Try to get the session from the URL tokens
+        # Check if we already detected reset mode from fragment
+        if query_params.get("reset_mode") == "true":
             access_token = query_params.get("access_token", "")
             refresh_token = query_params.get("refresh_token", "")
             
-            if access_token:
+            if access_token and supabase:
                 try:
-                    # Set the session using the tokens from the URL
                     supabase.auth.set_session(access_token, refresh_token if refresh_token else access_token)
-                    return True
                 except:
                     pass
-            return True  # Show reset form even if session setting fails
+            return True
         
-        # Also check for hash fragments (Supabase sometimes uses these)
+        # Check for tokens in query params (type=recovery indicates password reset)
+        if query_params.get("type") == "recovery" or "access_token" in query_params:
+            access_token = query_params.get("access_token", "")
+            refresh_token = query_params.get("refresh_token", "")
+            
+            if access_token and supabase:
+                try:
+                    supabase.auth.set_session(access_token, refresh_token if refresh_token else access_token)
+                except:
+                    pass
+            return True
+        
         return False
     except:
         return False
+
+def inject_fragment_handler():
+    """Inject JavaScript to handle URL fragments from Supabase password reset"""
+    js_code = """
+    <script>
+    (function() {
+        // Check if URL has a hash fragment with access_token
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+            // Parse the fragment
+            const fragment = window.location.hash.substring(1);
+            const params = new URLSearchParams(fragment);
+            
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            const type = params.get('type');
+            
+            // If this is a recovery (password reset) flow
+            if (accessToken && (type === 'recovery' || window.location.hash.includes('type=recovery'))) {
+                // Build new URL with query parameters instead of fragment
+                const newUrl = window.location.origin + window.location.pathname + 
+                    '?reset_mode=true&access_token=' + encodeURIComponent(accessToken) + 
+                    (refreshToken ? '&refresh_token=' + encodeURIComponent(refreshToken) : '') +
+                    '&type=recovery';
+                
+                // Redirect to the new URL (this will reload the page with query params)
+                window.location.href = newUrl;
+            }
+        }
+    })();
+    </script>
+    """
+    st.components.v1.html(js_code, height=0)
 
 def delete_user_account():
     """
@@ -1090,6 +1131,9 @@ def page_interview_sim():
 # --- 6. MAIN APP ---
 
 def main():
+    # Inject JavaScript to handle URL fragments from Supabase password reset
+    inject_fragment_handler()
+    
     # Check for password reset token in URL first
     is_password_reset = check_password_reset_token()
     if is_password_reset:
@@ -1135,7 +1179,7 @@ def main():
                 
                 # Check if showing forgot password form
                 elif st.session_state.show_forgot_password:
-                    st.header("Job-Search_Agent Login")
+                    st.header("Job-Search-Agent Login")
                     st.subheader("🔑 Reset Password")
                     st.caption("Enter your email address and we'll send you a link to reset your password.")
                     reset_email = st.text_input("Email Address", key="reset_email_input")
@@ -1154,7 +1198,7 @@ def main():
                             st.rerun()
                 else:
                     # Normal login/signup flow
-                    st.header("Aequor Login")
+                    st.header("Job-Search-Agent Login")
                     mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
                     email = st.text_input("Email")
                     pwd = st.text_input("Password", type="password")
