@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1
 import os
 import pypdf
 import json
@@ -232,33 +231,40 @@ def inject_fragment_handler():
     """Inject JavaScript to handle URL fragments from Supabase password reset"""
     js_code = """
     <script>
+    // Run immediately when script loads
     (function() {
+        // Get the parent window's URL (works in Streamlit)
+        var currentUrl = window.parent.location.href;
+        
         // Check if URL has a hash fragment with access_token
-        if (window.location.hash && window.location.hash.includes('access_token')) {
-            // Parse the fragment
-            const fragment = window.location.hash.substring(1);
-            const params = new URLSearchParams(fragment);
+        if (currentUrl.includes('#') && currentUrl.includes('access_token')) {
+            // Get the fragment part
+            var hashIndex = currentUrl.indexOf('#');
+            var fragment = currentUrl.substring(hashIndex + 1);
+            var params = new URLSearchParams(fragment);
             
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
-            const type = params.get('type');
+            var accessToken = params.get('access_token');
+            var refreshToken = params.get('refresh_token');
+            var type = params.get('type');
             
             // If this is a recovery (password reset) flow
-            if (accessToken && (type === 'recovery' || window.location.hash.includes('type=recovery'))) {
+            if (accessToken && (type === 'recovery' || fragment.includes('type=recovery'))) {
+                // Get base URL without fragment
+                var baseUrl = currentUrl.substring(0, hashIndex);
+                
                 // Build new URL with query parameters instead of fragment
-                const newUrl = window.location.origin + window.location.pathname + 
-                    '?reset_mode=true&access_token=' + encodeURIComponent(accessToken) + 
+                var newUrl = baseUrl + '?reset_mode=true&access_token=' + encodeURIComponent(accessToken) + 
                     (refreshToken ? '&refresh_token=' + encodeURIComponent(refreshToken) : '') +
                     '&type=recovery';
                 
-                // Redirect to the new URL (this will reload the page with query params)
-                window.location.href = newUrl;
+                // Redirect the parent window to the new URL
+                window.parent.location.replace(newUrl);
             }
         }
     })();
     </script>
     """
-    st.components.v1.html(js_code, height=0)
+    st.markdown(js_code, unsafe_allow_html=True)
 
 def delete_user_account():
     """
