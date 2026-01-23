@@ -10,7 +10,7 @@ from groq import Groq
 from fpdf import FPDF
 
 # --- 1. CONFIG & STYLING ---
-st.set_page_config(page_title="Aequor Career Agent", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Job-Search-Agent", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -233,8 +233,8 @@ def inject_fragment_handler():
     <script>
     // Run immediately when script loads
     (function() {
-        // Get the parent window's URL (works in Streamlit)
-        var currentUrl = window.parent.location.href;
+        // Use window.location directly (since st.markdown injects into main DOM)
+        var currentUrl = window.location.href;
         
         // Check if URL has a hash fragment with access_token
         if (currentUrl.includes('#') && currentUrl.includes('access_token')) {
@@ -257,8 +257,8 @@ def inject_fragment_handler():
                     (refreshToken ? '&refresh_token=' + encodeURIComponent(refreshToken) : '') +
                     '&type=recovery';
                 
-                // Redirect the parent window to the new URL
-                window.parent.location.replace(newUrl);
+                // Redirect the window to the new URL
+                window.location.assign(newUrl);
             }
         }
     })();
