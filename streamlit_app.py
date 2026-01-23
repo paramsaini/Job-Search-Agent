@@ -231,35 +231,38 @@ def inject_fragment_handler():
     """Inject JavaScript to handle URL fragments from Supabase password reset"""
     js_code = """
     <script>
-    // Run immediately when script loads
     (function() {
-        // Use window.location directly (since st.markdown injects into main DOM)
-        var currentUrl = window.location.href;
-        
-        // Check if URL has a hash fragment with access_token
-        if (currentUrl.includes('#') && currentUrl.includes('access_token')) {
-            // Get the fragment part
-            var hashIndex = currentUrl.indexOf('#');
-            var fragment = currentUrl.substring(hashIndex + 1);
-            var params = new URLSearchParams(fragment);
+        try {
+            var currentUrl = window.location.href;
             
-            var accessToken = params.get('access_token');
-            var refreshToken = params.get('refresh_token');
-            var type = params.get('type');
-            
-            // If this is a recovery (password reset) flow
-            if (accessToken && (type === 'recovery' || fragment.includes('type=recovery'))) {
-                // Get base URL without fragment
-                var baseUrl = currentUrl.substring(0, hashIndex);
+            // Check if URL has a hash fragment with access_token
+            if (currentUrl.includes('#') && currentUrl.includes('access_token')) {
+                var hashIndex = currentUrl.indexOf('#');
+                var fragment = currentUrl.substring(hashIndex + 1);
+                var params = new URLSearchParams(fragment);
+                var accessToken = params.get('access_token');
                 
-                // Build new URL with query parameters instead of fragment
-                var newUrl = baseUrl + '?reset_mode=true&access_token=' + encodeURIComponent(accessToken) + 
-                    (refreshToken ? '&refresh_token=' + encodeURIComponent(refreshToken) : '') +
-                    '&type=recovery';
-                
-                // Redirect the window to the new URL
-                window.location.assign(newUrl);
+                // If we found an access token, redirect to query params so Python can see it
+                if (accessToken) {
+                    var baseUrl = currentUrl.substring(0, hashIndex);
+                    var newUrl = new URL(baseUrl);
+                    
+                    // Move all hash params to query/search params
+                    for (const [key, value] of params) {
+                        newUrl.searchParams.set(key, value);
+                    }
+                    
+                    // Optional: explicitly flag reset_mode if we see the recovery type
+                    if (params.get('type') === 'recovery') {
+                        newUrl.searchParams.set('reset_mode', 'true');
+                    }
+                    
+                    // Force the redirect
+                    window.location.assign(newUrl.toString());
+                }
             }
+        } catch (e) {
+            console.error("Fragment handler error:", e);
         }
     })();
     </script>
