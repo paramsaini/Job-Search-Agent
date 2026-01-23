@@ -119,6 +119,7 @@ if 'user' not in st.session_state: st.session_state.user = None
 if 'user_id' not in st.session_state: st.session_state.user_id = None
 if 'show_delete_confirmation' not in st.session_state: st.session_state.show_delete_confirmation = False
 if 'show_forgot_password' not in st.session_state: st.session_state.show_forgot_password = False
+if 'password_reset_mode' not in st.session_state: st.session_state.password_reset_mode = False
 
 def login(email, password):
     if not supabase: return st.error("Database error.")
@@ -178,6 +179,45 @@ def forgot_password(email):
         if "user not found" in error_msg or "invalid" in error_msg:
             return False, "No account found with this email address."
         return False, f"Failed to send reset email: {e}"
+
+def update_password(new_password):
+    """Update user password after reset link verification"""
+    if not supabase:
+        return False, "Database connection error."
+    if not new_password or len(new_password) < 6:
+        return False, "Password must be at least 6 characters long."
+    
+    try:
+        supabase.auth.update_user({"password": new_password})
+        return True, "Password updated successfully! You can now login with your new password."
+    except Exception as e:
+        return False, f"Failed to update password: {e}"
+
+def check_password_reset_token():
+    """Check if user arrived from a password reset link"""
+    try:
+        # Get query parameters from URL
+        query_params = st.query_params
+        
+        # Check for Supabase auth tokens in URL (type=recovery indicates password reset)
+        if query_params.get("type") == "recovery" or "access_token" in query_params or "token" in query_params:
+            # Try to get the session from the URL tokens
+            access_token = query_params.get("access_token", "")
+            refresh_token = query_params.get("refresh_token", "")
+            
+            if access_token:
+                try:
+                    # Set the session using the tokens from the URL
+                    supabase.auth.set_session(access_token, refresh_token if refresh_token else access_token)
+                    return True
+                except:
+                    pass
+            return True  # Show reset form even if session setting fails
+        
+        # Also check for hash fragments (Supabase sometimes uses these)
+        return False
+    except:
+        return False
 
 def delete_user_account():
     """
@@ -1050,14 +1090,52 @@ def page_interview_sim():
 # --- 6. MAIN APP ---
 
 def main():
+    # Check for password reset token in URL first
+    is_password_reset = check_password_reset_token()
+    if is_password_reset:
+        st.session_state.password_reset_mode = True
+    
     if not st.session_state.user:
         with st.container():
             c1, c2, c3 = st.columns([1,1,1])
             with c2:
-                st.header("Aequor Login")
+                # Check if user is in password reset mode (came from email link)
+                if st.session_state.password_reset_mode:
+                    st.header("🔐 Set New Password")
+                    st.caption("Enter your new password below.")
+                    
+                    new_password = st.text_input("New Password", type="password", key="new_pwd_input")
+                    confirm_password = st.text_input("Confirm Password", type="password", key="confirm_pwd_input")
+                    
+                    col_update, col_cancel = st.columns(2)
+                    with col_update:
+                        if st.button("✅ Update Password", type="primary", use_container_width=True):
+                            if new_password != confirm_password:
+                                st.error("Passwords do not match!")
+                            elif len(new_password) < 6:
+                                st.error("Password must be at least 6 characters long.")
+                            else:
+                                success, message = update_password(new_password)
+                                if success:
+                                    st.success(message)
+                                    st.session_state.password_reset_mode = False
+                                    # Clear URL parameters
+                                    st.query_params.clear()
+                                    st.info("Redirecting to login page...")
+                                    import time
+                                    time.sleep(2)
+                                    st.rerun()
+                                else:
+                                    st.error(message)
+                    with col_cancel:
+                        if st.button("← Back to Login", use_container_width=True):
+                            st.session_state.password_reset_mode = False
+                            st.query_params.clear()
+                            st.rerun()
                 
                 # Check if showing forgot password form
-                if st.session_state.show_forgot_password:
+                elif st.session_state.show_forgot_password:
+                    st.header("Job-Search_Agent Login")
                     st.subheader("🔑 Reset Password")
                     st.caption("Enter your email address and we'll send you a link to reset your password.")
                     reset_email = st.text_input("Email Address", key="reset_email_input")
@@ -1076,6 +1154,7 @@ def main():
                             st.rerun()
                 else:
                     # Normal login/signup flow
+                    st.header("Aequor Login")
                     mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
                     email = st.text_input("Email")
                     pwd = st.text_input("Password", type="password")
