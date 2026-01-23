@@ -10,7 +10,7 @@ from groq import Groq
 from fpdf import FPDF
 
 # --- 1. CONFIG & STYLING ---
-st.set_page_config(page_title="Job-Search-Agent", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Aequor Career Agent", page_icon="🚀", layout="wide")
 
 st.markdown("""
     <style>
@@ -1185,7 +1185,7 @@ def main():
                 
                 # Check if showing forgot password form
                 elif st.session_state.show_forgot_password:
-                    st.header("Job-Search-Agent Login")
+                    st.header("Aequor Login")
                     st.subheader("🔑 Reset Password")
                     st.caption("Enter your email address and we'll send you a link to reset your password.")
                     reset_email = st.text_input("Email Address", key="reset_email_input")
@@ -1204,7 +1204,7 @@ def main():
                             st.rerun()
                 else:
                     # Normal login/signup flow
-                    st.header("Job-Search-Agent Login")
+                    st.header("Aequor Login")
                     mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
                     email = st.text_input("Email")
                     pwd = st.text_input("Password", type="password")
