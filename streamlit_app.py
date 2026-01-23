@@ -118,6 +118,7 @@ if 'groq' not in st.session_state:
 if 'user' not in st.session_state: st.session_state.user = None
 if 'user_id' not in st.session_state: st.session_state.user_id = None
 if 'show_delete_confirmation' not in st.session_state: st.session_state.show_delete_confirmation = False
+if 'show_forgot_password' not in st.session_state: st.session_state.show_forgot_password = False
 
 def login(email, password):
     if not supabase: return st.error("Database error.")
@@ -160,6 +161,23 @@ def signup(email, password, username):
 def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
+
+def forgot_password(email):
+    """Send password reset email to user via Supabase Auth"""
+    if not supabase:
+        return False, "Database connection error."
+    if not email or not email.strip():
+        return False, "Please enter your email address."
+    
+    try:
+        # Supabase Auth handles password reset securely
+        supabase.auth.reset_password_email(email.strip())
+        return True, "Password reset email sent! Check your inbox and follow the link to reset your password."
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "user not found" in error_msg or "invalid" in error_msg:
+            return False, "No account found with this email address."
+        return False, f"Failed to send reset email: {e}"
 
 def delete_user_account():
     """
@@ -1037,14 +1055,40 @@ def main():
             c1, c2, c3 = st.columns([1,1,1])
             with c2:
                 st.header("Aequor Login")
-                mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
-                email = st.text_input("Email")
-                pwd = st.text_input("Password", type="password")
-                if mode == "Sign Up":
-                    user = st.text_input("Username")
-                    if st.button("Sign Up"): signup(email, pwd, user)
+                
+                # Check if showing forgot password form
+                if st.session_state.show_forgot_password:
+                    st.subheader("🔑 Reset Password")
+                    st.caption("Enter your email address and we'll send you a link to reset your password.")
+                    reset_email = st.text_input("Email Address", key="reset_email_input")
+                    
+                    col_reset, col_back = st.columns(2)
+                    with col_reset:
+                        if st.button("📧 Send Reset Link", type="primary", use_container_width=True):
+                            success, message = forgot_password(reset_email)
+                            if success:
+                                st.success(message)
+                            else:
+                                st.error(message)
+                    with col_back:
+                        if st.button("← Back to Login", use_container_width=True):
+                            st.session_state.show_forgot_password = False
+                            st.rerun()
                 else:
-                    if st.button("Login"): login(email, pwd)
+                    # Normal login/signup flow
+                    mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
+                    email = st.text_input("Email")
+                    pwd = st.text_input("Password", type="password")
+                    if mode == "Sign Up":
+                        user = st.text_input("Username")
+                        if st.button("Sign Up"): signup(email, pwd, user)
+                    else:
+                        if st.button("Login"): login(email, pwd)
+                        # Forgot Password link
+                        st.markdown("---")
+                        if st.button("🔑 Forgot Password?", type="secondary", use_container_width=True):
+                            st.session_state.show_forgot_password = True
+                            st.rerun()
         return
 
     with st.sidebar:
