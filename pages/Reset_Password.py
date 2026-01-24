@@ -84,37 +84,34 @@ def set_session_from_params():
     except:
         return False
 
-def update_password(new_password, access_token, refresh_token):
-    """Update user password using the recovery token"""
+def update_password_with_token(new_password, token_hash, email=None):
+    """Update user password using the recovery token hash"""
     if not supabase:
         return False, "Database connection error."
     if not new_password or len(new_password) < 6:
         return False, "Password must be at least 6 characters long."
     
     try:
-        # First, set the session using the recovery token
-        if access_token:
-            try:
-                # For recovery tokens, we need to use verify_otp or set_session
-                session = supabase.auth.set_session(access_token, refresh_token if refresh_token else access_token)
-            except Exception as session_error:
-                # If set_session fails, try to exchange the token
-                try:
-                    # Try verifying as OTP token
-                    session = supabase.auth.verify_otp({
-                        "token_hash": access_token,
-                        "type": "recovery"
-                    })
-                except:
-                    pass
+        # For Supabase recovery, we need to verify the OTP token first
+        # The token from email template {{ .Token }} is a token_hash for verify_otp
+        verify_result = supabase.auth.verify_otp({
+            "token_hash": token_hash,
+            "type": "recovery"
+        })
         
-        # Now update the password
-        result = supabase.auth.update_user({"password": new_password})
-        return True, "Password updated successfully! You can now login with your new password."
+        # After verification, the session is set and we can update the password
+        if verify_result and verify_result.user:
+            result = supabase.auth.update_user({"password": new_password})
+            return True, "Password updated successfully! You can now login with your new password."
+        else:
+            return False, "Token verification failed. Please request a new reset link."
+            
     except Exception as e:
-        error_msg = str(e)
-        if "session" in error_msg.lower() or "token" in error_msg.lower():
-            return False, "Your reset link may have expired. Please request a new password reset link."
+        error_msg = str(e).lower()
+        if "expired" in error_msg:
+            return False, "Your reset link has expired. Please request a new password reset link."
+        elif "invalid" in error_msg or "otp" in error_msg:
+            return False, "Invalid or expired token. Please request a new password reset link."
         return False, f"Failed to update password: {e}"
 
 # Main Page Content
@@ -138,15 +135,7 @@ if st.session_state.password_updated:
         st.switch_page("streamlit_app.py")
 
 elif has_token or st.session_state.reset_token_set:
-    # Try to set session if not already done
-    if not st.session_state.reset_token_set and access_token:
-        if supabase:
-            try:
-                supabase.auth.set_session(access_token, refresh_token if refresh_token else access_token)
-                st.session_state.reset_token_set = True
-            except Exception as e:
-                st.warning(f"Token validation issue: {e}")
-    
+    # Token detected - show the password reset form
     st.caption("Enter your new password below.")
     
     with st.form("reset_password_form"):
@@ -161,7 +150,8 @@ elif has_token or st.session_state.reset_token_set:
             elif len(new_password) < 6:
                 st.error("❌ Password must be at least 6 characters long.")
             else:
-                success, message = update_password(new_password, access_token, refresh_token)
+                # Use the access_token as token_hash for verify_otp
+                success, message = update_password_with_token(new_password, access_token)
                 if success:
                     st.session_state.password_updated = True
                     st.query_params.clear()
