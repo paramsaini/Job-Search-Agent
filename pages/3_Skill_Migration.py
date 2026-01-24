@@ -137,9 +137,11 @@ def detect_industry_and_paths(report, cv_text=""):
             'decay_skills': ['Safety Certifications', 'Building Regulations Knowledge', 'Tool Technology']
         },
         'healthcare': {
-            'keywords': ['care', 'patient', 'health', 'medical', 'nursing', 'clinical', 'empathy', 
-                        'compassion', 'carer', 'nurse', 'hospital', 'elderly', 'disability', 'support worker',
-                        'nhs', 'doctor', 'therapist', 'pharmacist', 'midwife'],
+            'keywords': ['patient care', 'healthcare', 'medical', 'nursing', 'clinical', 
+                        'carer', 'nurse', 'hospital', 'elderly care', 'disability support', 'support worker',
+                        'nhs', 'doctor', 'therapist', 'pharmacist', 'midwife', 'caregiver', 'care home',
+                        'mental health', 'social care', 'care assistant', 'health visitor', 'physiotherapy',
+                        'occupational therapy', 'care worker', 'residential care', 'nursing home'],
             'title': '🏥 Healthcare & Care Industry',
             'career_paths': {
                 "Senior Care Worker": {
@@ -470,7 +472,11 @@ def detect_industry_and_paths(report, cv_text=""):
         },
         'education': {
             'keywords': ['teacher', 'teaching', 'education', 'school', 'tutor', 'curriculum', 'student',
-                        'classroom', 'learning', 'instructor', 'lecturer', 'training', 'academic'],
+                        'classroom', 'learning', 'instructor', 'lecturer', 'training', 'academic',
+                        'lesson', 'pupils', 'grade', 'elementary', 'secondary', 'primary', 'educator',
+                        'pedagogy', 'assessment', 'grading', 'homework', 'lecture', 'faculty',
+                        'principal', 'headteacher', 'professor', 'university', 'college', 'literacy',
+                        'reading', 'mathematics', 'phonics', 'parent-teacher', 'instructional'],
             'title': '📚 Education Industry',
             'career_paths': {
                 "Senior Teacher": {
@@ -604,13 +610,38 @@ def detect_industry_and_paths(report, cv_text=""):
     }
     
     # Combine report text and CV text for detection
-    report_text = str(report).lower() + " " + cv_text.lower()
+    combined_text = str(report).lower() + " " + cv_text.lower()
     
-    # Find matching industry
+    # Use word boundaries for more accurate matching
+    import re
+    
+    # Find matching industry with weighted scoring
+    best_match = None
+    best_score = 0
+    
     for industry_key, industry_data in industries.items():
-        keyword_matches = sum(1 for kw in industry_data['keywords'] if kw in report_text)
-        if keyword_matches >= 2:
-            return industry_key, industry_data
+        score = 0
+        for kw in industry_data['keywords']:
+            # Use word boundary matching for more accuracy
+            # This prevents 'care' matching in 'career' or 'health' matching in 'healthcare'
+            pattern = r'\b' + re.escape(kw) + r'\b'
+            matches = len(re.findall(pattern, combined_text))
+            
+            # Give more weight to longer, more specific keywords
+            if len(kw) >= 6:
+                score += matches * 3  # Longer keywords are more specific
+            elif len(kw) >= 4:
+                score += matches * 2
+            else:
+                score += matches
+        
+        # Require minimum score threshold
+        if score > best_score and score >= 4:
+            best_score = score
+            best_match = (industry_key, industry_data)
+    
+    if best_match:
+        return best_match
     
     return 'general', default_industry
 
