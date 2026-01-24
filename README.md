@@ -1,39 +1,111 @@
-***
+Job-Search-Agent - AI-Powered Career Development Platform
+📋 Executive Summary
+This app is a comprehensive, AI-powered career development application built with Streamlit and Supabase. The platform helps job seekers optimize their career journey through intelligent CV analysis, personalized career path recommendations, emotional wellness tracking, and interview preparation tools.
 
-# 🌊 Aequor: The AI-Powered Career Navigator
+🚀 Key Features
+1. Smart Dashboard (streamlit_app.py)
 
-**Aequor** is an advanced, specialized web application designed to eliminate guesswork and anxiety from the job search process. We go beyond simple resume matching by providing **data-rich, hyper-personalized strategies** that identify niche skill gaps, target high-accuracy employers, and map out a precise path to career success, both domestically and internationally.
+AI-Powered CV Analysis: Upload your CV and receive instant strategic insights
+Predictive Match Scoring: Get a compatibility score for your target roles
+Personalized Strategy Generation: AI generates tailored job search strategies with domestic and international opportunities
+Secure Authentication: Full user authentication with login, signup, password reset, and account deletion
+Instant Cover Letter Generator: AI-crafted cover letters tailored to specific job descriptions
+Voice Interview Simulator: Practice interviews with AI-generated questions and receive feedback
 
-If you are struggling to get past automated Applicant Tracking Systems (ATS) or are overwhelmed by the complexity of career pivoting, Aequor provides the clear, data-driven plan you need.
+2. Emotional Endurance Tracker (1_Emotional_Tracker.py)
 
-## 💡 What Aequor Brings to the User
+Resilience Score Calculation: Track your mental wellness during the job search
+Daily Mood & Activity Logging: Record your emotional state and activity levels
+Trend Visualization: Interactive charts showing your emotional patterns over time
+AI-Powered Insights: Personalized tips based on your current resilience status
+Burnout Prevention Alerts: Early warning system for mental fatigue
 
-Aequor acts as your personal Career Strategist and Immigration Analyst, providing actionable intelligence through a series of interconnected, AI-driven tools.
+3. Feedback Loop (2_Feedback_Loop.py)
 
-| Feature | Niche Problem Solved | Data Value Proposition |
-| :--- | :--- | :--- |
-| **Predictive Skill Health Score** | **ATS Rejection & Stagnation.** Identifies why your resume fails to rank highly against elite candidate profiles. | A single, quantifiable score (0-100%) showing your readiness for future market demands. |
-| **Weakest Link & Breakdown** | **Inefficient Upskilling.** Pinpoints the exact hard or soft skill that represents your biggest competitive gap. | Provides a visual breakdown of your Technical, Leadership, and Domain scores, showing you *precisely* what to focus on. |
-| **High-Accuracy Employer Targeting** | **Wasted Applications.** Stops you from applying blindly to jobs that aren't a mutual fit. | Lists 10 high-profile, pre-vetted domestic and international employers with direct application links, based on a 90%+ suitability match to your profile. |
-| **International Visa Action Plan** | **Immigration Complexity.** Solves the nuance of global job seeking, addressing visas and foreign requirements. | Provides specific visa categories/codes (e.g., H-1B, Blue Card) and key sponsorship requirements for your target international roles. |
+Application Outcome Tracking: Monitor your job application results
+Performance Analytics: Identify patterns in successful vs unsuccessful applications
+Continuous Improvement Insights: Learn from past applications to improve future ones
 
-## 🧭 In-Depth Guide to Aequor's Specialized Pages
+4. Skill Migration Map (3_Skill_Migration.py)
 
-Aequor is structured around four specialized tools, each tackling a unique facet of the career journey:
+Industry-Specific Career Paths: Automatic detection of your industry (Education, Healthcare, Technology, Finance, Retail, Hospitality, Construction)
+Personalized Career Progression: Three tailored career paths with success rates and timelines
+90-Day Skill Sprint Generator: AI-powered action plans for skill development
+Skill Gap Analysis: Visual representation of your current skills vs required skills
+Skill Decay Warnings: Alerts for certifications and skills that need refreshing
+Milestone Tracking: Month-by-month roadmap for career advancement
 
-### 1. **(Home Page) Generated Strategy & Analysis**
-This is the core of the application. After inputting your CV, the platform instantly generates a detailed report that combines:
-* **Key Predictive Metrics:** Displays your Overall Match Score and the Targeted Mitigation Focus (your Weakest Link) using clear progress bars and metrics.
-* **Capability Breakdown:** Provides a dense, simple visualization (progress bars) showing your current competency in **Technical Depth**, **Leadership Potential**, and **Domain Expertise**.
-* **Actionable Strategy:** Delivers the full breakdown of domestic and international job titles, application steps, and crucial employer links.
+5. CV Compiler & Optimizer (4_CV_Compiler.py)
 
-### 2. **🧘 Emotional Endurance (Page 1)**
-Job searching is emotionally taxing. This specialized tool is designed to help job seekers track and stabilize their mental health during the high-stress job hunt. It provides a dedicated space to monitor feelings, prevent burnout, and maintain focus, recognizing that mental stability is key to interview success.
+Smart CV Tailor: AI rewrites your CV bullets to match job descriptions
+ATS Compliance Scoring: Check how well your CV passes Applicant Tracking Systems
+Human Clarity Score: Ensure your CV is readable and impactful
+Application Ledger: Track all your job applications in one place
+Status Updates: Monitor application outcomes (Pending, Interview, Rejected, Offer)
+PDF/Text Export: Download optimized CVs in multiple formats
 
-### 3. **🌍 Skill Migration Map (Page 3)**
-This tool addresses the complex niche problem of **career portability**. By analyzing your skills against global markets, it helps you identify which specific countries (US, UK, Canada, EU) have the highest demand for your profile and the specific visa requirements associated with roles in those regions.
+6. Password Reset (Reset_Password.py)
 
-### 4. **🔄 CV Compiler (Page 4)**
-This is the ultimate practical tool for overcoming the ATS barrier. The CV Compiler allows users to paste a specific **Target Job Description** and run an instant analysis against their CV. It highlights missing keywords, essential phrases, and required certifications, allowing the user to optimize their document for a **higher ATS match rate** before applying.
+Secure Password Recovery: Email-based password reset flow
+Token Verification: Secure OTP-based authentication
+Manual Token Entry: Fallback option for token input
 
-Aequor is designed to save you time, increase your confidence, and provide you with a deliberate, data-driven plan for growth.
+
+🛠 Technology Stack
+ComponentTechnologyFrontendStreamlitBackend/DatabaseSupabase (PostgreSQL)AuthenticationSupabase AuthAI/ML EngineGoogle Gemini 2.5 FlashNLP ProcessingGroq (LLaMA 3.3 70B)Vector DatabaseQdrantPDF ProcessingPyPDF, FPDFDeploymentRailwayMobile AppsMedian.co (iOS/Android wrapper)
+
+📊 Database Schema
+TablePurposeprofilesUser profile informationanalysesCV analysis reports and strategiesmood_logsEmotional tracking dataapplicationsJob application history
+
+🔐 Security Features
+
+Secure Authentication: Email/password with encrypted storage
+Password Reset: Secure token-based recovery via email
+Account Deletion: Full GDPR-compliant data removal
+Session Management: Secure session handling with Supabase Auth
+
+
+📱 Platform Availability
+PlatformStatusWeb App✅ LiveiOS App🔄 In ReviewAndroid App🔄 Ready for Deployment
+
+🎯 Target Users
+
+Job seekers across all industries
+Career changers looking to transition
+Professionals seeking advancement
+Recent graduates entering the workforce
+International candidates seeking visa sponsorship
+
+
+🌟 Unique Value Propositions
+
+AI-Driven Personalization: Every recommendation is tailored to your unique CV and career goals
+Holistic Approach: Combines technical optimization with emotional wellness tracking
+Industry-Specific Guidance: Recognizes 7+ industries and provides relevant career paths
+Real-Time ATS Optimization: Ensures your CV passes automated screening systems
+End-to-End Tracking: From CV optimization to application tracking to interview prep
+
+
+📈 Future Roadmap
+
+ LinkedIn Integration
+ Job Board API Connections
+ AI Video Interview Practice
+ Salary Negotiation Coach
+ Networking Recommendations
+ Multi-language Support
+
+
+🔗 Links
+
+Live App: https://job-search-agent-production-d3dd.up.railway.app
+GitHub: [Your Repository URL]
+App Store: Coming Soon
+Play Store: Coming Soon
+
+
+📄 License
+© 2026 Aequor. All rights reserved.
+
+👨‍💻 Developer
+Paramjeet Singh Saini
