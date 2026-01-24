@@ -229,41 +229,55 @@ def check_password_reset_token():
 
 def inject_fragment_handler():
     """Inject JavaScript to handle URL fragments from Supabase password reset"""
-    # Robust JS to convert Hash (#) to Query (?) using URL object
-    # This ensures parameters are correctly parsed and passed to Python
+    import streamlit.components.v1 as components
+    
+    # JavaScript that runs in iframe but can access parent window
     js_code = """
-    <script>
-    (function() {
-        try {
-            // Check if we have a hash with access_token
-            if (window.location.hash && window.location.hash.includes('access_token')) {
-                // Parse the current URL
-                var url = new URL(window.location.href);
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script>
+        (function() {
+            try {
+                // Access parent window URL
+                var parentUrl = window.parent.location.href;
                 
-                // Get the hash parameters (removing the # symbol)
-                var hashParams = new URLSearchParams(url.hash.substring(1));
-                
-                // Move hash parameters to search (query) parameters
-                for (var pair of hashParams.entries()) {
-                    url.searchParams.set(pair[0], pair[1]);
+                // Check if parent URL has a hash with access_token
+                if (parentUrl.includes('#') && parentUrl.includes('access_token')) {
+                    var hashIndex = parentUrl.indexOf('#');
+                    var baseUrl = parentUrl.substring(0, hashIndex);
+                    var fragment = parentUrl.substring(hashIndex + 1);
+                    
+                    // Parse the fragment
+                    var params = new URLSearchParams(fragment);
+                    var accessToken = params.get('access_token');
+                    var refreshToken = params.get('refresh_token');
+                    var type = params.get('type');
+                    
+                    // If this is a recovery flow
+                    if (accessToken && type === 'recovery') {
+                        // Build new URL with query parameters
+                        var newUrl = baseUrl + '?reset_mode=true&type=recovery&access_token=' + 
+                            encodeURIComponent(accessToken);
+                        if (refreshToken) {
+                            newUrl += '&refresh_token=' + encodeURIComponent(refreshToken);
+                        }
+                        
+                        // Redirect parent window
+                        window.parent.location.replace(newUrl);
+                    }
                 }
-                
-                // Add the explicit reset_mode flag for our Python script
-                url.searchParams.set("reset_mode", "true");
-                
-                // Clear the hash to prevent infinite loops or confusion
-                url.hash = "";
-                
-                // Force a hard redirect to the new URL
-                window.location.assign(url.toString());
+            } catch (e) {
+                // Cross-origin error - try alternative method
+                console.log('Fragment handler:', e);
             }
-        } catch (e) {
-            console.error("Fragment handler failed:", e);
-        }
-    })();
-    </script>
+        })();
+        </script>
+    </head>
+    <body></body>
+    </html>
     """
-    st.markdown(js_code, unsafe_allow_html=True)
+    components.html(js_code, height=0, width=0)
 
 def delete_user_account():
     """
