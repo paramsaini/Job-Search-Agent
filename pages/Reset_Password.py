@@ -84,59 +84,50 @@ def set_session_from_params():
     except:
         return False
 
-def update_password(new_password):
-    """Update user password"""
+def update_password(new_password, access_token, refresh_token):
+    """Update user password using the recovery token"""
     if not supabase:
         return False, "Database connection error."
     if not new_password or len(new_password) < 6:
         return False, "Password must be at least 6 characters long."
     
     try:
-        supabase.auth.update_user({"password": new_password})
+        # First, set the session using the recovery token
+        if access_token:
+            try:
+                # For recovery tokens, we need to use verify_otp or set_session
+                session = supabase.auth.set_session(access_token, refresh_token if refresh_token else access_token)
+            except Exception as session_error:
+                # If set_session fails, try to exchange the token
+                try:
+                    # Try verifying as OTP token
+                    session = supabase.auth.verify_otp({
+                        "token_hash": access_token,
+                        "type": "recovery"
+                    })
+                except:
+                    pass
+        
+        # Now update the password
+        result = supabase.auth.update_user({"password": new_password})
         return True, "Password updated successfully! You can now login with your new password."
     except Exception as e:
+        error_msg = str(e)
+        if "session" in error_msg.lower() or "token" in error_msg.lower():
+            return False, "Your reset link may have expired. Please request a new password reset link."
         return False, f"Failed to update password: {e}"
 
 # Main Page Content
 st.title("🔐 Reset Your Password")
 
-# Inject JavaScript to convert hash fragment (#) to query parameters (?)
-# This runs BEFORE checking for tokens
-import streamlit.components.v1 as components
+# Check for tokens in URL query parameters
+query_params = st.query_params
+has_token = "access_token" in query_params
 
-js_fragment_handler = """
-<script>
-(function() {
-    // Check if current URL has hash fragment with access_token
-    var hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-        // Parse the hash (remove the # symbol)
-        var fragment = hash.substring(1);
-        var params = new URLSearchParams(fragment);
-        
-        var accessToken = params.get('access_token');
-        var refreshToken = params.get('refresh_token');
-        var type = params.get('type');
-        
-        if (accessToken) {
-            // Build new URL with query parameters instead of hash
-            var baseUrl = window.location.href.split('#')[0];
-            var newUrl = baseUrl + '?access_token=' + encodeURIComponent(accessToken) + 
-                '&type=' + encodeURIComponent(type || 'recovery');
-            if (refreshToken) {
-                newUrl += '&refresh_token=' + encodeURIComponent(refreshToken);
-            }
-            
-            // Redirect to the new URL (this will reload with query params)
-            window.location.replace(newUrl);
-        }
-    }
-})();
-</script>
-"""
-components.html(js_fragment_handler, height=0)
-
-# Check for tokens in URL
+# Also check if type is recovery (but don't require it)
+access_token = query_params.get("access_token", "")
+refresh_token = query_params.get("refresh_token", "")
+token_type = query_params.get("type", "")
 query_params = st.query_params
 has_token = "access_token" in query_params and query_params.get("type") == "recovery"
 
@@ -148,8 +139,13 @@ if st.session_state.password_updated:
 
 elif has_token or st.session_state.reset_token_set:
     # Try to set session if not already done
-    if not st.session_state.reset_token_set:
-        set_session_from_params()
+    if not st.session_state.reset_token_set and access_token:
+        if supabase:
+            try:
+                supabase.auth.set_session(access_token, refresh_token if refresh_token else access_token)
+                st.session_state.reset_token_set = True
+            except Exception as e:
+                st.warning(f"Token validation issue: {e}")
     
     st.caption("Enter your new password below.")
     
@@ -165,7 +161,7 @@ elif has_token or st.session_state.reset_token_set:
             elif len(new_password) < 6:
                 st.error("❌ Password must be at least 6 characters long.")
             else:
-                success, message = update_password(new_password)
+                success, message = update_password(new_password, access_token, refresh_token)
                 if success:
                     st.session_state.password_updated = True
                     st.query_params.clear()
@@ -179,16 +175,38 @@ elif has_token or st.session_state.reset_token_set:
         st.switch_page("streamlit_app.py")
 
 else:
-    st.warning("⚠️ No valid password reset token found.")
+    st.warning("⚠️ No valid password reset token found in URL.")
+    
+    st.markdown("---")
+    st.subheader("🔧 Manual Token Entry")
+    st.caption("If you clicked the reset link but see this message, please copy the token from your URL and paste it below.")
+    
     st.markdown("""
-    **To reset your password:**
+    **How to find your token:**
+    1. Look at your browser's address bar
+    2. Find `access_token=` followed by a long string
+    3. Copy that entire string (the token)
+    4. Paste it below
+    """)
+    
+    with st.form("manual_token_form"):
+        manual_token = st.text_input("Paste your access_token here:", key="manual_token")
+        token_submitted = st.form_submit_button("🔓 Verify Token", type="primary", use_container_width=True)
+        
+        if token_submitted and manual_token:
+            # Redirect with the token as query parameter
+            st.query_params["access_token"] = manual_token
+            st.query_params["type"] = "recovery"
+            st.rerun()
+    
+    st.markdown("---")
+    st.markdown("""
+    **Or request a new reset link:**
     1. Go to the login page
     2. Click "Forgot Password?"
     3. Enter your email address
-    4. Check your email for the reset link
-    5. Click the reset link in your email
+    4. Check your email for a new reset link
     """)
     
-    st.markdown("---")
     if st.button("← Go to Login Page", type="primary"):
         st.switch_page("streamlit_app.py")
