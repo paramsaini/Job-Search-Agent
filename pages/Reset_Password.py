@@ -100,6 +100,42 @@ def update_password(new_password):
 # Main Page Content
 st.title("🔐 Reset Your Password")
 
+# Inject JavaScript to convert hash fragment (#) to query parameters (?)
+# This runs BEFORE checking for tokens
+import streamlit.components.v1 as components
+
+js_fragment_handler = """
+<script>
+(function() {
+    // Check if current URL has hash fragment with access_token
+    var hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+        // Parse the hash (remove the # symbol)
+        var fragment = hash.substring(1);
+        var params = new URLSearchParams(fragment);
+        
+        var accessToken = params.get('access_token');
+        var refreshToken = params.get('refresh_token');
+        var type = params.get('type');
+        
+        if (accessToken) {
+            // Build new URL with query parameters instead of hash
+            var baseUrl = window.location.href.split('#')[0];
+            var newUrl = baseUrl + '?access_token=' + encodeURIComponent(accessToken) + 
+                '&type=' + encodeURIComponent(type || 'recovery');
+            if (refreshToken) {
+                newUrl += '&refresh_token=' + encodeURIComponent(refreshToken);
+            }
+            
+            // Redirect to the new URL (this will reload with query params)
+            window.location.replace(newUrl);
+        }
+    }
+})();
+</script>
+"""
+components.html(js_fragment_handler, height=0)
+
 # Check for tokens in URL
 query_params = st.query_params
 has_token = "access_token" in query_params and query_params.get("type") == "recovery"
