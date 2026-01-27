@@ -132,7 +132,7 @@ if st.session_state.password_updated:
     st.success("✅ Your password has been updated successfully!")
     st.info("You can now close this page and login with your new password.")
     if st.button("← Go to Login Page", type="primary"):
-        st.switch_page("streamlit_app.py")
+        st.switch_page("Main_Page.py")
 
 elif has_token or st.session_state.reset_token_set:
     # Token detected - show the password reset form
