@@ -98,18 +98,25 @@ class JobSearchAgent:
         2. Search Google for 10 LIVE international visa-sponsoring companies matching this CV.
         3. Output the results in the EXACT tables below. Do not add conversational text.
 
+        CRITICAL INSTRUCTION FOR APPLICATION LINKS:
+        - You MUST provide the ACTUAL career page URL for each company (e.g., https://careers.hilton.com, https://jobs.marriott.com)
+        - Search for "[Company Name] careers" or "[Company Name] jobs" to find the real URL
+        - NEVER write placeholder text like "[Insert Link]" or "Link found via Search"
+        - If you cannot find the exact job posting URL, provide the company's main careers page URL
+        - Format links as clickable markdown: [Apply Here](https://actualurl.com/careers)
+
         REQUIRED OUTPUT FORMAT:
 
         ### 🏠 Domestic Opportunities
         | Company | Role | Match Reason | Application Link |
         | :--- | :--- | :--- | :--- |
-        | [Name] | [Role] | [Why it fits] | [Insert Link found via Search] |
+        | Company Name | Job Title | Brief reason why candidate matches | [Apply Here](https://company-careers-url.com) |
         (10 rows)
 
         ### 🌍 International Sponsorship Targets
         | Company | Location | Visa Path | Application Link |
         | :--- | :--- | :--- | :--- |
-        | [Name] | [Country] | [Visa Tier] | [Insert Link found via Search] |
+        | Company Name | Country/Region | Visa Type | [Apply Here](https://company-careers-url.com) |
         (10 rows)
 
         ### 🚀 Execution Plan
