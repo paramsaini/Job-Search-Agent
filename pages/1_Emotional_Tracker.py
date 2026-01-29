@@ -203,6 +203,16 @@ def emotional_tracker_page():
     if st.button("← Back to Main Page", key="back_btn"):
         st.switch_page("Main_Page.py")
     
+    # Main Logo
+    st.markdown("""
+    <div style="text-align: center; margin: 10px 0;">
+        <h1 style="background: linear-gradient(90deg, #ff6b35, #f7c531); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem; font-style: italic; margin: 0;">
+            🚀 Job-Search-Agent
+        </h1>
+        <p style="color: #888; margin: 5px 0 0 0; font-size: 0.9rem;">AI-Powered Career Guidance</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.markdown("---")
     
     # Custom styled header
