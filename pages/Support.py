@@ -114,9 +114,6 @@ try:
 except:
     supabase = None
 
-# --- Back Button ---
-st.page_link("Main_Page.py", label="← Back to Main Page", icon="🏠")
-
 # Main Logo
 st.markdown("""
 <div style="text-align: center; margin: 10px 0;">
