@@ -1507,7 +1507,7 @@ def render_menu():
     # Add spacing for top nav
     st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
     
-    # Menu items matching the screenshot
+    # Menu items matching the screenshot - with full labels
     menu_items = [
         ("🏠", "Main Page"),
         ("🧘", "Emotional Tracker"),
@@ -1520,43 +1520,89 @@ def render_menu():
         ("⚙️", "Account Settings"),
     ]
     
-    # Sidebar-style menu at the top
+    # Custom CSS for menu buttons with labels
     st.markdown("""
     <style>
-    .menu-container {
-        background: rgba(255, 107, 53, 0.05);
-        border: 1px solid rgba(255, 107, 53, 0.2);
-        border-radius: 16px;
-        padding: 10px;
+    .menu-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
         margin-bottom: 20px;
+        padding: 15px;
+        background: rgba(255, 107, 53, 0.05);
+        border: 1px solid rgba(255, 107, 53, 0.15);
+        border-radius: 16px;
+    }
+    .menu-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(255, 107, 53, 0.08);
+        border: 1px solid rgba(255, 107, 53, 0.2);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s;
+        min-width: 100px;
+        text-decoration: none;
+    }
+    .menu-btn:hover {
+        background: rgba(255, 107, 53, 0.15);
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+        transform: translateY(-2px);
+    }
+    .menu-btn.active {
+        background: linear-gradient(135deg, rgba(255, 107, 53, 0.3), rgba(247, 197, 49, 0.2));
+        border-color: #ff6b35;
+        box-shadow: 0 0 25px rgba(255, 107, 53, 0.4);
+    }
+    .menu-icon {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+    .menu-label {
+        font-size: 0.75rem;
+        color: #ccc;
+        text-align: center;
+        font-weight: 500;
+    }
+    .menu-btn.active .menu-label {
+        color: #f7c531;
+        font-weight: 600;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Create horizontal menu
-    cols = st.columns(len(menu_items))
-    for idx, (icon, name) in enumerate(menu_items):
-        with cols[idx]:
+    # Create menu grid - 5 items per row
+    row1_items = menu_items[:5]
+    row2_items = menu_items[5:]
+    
+    # Row 1
+    cols1 = st.columns(5)
+    for idx, (icon, name) in enumerate(row1_items):
+        with cols1[idx]:
             is_active = st.session_state.current_page == name
-            btn_type = "primary" if is_active else "secondary"
-            if st.button(f"{icon}", key=f"menu_{name}", help=name, use_container_width=True):
+            btn_label = f"{icon}\n{name.split()[0]}" if len(name.split()) > 1 else f"{icon}\n{name}"
+            if st.button(f"{icon} {name}", key=f"menu_{name}", use_container_width=True, type="primary" if is_active else "secondary"):
                 st.session_state.current_page = name
                 st.rerun()
     
-    # Show current page name
-    st.markdown(f"""
-    <div style="text-align: center; margin: 10px 0 20px 0;">
-        <span style="background: linear-gradient(90deg, #ff6b35, #f7c531); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.2rem; font-weight: 600;">
-            {st.session_state.current_page}
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
+    # Row 2
+    cols2 = st.columns(5)
+    for idx, (icon, name) in enumerate(row2_items):
+        with cols2[idx]:
+            is_active = st.session_state.current_page == name
+            if st.button(f"{icon} {name}", key=f"menu_{name}", use_container_width=True, type="primary" if is_active else "secondary"):
+                st.session_state.current_page = name
+                st.rerun()
     
-    # Logout button
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col3:
-        if st.button("🚪 Logout", key="logout_btn"):
+    # Empty space for the 5th column in row 2 (only 4 items)
+    with cols2[4]:
+        if st.button("🚪 Logout", key="logout_btn", use_container_width=True):
             logout()
+    
+    st.markdown("---")
 
 # --- 7. MAIN APP ---
 
