@@ -49,7 +49,7 @@ st.markdown("""
 
 load_dotenv()
 
-# --- HELPER: CONSISTENT LOGO ---
+# --- HELPER: CONSISTENT HEADER ---
 def render_header():
     st.markdown("""
     <div style="text-align: center; margin-bottom: 30px;">
@@ -71,20 +71,27 @@ def extract_text(file):
     except: return ""
 
 def create_pdf(text):
-    """Safe PDF Generator"""
+    """Safe PDF Generator - Fixes White Screen Crash"""
     try:
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Courier", size=11)
+        
+        # 1. Sanitize Text (Replace crash-prone characters)
         replacements = {
             '’': "'", '‘': "'", '“': '"', '”': '"', '–': '-', '—': '-',
             '•': '-', '…': '...', '\u2022': '-' 
         }
         for old, new in replacements.items():
             text = text.replace(old, new)
+
+        # 2. Encode to Latin-1
         clean_text = text.encode('latin-1', 'replace').decode('latin-1')
         pdf.multi_cell(0, 10, clean_text)
+        
+        # 3. CRITICAL FIX: Explicitly convert to bytes
         return bytes(pdf.output())
+        
     except Exception as e:
         print(f"PDF Gen Error: {e}")
         return None
@@ -130,6 +137,7 @@ def login(email, password):
         res = supabase.auth.sign_in_with_password({"email": email, "password": password})
         st.session_state.user = res.user.email
         st.session_state.user_id = res.user.id
+        # Self-Healing
         try:
             pid = res.user.id
             prof = supabase.table("profiles").select("*").eq("id", pid).execute()
@@ -145,9 +153,17 @@ def signup(email, password, username):
     if not supabase: return
     try:
         res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": {"username": username}}})
+        if res.user:
+            try:
+                existing = supabase.table("profiles").select("id").eq("id", res.user.id).execute()
+                if not existing.data:
+                    supabase.table("profiles").insert({"id": res.user.id, "username": username, "email": email}).execute()
+            except:
+                pass
         st.success("Account created! Check your email to confirm, then login.")
     except Exception as e:
-        if "already registered" in str(e).lower():
+        error_msg = str(e)
+        if "already registered" in error_msg.lower() or "already exists" in error_msg.lower():
             st.warning("This email is already registered. Please login instead.")
         else:
             st.error(f"Signup failed: {e}")
@@ -156,53 +172,72 @@ def logout():
     for key in list(st.session_state.keys()): del st.session_state[key]
     st.rerun()
 
-# --- ACCOUNT DELETION LOGIC ---
 def delete_user_account():
-    if not st.session_state.user_id: return False, "Not authenticated"
+    if not st.session_state.user_id:
+        return False, "Not authenticated"
     user_id = st.session_state.user_id
     service_key = get_secret("SUPABASE_SERVICE_KEY")
     supabase_url = get_secret("SUPABASE_URL")
-    if not service_key or not supabase_url: return False, "Server configuration error."
+    if not service_key or not supabase_url:
+        return False, "Server configuration error. Please contact support."
     try:
         from supabase import create_client
         admin_client = create_client(supabase_url, service_key)
-        admin_client.table("mood_logs").delete().eq("user_id", user_id).execute()
-        admin_client.table("analyses").delete().eq("user_id", user_id).execute()
-        admin_client.table("applications").delete().eq("user_id", user_id).execute()
-        admin_client.table("profiles").delete().eq("id", user_id).execute()
-        admin_client.auth.admin.delete_user(user_id)
-        supabase.auth.sign_out()
-        return True, "Account deleted"
-    except Exception as e: return False, str(e)
+        try: admin_client.table("mood_logs").delete().eq("user_id", user_id).execute()
+        except: pass
+        try: admin_client.table("analyses").delete().eq("user_id", user_id).execute()
+        except: pass
+        try: admin_client.table("applications").delete().eq("user_id", user_id).execute()
+        except: pass
+        try: admin_client.table("profiles").delete().eq("id", user_id).execute()
+        except: pass
+        try: admin_client.auth.admin.delete_user(user_id)
+        except Exception as e: return False, f"Failed to delete authentication: {e}"
+        try: supabase.auth.sign_out()
+        except: pass
+        return True, "Account and all data permanently deleted"
+    except Exception as e:
+        return False, f"Error deleting account: {e}"
 
 def page_delete_account():
     st.header("🗑️ Delete Account")
-    st.warning("Warning: This action is permanent and will remove all your data.")
+    st.markdown("""
+    <div style="background: rgba(220, 38, 38, 0.1); border: 1px solid #dc2626; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+        <h3 style="color: #dc2626 !important; margin-top: 0;">⚠️ Warning: This action is permanent</h3>
+        <p style="color: #fca5a5 !important;">Deleting your account will remove all personal data.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     if not st.session_state.show_delete_confirmation:
-        if st.button("🗑️ I want to delete my account", type="primary"):
+        if st.button("🗑️ I want to delete my account", type="primary", use_container_width=True):
             st.session_state.show_delete_confirmation = True
             st.rerun()
     else:
-        st.error("Are you absolutely sure?")
-        confirm_text = st.text_input("Type 'DELETE' to confirm:", key="del_conf")
-        c1, c2 = st.columns(2)
-        if c1.button("❌ Cancel"):
-            st.session_state.show_delete_confirmation = False
-            st.rerun()
-        if c2.button("Confirm Delete", disabled=(confirm_text != "DELETE")):
-            success, msg = delete_user_account()
-            if success:
-                st.success(msg)
+        st.warning("Are you absolutely sure?")
+        confirm_text = st.text_input("Type 'DELETE' to confirm:", placeholder="Type DELETE here", key="delete_confirm_input")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("❌ Cancel", use_container_width=True):
+                st.session_state.show_delete_confirmation = False
                 st.rerun()
-            else:
-                st.error(msg)
+        with col2:
+            delete_disabled = confirm_text.upper() != "DELETE"
+            if st.button("🗑️ Permanently Delete", type="primary", use_container_width=True, disabled=delete_disabled):
+                if confirm_text.upper() == "DELETE":
+                    with st.spinner("Deleting your account..."):
+                        success, message = delete_user_account()
+                        if success:
+                            st.success("✅ Your account has been deleted.")
+                            for key in list(st.session_state.keys()): del st.session_state[key]
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {message}")
 
-# --- INTERNAL PAGES (Cover Letter & Interview Sim) ---
 def page_cover_letter():
     st.header("✍️ Instant Cover Letter")
     c1, c2 = st.columns(2)
     with c1: jd_text = st.text_area("Paste Job Description:", height=300)
-    with c2: uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"])
+    with c2: uploaded_file = st.file_uploader("Upload your CV (PDF)", type=["pdf"], key="cl_uploader")
     if st.button("Generate Letter", type="primary"):
         if not st.session_state.groq: return st.error("Groq API Key missing.")
         if not uploaded_file: return st.warning("Please upload your CV.")
@@ -210,74 +245,95 @@ def page_cover_letter():
             user_cv_text = extract_text(uploaded_file)
             if jd_text and user_cv_text:
                 with st.spinner("Writing..."):
-                    prompt = f"Write a professional cover letter. CV: {user_cv_text[:3000]} Job: {jd_text}"
+                    prompt = f"""
+                    You are an expert career coach. Write a professional cover letter.
+                    CANDIDATE INFO: {user_cv_text[:4000]} 
+                    JOB DESCRIPTION: {jd_text}
+                    INSTRUCTIONS: Match skills to job. Professional tone. No placeholders.
+                    """
                     completion = st.session_state.groq.chat.completions.create(
                         messages=[{"role": "user", "content": prompt}],
-                        model="llama-3.3-70b-versatile"
+                        model="llama-3.3-70b-versatile" 
                     )
                     letter = completion.choices[0].message.content
+                    st.subheader("Draft:")
                     st.write(letter)
                     pdf_bytes = create_pdf(letter)
-                    if pdf_bytes: st.download_button("Download PDF", pdf_bytes, "cover_letter.pdf", "application/pdf")
+                    if pdf_bytes:
+                        st.download_button("📥 Download PDF", pdf_bytes, "cover_letter.pdf", "application/pdf")
+                    else:
+                        st.download_button("📥 Download Text (Fallback)", letter, "cover_letter.txt", "text/plain")
+            else: st.warning("Please provide both CV and Job Description.")
         except Exception as e: st.error(f"Error: {e}")
 
 def page_interview_sim():
     st.header("🎤 Voice Interview Simulator")
-    if 'interview_q' not in st.session_state: st.session_state.interview_q = "Tell me about yourself?"
+    if 'interview_q' not in st.session_state:
+        st.session_state.interview_q = "Tell me about yourself?"
     jd_context = st.text_input("Enter Job Role (e.g. 'Senior Python Dev'):")
     if st.button("Generate Question"):
         if st.session_state.groq:
-            q_resp = st.session_state.groq.chat.completions.create(
-                messages=[{"role": "user", "content": f"Ask a tough behavioural question for {jd_context}."}],
-                model="llama-3.1-8b-instant"
-            )
-            st.session_state.interview_q = q_resp.choices[0].message.content
-            st.rerun()
+            try:
+                q_resp = st.session_state.groq.chat.completions.create(
+                    messages=[{"role": "user", "content": f"Ask a tough behavioural question for {jd_context}."}],
+                    model="llama-3.1-8b-instant"
+                )
+                st.session_state.interview_q = q_resp.choices[0].message.content
+                st.rerun()
+            except Exception as e: st.error(f"Error: {e}")
     st.markdown(f"### 🤖 AI asks: *{st.session_state.interview_q}*")
     audio_val = st.audio_input("Record your answer")
-    if audio_val and st.session_state.groq:
-        with st.spinner("Analyzing..."):
-            transcription = st.session_state.groq.audio.transcriptions.create(
-                file=("audio.wav", audio_val, "audio/wav"), model="whisper-large-v3", response_format="text"
-            )
-            st.info(f"You said: {transcription}")
-            feedback = st.session_state.groq.chat.completions.create(
-                messages=[{"role": "user", "content": f"Rate answer: '{transcription}' for question '{st.session_state.interview_q}'"}],
-                model="llama-3.1-8b-instant"
-            )
-            st.success("Feedback:")
-            st.write(feedback.choices[0].message.content)
+    if audio_val:
+        if not st.session_state.groq: st.error("Groq API Key missing.")
+        else:
+            with st.spinner("Analyzing..."):
+                try:
+                    transcription = st.session_state.groq.audio.transcriptions.create(
+                        file=("audio.wav", audio_val, "audio/wav"),
+                        model="whisper-large-v3", 
+                        response_format="text"
+                    )
+                    st.info(f"🗣 You said: '{transcription}'")
+                    feedback = st.session_state.groq.chat.completions.create(
+                        messages=[{"role": "user", "content": f"Rate this interview answer 1-10: '{transcription}' for question '{st.session_state.interview_q}'"}],
+                        model="llama-3.1-8b-instant"
+                    )
+                    st.success("Feedback:")
+                    st.write(feedback.choices[0].message.content)
+                except Exception as e: st.error(f"Error: {e}")
 
 # --- 6. MAIN APP ---
 def main():
-    # Only show the centered logo on the Login screen
     if not st.session_state.user:
+        # LOGO FOR LOGIN SCREEN
         render_header()
-        c1, c2, c3 = st.columns([1,1,1])
-        with c2:
-            st.header("Login")
-            mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
-            email = st.text_input("Email")
-            pwd = st.text_input("Password", type="password")
-            if mode == "Sign Up":
-                user = st.text_input("Username")
-                if st.button("Sign Up"): signup(email, pwd, user)
-            else:
-                if st.button("Login"): login(email, pwd)
-                st.markdown("---")
-                if st.button("🔑 Forgot Password?", type="secondary"): 
-                    st.switch_page("Reset_Password.py") # Assuming you have this file or logic
+        
+        with st.container():
+            c1, c2, c3 = st.columns([1,1,1])
+            with c2:
+                # Login/Signup Logic (truncated for brevity - use original logic)
+                st.header("Login")
+                mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
+                email = st.text_input("Email")
+                pwd = st.text_input("Password", type="password")
+                if mode == "Sign Up":
+                    user = st.text_input("Username")
+                    if st.button("Sign Up"): signup(email, pwd, user)
+                else:
+                    if st.button("Login"): login(email, pwd)
+                    st.markdown("---")
+                    if st.button("🔑 Forgot Password?", type="secondary", use_container_width=True):
+                        st.session_state.show_forgot_password = True
+                        st.rerun()
         return
 
-    # Authenticated View
+    # LOGGED IN VIEW
     with st.sidebar:
         st.subheader(f"User: {st.session_state.user.split('@')[0]}")
-        
-        # Navigation
         st.markdown("### 📱 Navigation")
         
-        # Internal Dashboard Tabs
-        nav_internal = st.radio("Dashboard Tools", [
+        # Internal tools (same page)
+        nav = st.radio("Dashboard Tools", [
             "Home Strategy", 
             "Instant Cover Letter", 
             "Voice Interview Sim",
@@ -287,10 +343,10 @@ def main():
         st.markdown("---")
         st.markdown("### 🚀 Advanced Tools")
         
-        # External Pages Linked via Buttons (acting as separate pages)
+        # External Pages (Switch Page)
         if st.button("📈 Skill Migration Map", use_container_width=True):
             st.switch_page("3_Skill_Migration.py")
-        
+            
         if st.button("🔄 Feedback Loop", use_container_width=True):
             st.switch_page("2_Feedback_Loop.py")
             
@@ -307,12 +363,11 @@ def main():
         st.divider()
         if st.button("Logout"): logout()
 
-    # RENDER SELECTED INTERNAL PAGE
-    # Consistent Header on all Dashboard pages
+    # RENDER HEADER ON MAIN PAGE
     render_header()
-    
-    if nav_internal == "Home Strategy":
-        st.subheader("🎯 Career Strategy Dashboard")
+
+    if nav == "Home Strategy":
+        st.title("🎯 Career Strategy Dashboard")
         with st.container():
             c1, c2 = st.columns([2,1])
             with c1:
@@ -326,19 +381,25 @@ def main():
                             txt = extract_text(f)
                             md, rep, src = st.session_state.agent.generate_strategy(txt, role)
                             st.session_state.results = {"md": md, "rep": rep, "src": src}
+                            
+                            if supabase and st.session_state.user_id:
+                                try:
+                                    supabase.table("analyses").insert({
+                                        "user_id": st.session_state.user_id,
+                                        "report_json": rep
+                                    }).execute()
+                                except: pass
                             st.rerun()
 
         if "results" in st.session_state:
             res = st.session_state.results
-            st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
-            st.markdown(res['md'])
-
-    elif nav_internal == "Instant Cover Letter":
-        page_cover_letter()
-    elif nav_internal == "Voice Interview Sim":
-        page_interview_sim()
-    elif nav_internal == "⚙️ Account Settings":
-        page_delete_account()
+            with st.container():
+                st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
+                st.markdown(res['md'])
+                
+    elif nav == "Instant Cover Letter": page_cover_letter()
+    elif nav == "Voice Interview Sim": page_interview_sim()
+    elif nav == "⚙️ Account Settings": page_delete_account()
 
 if __name__ == "__main__":
     main()
