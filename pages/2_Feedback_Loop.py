@@ -426,9 +426,22 @@ def compare_cv_versions(cv1_text, cv2_text, jd_text):
 # --- Main Page ---
 
 def feedback_loop_page():
-    # Back to Main Page button
-    if st.button("← Back to Main Page", key="back_btn"):
-        st.switch_page("Main_Page.py")
+    # Back to Main Page - HTML link (most reliable method)
+    st.markdown("""
+    <a href="/" target="_self" style="
+        display: inline-block;
+        padding: 12px 24px;
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        color: #000;
+        text-decoration: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-family: 'Outfit', sans-serif;
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+        margin-bottom: 15px;
+        transition: all 0.3s;
+    ">← Back to Main Page</a>
+    """, unsafe_allow_html=True)
     
     # Main Logo
     st.markdown("""
