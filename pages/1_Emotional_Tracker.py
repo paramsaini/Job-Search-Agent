@@ -15,17 +15,16 @@ ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
 
 # --- Styling ---
-st.markdown("""
-    <style>
-    .stApp { background: linear-gradient(to bottom right, #0f172a, #1e1b4b); color: #e2e8f0; }
-    .resilience-card {
-        padding: 20px; border-radius: 10px; border: 2px solid #FF8C00;
-        background: #000000; box-shadow: 0 0 15px rgba(255, 140, 0, 0.5); 
-        text-align: center; margin-bottom: 20px;
-    }
-    .resilience-score { font-size: 4rem; font-weight: bold; color: #00E0FF; text-shadow: 0 0 10px rgba(0, 224, 255, 0.6); }
-    </style>
-    """, unsafe_allow_html=True)
+st.markdown(f"""
+<style>
+.stApp {{ background: linear-gradient(to bottom right, #0f172a, #1e1b4b); color: #e2e8f0; }}
+.resilience-card {{
+    padding: 20px; border-radius: 10px; border: 2px solid {ACCENT_ORANGE};
+    background: {BG_DARK}; box-shadow: 0 0 15px {ACCENT_ORANGE}50; text-align: center; margin-bottom: 20px;
+}}
+.resilience-score {{ font-size: 4rem; font-weight: bold; color: {ACCENT_CYAN}; text-shadow: 0 0 10px {ACCENT_CYAN}; }}
+</style>
+""", unsafe_allow_html=True)
 
 # --- Supabase Init ---
 @st.cache_resource
@@ -46,12 +45,17 @@ except: supabase = None
 def fetch_mood_history(user_id):
     if not supabase: return pd.DataFrame()
     try:
-        response = supabase.table("mood_logs").select("*").eq("user_id", user_id).order("created_at", desc=False).execute()
+        response = supabase.table("mood_logs").select("*")\
+            .eq("user_id", user_id)\
+            .order("created_at", desc=False).execute()
+        
         if response.data:
             df = pd.DataFrame(response.data)
             df['created_at'] = pd.to_datetime(df['created_at'])
-            return df.rename(columns={"mood_score": "Mood", "activity_score": "Activity", "created_at": "Date"})
-    except Exception as e: st.error(f"Sync Error: {e}")
+            df = df.rename(columns={"mood_score": "Mood", "activity_score": "Activity", "created_at": "Date"})
+            return df
+    except Exception as e:
+        st.error(f"Sync Error: {e}")
     return pd.DataFrame()
 
 def calculate_resilience(df):
@@ -59,7 +63,8 @@ def calculate_resilience(df):
     recent_df = df.tail(7) 
     avg_mood = recent_df['Mood'].mean() * 10
     avg_activity = recent_df['Activity'].mean() * 20
-    return int(np.clip((0.7 * avg_mood) + (0.3 * avg_activity), 30, 100))
+    resilience = (0.7 * avg_mood) + (0.3 * avg_activity)
+    return int(np.clip(resilience, 30, 100))
 
 def log_mood_to_db(user_id, mood, activity, notes):
     if not supabase: return
@@ -67,7 +72,7 @@ def log_mood_to_db(user_id, mood, activity, notes):
         supabase.table("mood_logs").insert({
             "user_id": user_id, "mood_score": mood, "activity_score": activity, "notes": notes
         }).execute()
-        st.success("✅ Logged!")
+        st.success("✅ Logged to Cloud Database!")
     except Exception as e: st.error(f"Save Failed: {e}")
 
 # --- Page Render ---
@@ -85,17 +90,15 @@ def emotional_tracker_page():
     </div>
     """, unsafe_allow_html=True)
     
-    st.subheader("🧘 Emotional Endurance Tracker")
+    st.markdown(f'<h2 style="color:{ACCENT_ORANGE}; text-align: center;">🧘 Emotional Endurance</h2>', unsafe_allow_html=True)
 
     if not st.session_state.get('user_id'):
-        st.warning("🔒 Please log in via the Main Page to track your resilience.")
+        st.warning("🔒 Please log in to track your resilience.")
         return
 
-    # Load Data
     df_history = fetch_mood_history(st.session_state.user_id)
     resilience_score = calculate_resilience(df_history)
 
-    # --- Resilience Card ---
     if resilience_score >= 80:
         status, color = "Optimal Momentum 💪", ACCENT_GREEN
         tip = "Keep this structure! You're converting effort into positive feeling."
@@ -115,7 +118,6 @@ def emotional_tracker_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Logging Form ---
     st.subheader("Daily Check-in")
     with st.form("mood_form"):
         c1, c2 = st.columns(2)
@@ -126,7 +128,6 @@ def emotional_tracker_page():
             log_mood_to_db(st.session_state.user_id, mood, activity, notes)
             st.rerun()
 
-    # --- History Chart ---
     if not df_history.empty:
         st.subheader("History & Trends")
         chart_df = df_history.set_index('Date')[['Mood', 'Activity']]
