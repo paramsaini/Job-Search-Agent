@@ -6,11 +6,7 @@ from supabase import create_client
 import os
 
 # --- PAGE CONFIG ---
-def emotional_tracker_page():
-    # Fix: Reset session state before navigating back
-    if st.button("← Back to Main Page", type="secondary"):
-        st.session_state.current_page = "Main Page"
-        st.switch_page("Main_Page.py")
+st.set_page_config(page_title="Emotional Tracker - Job-Search-Agent", page_icon="🧘", layout="wide")
 
 # --- NEW ORANGE + GOLD NEON UI STYLING (HIDE SIDEBAR) ---
 st.markdown("""
@@ -204,9 +200,9 @@ def log_mood_to_db(user_id, mood, activity, notes):
 
 def emotional_tracker_page():
     # Back to Main Page
-    # Back button using switch_page for proper navigation from pages/ folder
-    if st.button("🏠 ← Back to Main Page", key="back_to_main"):
-        st.switch_page("Main_Page.py")
+    if st.button("← Back to Main Page"):
+    st.session_state.current_page = "Main Page"
+    st.switch_page("Main_Page.py")
     
     # Main Logo
     st.markdown("""
