@@ -201,7 +201,11 @@ def log_mood_to_db(user_id, mood, activity, notes):
 def emotional_tracker_page():
     # Back to Main Page button
     if st.button("← Back to Main Page", key="back_btn"):
-        st.switch_page("Main_Page.py")
+        st.markdown(
+            '<meta http-equiv="refresh" content="0; url=/">',
+            unsafe_allow_html=True
+        )
+        st.stop()
     
     # Main Logo
     st.markdown("""
