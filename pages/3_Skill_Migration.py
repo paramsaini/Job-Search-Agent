@@ -8,10 +8,96 @@ import json
 import pypdf
 from groq import Groq
 
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Skill Migration - Job-Search-Agent", page_icon="📈", layout="wide")
+
+# --- NEW ORANGE + GOLD NEON UI STYLING (HIDE SIDEBAR) ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    
+    .stApp {
+        background: #0a0a0f !important;
+        color: #e2e8f0;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    /* HIDE SIDEBAR */
+    [data-testid="stSidebar"] { display: none !important; }
+    button[kind="header"] { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
+    
+    div[data-testid="stVerticalBlockBorderWrapper"],
+    div[data-testid="stMetric"],
+    div[data-testid="stExpanderDetails"],
+    div[data-testid="stForm"] {
+        background: rgba(255, 107, 53, 0.05) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 107, 53, 0.15) !important;
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        padding: 15px;
+    }
+    
+    h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { 
+        color: #e2e8f0 !important;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    h1 {
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+    
+    p, label, .stMarkdown { color: #e2e8f0 !important; }
+    
+    div[data-testid="stMetricValue"] { 
+        color: #ff6b35 !important; 
+        text-shadow: 0 0 20px rgba(255, 107, 53, 0.6);
+        font-weight: 700;
+    }
+    
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stButton>button {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+        color: #000 !important;
+        border: none !important;
+        font-weight: 700 !important;
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+        border-radius: 10px;
+    }
+    
+    .stButton>button:hover {
+        box-shadow: 0 0 35px rgba(255, 107, 53, 0.6);
+    }
+    
+    .stSelectbox>div>div, .stFileUploader>div {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stProgress>div>div>div {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+    }
+    
+    hr { border-color: rgba(255, 107, 53, 0.2) !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- Configuration ---
-BG_DARK = "#000000"
+BG_DARK = "#0a0a0f"
 ACCENT_CYAN = "#00E0FF"
-ACCENT_ORANGE = "#FF8C00"
+ACCENT_ORANGE = "#ff6b35"
+ACCENT_GOLD = "#f7c531"
 ACCENT_GREEN = "#10B981"
 ACCENT_PURPLE = "#8B5CF6"
 ACCENT_BLUE = "#3B82F6"
@@ -61,7 +147,6 @@ def extract_text(file):
             return "".join([p.extract_text() for p in reader.pages])
         return file.read().decode("utf-8")
     except: return ""
-
 # --- Industry Detection with Career Paths ---
 def detect_industry_and_paths(report, cv_text=""):
     """Detect the industry from the CV and return industry-specific career paths"""
@@ -665,6 +750,22 @@ def fetch_latest_report():
 
 # --- Page Render ---
 def skill_migration_page():
+    # Back to Main Page button
+    if st.button("← Back to Main Page", key="back_btn"):
+        st.switch_page("Main_Page.py")
+    
+    # Main Logo
+    st.markdown("""
+    <div style="text-align: center; margin: 10px 0;">
+        <h1 style="background: linear-gradient(90deg, #ff6b35, #f7c531); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem; font-style: italic; margin: 0;">
+            🚀 Job-Search-Agent
+        </h1>
+        <p style="color: #888; margin: 5px 0 0 0; font-size: 0.9rem;">AI-Powered Career Guidance</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
     st.markdown(f'<h1 style="color:{ACCENT_ORANGE}; text-align: center;">🌐 Skill Migration Map</h1>', unsafe_allow_html=True)
     st.markdown("---")
 
