@@ -129,6 +129,11 @@ st.markdown("""
 
 st.markdown("---")
 
+# --- INSERT FIX HERE ---
+if st.button("← Back to Main Page"):
+    st.session_state.current_page = "Main Page"
+    st.switch_page("Main_Page.py")
+
 # --- HEADER ---
 st.markdown("""
 <h1 style="text-align: center; font-size: 2.5rem;">
