@@ -65,7 +65,7 @@ with col1:
     st.markdown("""
     <div class="support-card">
         <p><strong>Email Support:</strong></p>
-        <p>📩 support@job-search-agent.app</p>
+        <p>📩 jobsearchagent26@gmail.com</p>
         <p style="color: #94a3b8; font-size: 0.9em;">Response time: Within 24-48 hours</p>
     </div>
     """, unsafe_allow_html=True)
@@ -181,7 +181,7 @@ with st.expander("The app isn't working. What should I do?"):
     4. **Clear cache** - In your device settings, clear the app cache
     5. **Restart your device** - Sometimes a simple restart helps
     
-    If problems persist, email us at support@job-search-agent.app with:
+    If problems persist, email us at jobsearchagent26@gmail.com with:
     - Your device type (iPhone/iPad/Android)
     - A description of the issue
     - Screenshots if possible
@@ -252,6 +252,6 @@ st.markdown("""
 <div style="text-align: center; color: #94a3b8; padding: 20px;">
     <p><strong>Job-Search-Agent</strong> - AI-Powered Career Guidance</p>
     <p>Version 1.0 | © 2026 Job-Search-Agent</p>
-    <p>📧 support@job-search-agent.app</p>
+    <p>📧 jobsearchagent26@gmail.com</p>
 </div>
 """, unsafe_allow_html=True)
