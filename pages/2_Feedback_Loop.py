@@ -427,9 +427,9 @@ def compare_cv_versions(cv1_text, cv2_text, jd_text):
 
 def feedback_loop_page():
     # Back to Main Page
-    # Back button using switch_page for proper navigation from pages/ folder
-    if st.button("🏠 ← Back to Main Page", key="back_to_main"):
-        st.switch_page("Main_Page.py")
+    if st.button("← Back to Main Page"):
+    st.session_state.current_page = "Main Page"
+    st.switch_page("Main_Page.py")
     
     # Main Logo
     st.markdown("""
