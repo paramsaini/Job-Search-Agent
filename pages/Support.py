@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.set_page_config(page_title="Support - Aequor", page_icon="💬", layout="wide")
+st.set_page_config(page_title="Support - Job-Search-Agent", page_icon="💬", layout="wide")
 
 # Apply consistent styling with main app
 st.markdown("""
@@ -52,7 +52,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- HEADER ---
-st.title("💬 Aequor Support Center")
+st.title("💬 Job-Search-Agent Support Center")
 st.caption("Get help with your career journey")
 
 st.markdown("---")
@@ -65,7 +65,7 @@ with col1:
     st.markdown("""
     <div class="support-card">
         <p><strong>Email Support:</strong></p>
-        <p>📩 support@aequor.app</p>
+        <p>📩 support@job-search-agent.app</p>
         <p style="color: #94a3b8; font-size: 0.9em;">Response time: Within 24-48 hours</p>
     </div>
     """, unsafe_allow_html=True)
@@ -87,7 +87,7 @@ st.subheader("❓ Frequently Asked Questions")
 
 with st.expander("How do I create an account?"):
     st.write("""
-    1. Open the Aequor app
+    1. Open the Job-Search-Agent app
     2. Select "Sign Up" on the login screen
     3. Enter your email address and create a password
     4. Check your email for a confirmation link
@@ -109,7 +109,7 @@ with st.expander("How does the Voice Interview Simulator work?"):
 
 with st.expander("Why does the app need microphone access?"):
     st.write("""
-    Aequor uses your microphone **only** for the Voice Interview Simulator feature. 
+    Job-Search-Agent uses your microphone **only** for the Voice Interview Simulator feature. 
     
     When you practice mock interviews:
     - Your voice is recorded temporarily
@@ -117,12 +117,12 @@ with st.expander("Why does the app need microphone access?"):
     - You receive feedback on your interview answers
     - Recordings are processed in real-time and not stored
     
-    You can use all other features of Aequor without enabling microphone access.
+    You can use all other features of Job-Search-Agent without enabling microphone access.
     """)
 
 with st.expander("How do I delete my account?"):
     st.write("""
-    To delete your Aequor account:
+    To delete your Job-Search-Agent account:
     
     1. Log into the app
     2. Go to **⚙️ Account Settings** in the menu
@@ -152,9 +152,9 @@ with st.expander("How do I reset my password?"):
     If you don't receive the email, check your spam folder.
     """)
 
-with st.expander("What data does Aequor collect?"):
+with st.expander("What data does Job-Search-Agent collect?"):
     st.write("""
-    Aequor collects only the data necessary to provide our services:
+    Job-Search-Agent collects only the data necessary to provide our services:
     
     **Account Data:**
     - Email address (for login)
@@ -176,12 +176,12 @@ with st.expander("The app isn't working. What should I do?"):
     Try these troubleshooting steps:
     
     1. **Refresh the app** - Pull down to refresh or close and reopen
-    2. **Check your internet connection** - Aequor requires an active connection
+    2. **Check your internet connection** - Job-Search-Agent requires an active connection
     3. **Update the app** - Make sure you have the latest version
     4. **Clear cache** - In your device settings, clear the app cache
     5. **Restart your device** - Sometimes a simple restart helps
     
-    If problems persist, email us at support@aequor.app with:
+    If problems persist, email us at support@job-search-agent.app with:
     - Your device type (iPhone/iPad/Android)
     - A description of the issue
     - Screenshots if possible
@@ -195,7 +195,7 @@ st.subheader("🔒 Privacy Policy Summary")
 st.markdown("""
 <div class="support-card">
     <h4>Your Privacy Matters</h4>
-    <p>Aequor is committed to protecting your personal information. Here's what you need to know:</p>
+    <p>Job-Search-Agent is committed to protecting your personal information. Here's what you need to know:</p>
     <ul>
         <li><strong>Data Collection:</strong> We collect only what's necessary to provide our services</li>
         <li><strong>Data Security:</strong> Your information is encrypted and stored securely</li>
@@ -214,8 +214,8 @@ st.subheader("📜 Terms of Service Summary")
 
 st.markdown("""
 <div class="support-card">
-    <h4>Using Aequor</h4>
-    <p>By using Aequor, you agree to:</p>
+    <h4>Using Job-Search-Agent</h4>
+    <p>By using Job-Search-Agent, you agree to:</p>
     <ul>
         <li>Use the app for legitimate job search and career development purposes</li>
         <li>Provide accurate information in your profile and applications</li>
@@ -250,8 +250,8 @@ st.markdown("---")
 # --- FOOTER ---
 st.markdown("""
 <div style="text-align: center; color: #94a3b8; padding: 20px;">
-    <p><strong>Aequor</strong> - AI-Powered Career Guidance</p>
-    <p>Version 1.0 | © 2026 Aequor</p>
-    <p>📧 support@aequor.app</p>
+    <p><strong>Job-Search-Agent</strong> - AI-Powered Career Guidance</p>
+    <p>Version 1.0 | © 2026 Job-Search-Agent</p>
+    <p>📧 support@job-search-agent.app</p>
 </div>
 """, unsafe_allow_html=True)
