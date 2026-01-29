@@ -226,8 +226,8 @@ def update_application_status(app_id, new_status):
 def compiler_page():
     # Back to Main Page
     if st.button("← Back to Main Page"):
-    st.session_state.current_page = "Main Page"
-    st.switch_page("Main_Page.py")
+        st.session_state.current_page = "Main Page"
+        st.switch_page("Main_Page.py")
     
     # Main Logo
     st.markdown("""
