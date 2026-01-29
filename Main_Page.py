@@ -12,37 +12,379 @@ from fpdf import FPDF
 # --- 1. CONFIG & STYLING ---
 st.set_page_config(page_title="Job-Search-Agent Career Agent", page_icon="🚀", layout="wide")
 
+# --- NEW ORANGE + GOLD NEON UI STYLING ---
 st.markdown("""
     <style>
+    /* === IMPORTS === */
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    
+    /* === BASE STYLES === */
     .stApp {
-        background: linear-gradient(to bottom right, #0f172a, #1e1b4b);
+        background: #0a0a0f !important;
         background-attachment: fixed;
         color: #e2e8f0;
+        font-family: 'Outfit', sans-serif;
     }
+    
+    /* === HIDE DEFAULT SIDEBAR === */
+    [data-testid="stSidebar"] {
+        display: none !important;
+    }
+    
+    /* === TOP NAVIGATION BAR === */
+    .top-nav-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: rgba(10, 10, 15, 0.95);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(255, 107, 53, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        z-index: 9999;
+        box-shadow: 0 4px 30px rgba(255, 107, 53, 0.1);
+    }
+    
+    .nav-logo {
+        font-size: 1.4rem;
+        font-weight: 700;
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 30px rgba(255, 107, 53, 0.5);
+    }
+    
+    .hamburger-btn {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        background: rgba(255, 107, 53, 0.1);
+        border: 1px solid rgba(255, 107, 53, 0.3);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .hamburger-btn:hover {
+        background: rgba(255, 107, 53, 0.2);
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+    }
+    
+    .hamburger-line {
+        width: 20px;
+        height: 2px;
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        margin: 3px 0;
+        border-radius: 2px;
+    }
+    
+    .user-info {
+        color: #888;
+        font-size: 0.9rem;
+    }
+    
+    .user-info span {
+        color: #f7c531;
+        font-weight: 600;
+    }
+    
+    /* === FULL SCREEN OVERLAY MENU === */
+    .fullscreen-menu {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(10, 10, 15, 0.98);
+        backdrop-filter: blur(30px);
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.4s ease;
+    }
+    
+    .fullscreen-menu.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .close-btn {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        font-size: 2.5rem;
+        color: #ff6b35;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+    }
+    
+    .close-btn:hover {
+        color: #f7c531;
+        transform: rotate(90deg);
+        text-shadow: 0 0 30px rgba(247, 197, 49, 0.8);
+    }
+    
+    .menu-items {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .menu-item {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #666;
+        text-decoration: none;
+        padding: 15px 40px;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        letter-spacing: 1px;
+    }
+    
+    .menu-item:hover, .menu-item.active {
+        color: transparent;
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 40px rgba(255, 107, 53, 0.8);
+    }
+    
+    .menu-item.active::before {
+        content: '→';
+        position: absolute;
+        left: 10px;
+        color: #ff6b35;
+        -webkit-text-fill-color: #ff6b35;
+    }
+    
+    .menu-divider {
+        width: 200px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.3), transparent);
+        margin: 10px 0;
+    }
+    
+    .menu-logout {
+        margin-top: 20px;
+        font-size: 1.2rem;
+        color: #dc2626;
+        cursor: pointer;
+        padding: 10px 30px;
+        border: 1px solid rgba(220, 38, 38, 0.3);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .menu-logout:hover {
+        background: rgba(220, 38, 38, 0.1);
+        box-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
+    }
+    
+    /* === CONTENT AREA === */
+    .main-content {
+        margin-top: 80px;
+        padding: 20px;
+    }
+    
+    /* === CARD STYLES === */
     div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stMetric"],
     div[data-testid="stExpanderDetails"],
-    div[data-testid="stForm"],
-    [data-testid="stSidebar"] > div {
-        background-color: rgba(15, 23, 42, 0.6) !important;
+    div[data-testid="stForm"] {
+        background: rgba(255, 107, 53, 0.05) !important;
         backdrop-filter: blur(12px);
-        border: 1px solid rgba(88, 116, 176, 0.2) !important;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 107, 53, 0.15) !important;
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
         padding: 15px;
     }
-    h1, h2, h3, p, label, .stMarkdown { color: #e2e8f0 !important; }
-    div[data-testid="stMetricValue"] { color: #00e0ff !important; text-shadow: 0 0 10px rgba(0, 224, 255, 0.6); }
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        background-color: rgba(30, 41, 59, 0.8) !important;
-        color: white !important;
-        border: 1px solid rgba(88, 116, 176, 0.3) !important;
+    
+    /* === TYPOGRAPHY === */
+    h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { 
+        color: #e2e8f0 !important;
+        font-family: 'Outfit', sans-serif;
     }
-    .stButton>button {
-        background: linear-gradient(90deg, #0062ff, #00c6ff);
+    
+    h1 {
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+    
+    p, label, .stMarkdown { color: #e2e8f0 !important; }
+    
+    /* === METRICS === */
+    div[data-testid="stMetricValue"] { 
+        color: #ff6b35 !important; 
+        text-shadow: 0 0 20px rgba(255, 107, 53, 0.6);
+        font-weight: 700;
+    }
+    
+    div[data-testid="stMetricLabel"] {
+        color: #f7c531 !important;
+    }
+    
+    /* === INPUTS === */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        background-color: rgba(255, 107, 53, 0.08) !important;
         color: white !important;
-        border: none;
-        box-shadow: 0 0 10px rgba(0, 98, 255, 0.5);
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+        border-color: #ff6b35 !important;
+        box-shadow: 0 0 15px rgba(255, 107, 53, 0.3) !important;
+    }
+    
+    /* === BUTTONS === */
+    .stButton>button {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+        color: #000 !important;
+        border: none !important;
+        font-weight: 700 !important;
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton>button:hover {
+        box-shadow: 0 0 35px rgba(255, 107, 53, 0.6);
+        transform: translateY(-2px);
+    }
+    
+    /* === SECONDARY BUTTONS === */
+    .stButton>button[kind="secondary"] {
+        background: transparent !important;
+        color: #ff6b35 !important;
+        border: 1px solid rgba(255, 107, 53, 0.5) !important;
+    }
+    
+    /* === SELECT BOXES === */
+    .stSelectbox>div>div {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    /* === FILE UPLOADER === */
+    .stFileUploader>div {
+        background-color: rgba(255, 107, 53, 0.05) !important;
+        border: 2px dashed rgba(255, 107, 53, 0.3) !important;
+        border-radius: 12px;
+    }
+    
+    /* === PROGRESS BARS === */
+    .stProgress>div>div>div {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+    }
+    
+    /* === EXPANDERS === */
+    .streamlit-expanderHeader {
+        background: rgba(255, 107, 53, 0.1) !important;
+        border-radius: 10px;
+        color: #f7c531 !important;
+    }
+    
+    /* === DIVIDERS === */
+    hr {
+        border-color: rgba(255, 107, 53, 0.2) !important;
+    }
+    
+    /* === RADIO BUTTONS === */
+    .stRadio>div {
+        background: rgba(255, 107, 53, 0.05);
+        padding: 10px;
+        border-radius: 10px;
+    }
+    
+    /* === SLIDER === */
+    .stSlider>div>div>div>div {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+    }
+    
+    /* === SUCCESS/WARNING/ERROR MESSAGES === */
+    .stSuccess {
+        background: rgba(16, 185, 129, 0.1) !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    }
+    
+    .stWarning {
+        background: rgba(247, 197, 49, 0.1) !important;
+        border: 1px solid rgba(247, 197, 49, 0.3) !important;
+    }
+    
+    .stError {
+        background: rgba(220, 38, 38, 0.1) !important;
+        border: 1px solid rgba(220, 38, 38, 0.3) !important;
+    }
+    
+    /* === DATAFRAMES === */
+    .stDataFrame {
+        background: rgba(255, 107, 53, 0.05) !important;
+        border-radius: 12px;
+    }
+    
+    /* === TABS === */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: rgba(255, 107, 53, 0.1);
+        border-radius: 8px;
+        color: #e2e8f0;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+        color: #000 !important;
+    }
+    
+    /* === CHECKBOX === */
+    .stCheckbox>label>span {
+        color: #e2e8f0 !important;
+    }
+    
+    /* === SCROLLBAR === */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #0a0a0f;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #ff6b35, #f7c531);
+        border-radius: 4px;
+    }
+    
+    /* === ANIMATIONS === */
+    @keyframes glow {
+        0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 53, 0.3); }
+        50% { box-shadow: 0 0 40px rgba(255, 107, 53, 0.6); }
+    }
+    
+    .glow-effect {
+        animation: glow 2s ease-in-out infinite;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -69,7 +411,7 @@ def create_pdf(text):
         
         # 1. Sanitize Text (Replace crash-prone characters)
         replacements = {
-            '’': "'", '‘': "'", '“': '"', '”': '"', '–': '-', '—': '-',
+            ''': "'", ''': "'", '"': '"', '"': '"', '–': '-', '—': '-',
             '•': '-', '…': '...', '\u2022': '-' 
         }
         for old, new in replacements.items():
@@ -120,6 +462,8 @@ if 'user_id' not in st.session_state: st.session_state.user_id = None
 if 'show_delete_confirmation' not in st.session_state: st.session_state.show_delete_confirmation = False
 if 'show_forgot_password' not in st.session_state: st.session_state.show_forgot_password = False
 if 'password_reset_mode' not in st.session_state: st.session_state.password_reset_mode = False
+if 'menu_open' not in st.session_state: st.session_state.menu_open = False
+if 'current_page' not in st.session_state: st.session_state.current_page = "Main Page"
 
 def login(email, password):
     if not supabase: return st.error("Database error.")
@@ -1011,7 +1355,6 @@ def page_cv_compiler():
             st.text(st.session_state.get('compiler_original', '')[:800] + "...")
         with col_opt:
             st.success("✨ Optimized Bullets")
-            # Display as plain text in a text area for clean output
             st.text_area("", st.session_state['compiler_optimized'], height=300, disabled=True, label_visibility="collapsed")
         
         # Download buttons
@@ -1030,7 +1373,6 @@ def page_cv_compiler():
     st.markdown("---")
     st.subheader("2️⃣ Dual Optimization Dashboard")
     
-    # Use stored JD if available, otherwise use current input
     jd_for_analysis = st.session_state.get('compiler_jd_stored', jd_text)
     
     if cv_text and jd_for_analysis:
@@ -1040,14 +1382,14 @@ def page_cv_compiler():
         col_ats, col_clarity = st.columns(2)
         
         with col_ats:
-            delta_ats = "✅ Good!" if ats_score >= 70 else f"↑ Target: 95%"
+            delta_ats = "✅ Good!" if ats_score >= 70 else f"→ Target: 95%"
             st.metric("ATS Compliance", f"{ats_score}%", delta=delta_ats)
             st.progress(ats_score / 100)
             if ats_score < 70:
                 st.caption("💡 Tip: Add more keywords from the job description")
         
         with col_clarity:
-            delta_clarity = "✅ Good!" if clarity_score >= 75 else f"↑ Target: 75%"
+            delta_clarity = "✅ Good!" if clarity_score >= 75 else f"→ Target: 75%"
             st.metric("Human Clarity", f"{clarity_score}%", delta=delta_clarity)
             st.progress(clarity_score / 100)
             if clarity_score < 75:
@@ -1147,7 +1489,76 @@ def page_interview_sim():
                     st.write(feedback.choices[0].message.content)
                 except Exception as e: st.error(f"Error: {e}")
 
-# --- 6. MAIN APP ---
+# --- 6. NEW MENU SYSTEM ---
+
+def render_top_nav():
+    """Render the top navigation bar with hamburger menu"""
+    username = st.session_state.user.split('@')[0] if st.session_state.user else "User"
+    
+    st.markdown(f"""
+    <div class="top-nav-bar">
+        <div class="nav-logo">🚀 Job-Search-Agent</div>
+        <div class="user-info">Welcome, <span>{username}</span></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def render_menu():
+    """Render the navigation menu using Streamlit components"""
+    # Add spacing for top nav
+    st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
+    
+    # Menu items matching the screenshot
+    menu_items = [
+        ("🏠", "Main Page"),
+        ("🧘", "Emotional Tracker"),
+        ("🔄", "Feedback Loop"),
+        ("📈", "Skill Migration"),
+        ("🤖", "CV Compiler"),
+        ("🔒", "Privacy Policy"),
+        ("🔑", "Reset Password"),
+        ("💬", "Support"),
+        ("⚙️", "Account Settings"),
+    ]
+    
+    # Sidebar-style menu at the top
+    st.markdown("""
+    <style>
+    .menu-container {
+        background: rgba(255, 107, 53, 0.05);
+        border: 1px solid rgba(255, 107, 53, 0.2);
+        border-radius: 16px;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Create horizontal menu
+    cols = st.columns(len(menu_items))
+    for idx, (icon, name) in enumerate(menu_items):
+        with cols[idx]:
+            is_active = st.session_state.current_page == name
+            btn_type = "primary" if is_active else "secondary"
+            if st.button(f"{icon}", key=f"menu_{name}", help=name, use_container_width=True):
+                st.session_state.current_page = name
+                st.rerun()
+    
+    # Show current page name
+    st.markdown(f"""
+    <div style="text-align: center; margin: 10px 0 20px 0;">
+        <span style="background: linear-gradient(90deg, #ff6b35, #f7c531); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.2rem; font-weight: 600;">
+            {st.session_state.current_page}
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Logout button
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col3:
+        if st.button("🚪 Logout", key="logout_btn"):
+            logout()
+
+# --- 7. MAIN APP ---
 
 def main():
     # Inject JavaScript to handle URL fragments from Supabase password reset
@@ -1217,15 +1628,23 @@ def main():
                             st.rerun()
                 else:
                     # Normal login/signup flow
-                    st.header("Job-Search-Agent Login")
+                    st.markdown("""
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="background: linear-gradient(90deg, #ff6b35, #f7c531); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem;">
+                            🚀 Job-Search-Agent
+                        </h1>
+                        <p style="color: #888;">AI-Powered Career Guidance</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                     mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
                     email = st.text_input("Email")
                     pwd = st.text_input("Password", type="password")
                     if mode == "Sign Up":
                         user = st.text_input("Username")
-                        if st.button("Sign Up"): signup(email, pwd, user)
+                        if st.button("Sign Up", type="primary", use_container_width=True): signup(email, pwd, user)
                     else:
-                        if st.button("Login"): login(email, pwd)
+                        if st.button("Login", type="primary", use_container_width=True): login(email, pwd)
                         # Forgot Password link
                         st.markdown("---")
                         if st.button("🔑 Forgot Password?", type="secondary", use_container_width=True):
@@ -1233,18 +1652,16 @@ def main():
                             st.rerun()
         return
 
-    with st.sidebar:
-        st.subheader(f"User: {st.session_state.user.split('@')[0]}")
-        nav = st.radio("Menu", [
-            "Dashboard", 
-            "Instant Cover Letter", 
-            "Voice Interview Sim",
-            "⚙️ Account Settings"
-        ])
-        st.divider()
-        if st.button("Logout"): logout()
-
-    if nav == "Dashboard":
+    # === LOGGED IN USER - SHOW NEW MENU SYSTEM ===
+    
+    # Render top navigation
+    render_top_nav()
+    
+    # Render menu
+    render_menu()
+    
+    # Route to correct page based on selection
+    if st.session_state.current_page == "Main Page":
         st.title("🚀 Career Strategy Dashboard")
         with st.container():
             c1, c2 = st.columns([2,1])
@@ -1276,9 +1693,69 @@ def main():
                 st.metric("Match Score", f"{res['rep'].get('predictive_score')}%")
                 st.markdown(res['md'])
                 
-    elif nav == "Instant Cover Letter": page_cover_letter()
-    elif nav == "Voice Interview Sim": page_interview_sim()
-    elif nav == "⚙️ Account Settings": page_delete_account()
+    elif st.session_state.current_page == "Emotional Tracker":
+        st.switch_page("pages/1_Emotional_Tracker.py")
+        
+    elif st.session_state.current_page == "Feedback Loop":
+        st.switch_page("pages/2_Feedback_Loop.py")
+        
+    elif st.session_state.current_page == "Skill Migration":
+        page_skill_migration()
+        
+    elif st.session_state.current_page == "CV Compiler":
+        page_cv_compiler()
+        
+    elif st.session_state.current_page == "Privacy Policy":
+        st.header("🔒 Privacy Policy")
+        st.markdown("""
+        ## Privacy Policy for Job-Search-Agent
+        
+        **Last Updated: January 2026**
+        
+        ### Information We Collect
+        - **Account Information:** Email address and username for authentication
+        - **CV/Resume Data:** Documents you upload for analysis
+        - **Usage Data:** Interaction with our AI features
+        - **Voice Data:** Temporary recordings for interview simulation (not stored permanently)
+        
+        ### How We Use Your Data
+        - To provide personalized career guidance
+        - To analyze your CV and generate recommendations
+        - To track your job applications
+        - To improve our AI models and services
+        
+        ### Data Security
+        - All data is encrypted in transit and at rest
+        - We use industry-standard security practices
+        - Your data is stored securely on Supabase
+        
+        ### Your Rights
+        - Access your personal data
+        - Delete your account and all associated data
+        - Export your data
+        - Opt-out of non-essential data collection
+        
+        ### Contact
+        For privacy inquiries: jobsearchagent26@gmail.com
+        """)
+        
+    elif st.session_state.current_page == "Reset Password":
+        st.header("🔑 Reset Password")
+        st.caption("Enter your email to receive a password reset link.")
+        
+        reset_email = st.text_input("Email Address", key="reset_page_email")
+        if st.button("📧 Send Reset Link", type="primary"):
+            success, message = forgot_password(reset_email)
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
+        
+    elif st.session_state.current_page == "Support":
+        st.switch_page("pages/Support.py")
+        
+    elif st.session_state.current_page == "Account Settings":
+        page_delete_account()
 
 if __name__ == "__main__":
     main()
