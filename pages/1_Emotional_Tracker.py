@@ -5,17 +5,134 @@ import numpy as np
 from supabase import create_client
 import os
 
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Emotional Tracker - Job-Search-Agent", page_icon="🧘", layout="wide")
+
+# --- NEW ORANGE + GOLD NEON UI STYLING (HIDE SIDEBAR) ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    
+    .stApp {
+        background: #0a0a0f !important;
+        color: #e2e8f0;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    /* HIDE SIDEBAR */
+    [data-testid="stSidebar"] {
+        display: none !important;
+    }
+    
+    /* HIDE SIDEBAR BUTTON */
+    button[kind="header"] {
+        display: none !important;
+    }
+    
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+    
+    /* Card styles */
+    div[data-testid="stVerticalBlockBorderWrapper"],
+    div[data-testid="stMetric"],
+    div[data-testid="stExpanderDetails"],
+    div[data-testid="stForm"] {
+        background: rgba(255, 107, 53, 0.05) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 107, 53, 0.15) !important;
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        padding: 15px;
+    }
+    
+    h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { 
+        color: #e2e8f0 !important;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    h1 {
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+    
+    p, label, .stMarkdown { color: #e2e8f0 !important; }
+    
+    div[data-testid="stMetricValue"] { 
+        color: #ff6b35 !important; 
+        text-shadow: 0 0 20px rgba(255, 107, 53, 0.6);
+        font-weight: 700;
+    }
+    
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stButton>button {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+        color: #000 !important;
+        border: none !important;
+        font-weight: 700 !important;
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+        border-radius: 10px;
+    }
+    
+    .stButton>button:hover {
+        box-shadow: 0 0 35px rgba(255, 107, 53, 0.6);
+        transform: translateY(-2px);
+    }
+    
+    .stSelectbox>div>div {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stProgress>div>div>div {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+    }
+    
+    hr {
+        border-color: rgba(255, 107, 53, 0.2) !important;
+    }
+    
+    .stSlider>div>div>div>div {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+    }
+    
+    /* Back button style */
+    .back-btn {
+        background: rgba(255, 107, 53, 0.1);
+        border: 1px solid rgba(255, 107, 53, 0.3);
+        border-radius: 10px;
+        padding: 10px 20px;
+        color: #ff6b35;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .back-btn:hover {
+        background: rgba(255, 107, 53, 0.2);
+        box-shadow: 0 0 15px rgba(255, 107, 53, 0.3);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- Configuration ---
-BG_DARK = "#000000"
-ACCENT_CYAN = "#00E0FF"
-ACCENT_ORANGE = "#FF8C00"
+BG_DARK = "#0a0a0f"
+ACCENT_ORANGE = "#ff6b35"
+ACCENT_GOLD = "#f7c531"
 ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
 
 # --- Supabase Init ---
 @st.cache_resource
 def init_supabase():
-    # Helper to get secrets from EITHER Railway (Env) OR Local (File)
     def get_secret(key):
         if key in os.environ:
             return os.environ[key]
@@ -30,7 +147,6 @@ def init_supabase():
     if not url or not key: return None
     return create_client(url, key)
 
-# Initialize the connection immediately after defining the function
 try:
     supabase = init_supabase()
 except Exception as e:
@@ -49,7 +165,6 @@ def fetch_mood_history(user_id):
         if response.data:
             df = pd.DataFrame(response.data)
             df['created_at'] = pd.to_datetime(df['created_at'])
-            # Rename for compatibility with chart logic
             df = df.rename(columns={"mood_score": "Mood", "activity_score": "Activity", "created_at": "Date"})
             return df
     except Exception as e:
@@ -84,18 +199,18 @@ def log_mood_to_db(user_id, mood, activity, notes):
 # --- Page Render ---
 
 def emotional_tracker_page():
-    # Style injection kept from original
+    # Back to Main Page button
+    if st.button("← Back to Main Page", key="back_btn"):
+        st.switch_page("Main_Page.py")
+    
+    st.markdown("---")
+    
+    # Custom styled header
     st.markdown(f"""
-    <style>
-    .resilience-card {{
-        padding: 20px; border-radius: 10px; border: 2px solid {ACCENT_ORANGE};
-        background: {BG_DARK}; box-shadow: 0 0 15px {ACCENT_ORANGE}50; text-align: center; margin-bottom: 20px;
-    }}
-    .resilience-score {{ font-size: 4rem; font-weight: bold; color: {ACCENT_CYAN}; text-shadow: 0 0 10px {ACCENT_CYAN}; }}
-    </style>
+    <h1 style="text-align: center; font-size: 2.5rem;">
+        🧘 Emotional Endurance Tracker
+    </h1>
     """, unsafe_allow_html=True)
-
-    st.markdown(f'<h1 class="holo-text" style="color:{ACCENT_ORANGE}; text-align: center;">🧘 job-search-agent: Emotional Endurance</h1>', unsafe_allow_html=True)
     st.markdown("---")
 
     if not st.session_state.get('user_id'):
@@ -118,11 +233,12 @@ def emotional_tracker_page():
         tip = "Take a mandatory break or focus on a low-stress activity."
     
     st.markdown(f"""
-    <div class="resilience-card" style="border-color: {color}; box-shadow: 0 0 15px {color}50;">
-        <p style="color: {color}; font-size: 1.2rem; margin: 0;">Current Resilience Status:</p>
-        <div class="resilience-score" style="color: {color}; text-shadow: 0 0 10px {color}80;">{resilience_score}</div>
-        <p style="color: {color}; font-weight: bold; margin: 5px 0 0 0;">{status}</p>
-        <p style="color: #ccc; font-size: 0.9rem; margin-top: 5px;">*AI Insight: {tip}</p>
+    <div style="padding: 30px; border-radius: 16px; border: 2px solid {color};
+        background: rgba(255, 107, 53, 0.05); box-shadow: 0 0 25px {color}40; text-align: center; margin-bottom: 20px;">
+        <p style="color: {color}; font-size: 1.3rem; margin: 0;">Current Resilience Status:</p>
+        <div style="font-size: 5rem; font-weight: bold; color: {color}; text-shadow: 0 0 30px {color}80;">{resilience_score}</div>
+        <p style="color: {color}; font-weight: bold; margin: 5px 0 0 0; font-size: 1.2rem;">{status}</p>
+        <p style="color: #ccc; font-size: 0.95rem; margin-top: 10px;">*AI Insight: {tip}</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -134,7 +250,7 @@ def emotional_tracker_page():
         activity = c2.slider("Activity Level (0-5)", 0, 5, 3)
         notes = st.text_area("Notes")
         
-        if st.form_submit_button("Log Emotional Data", type="primary"):
+        if st.form_submit_button("Log Emotional Data", type="primary", use_container_width=True):
             log_mood_to_db(st.session_state.user_id, mood, activity, notes)
             st.rerun()
 
@@ -142,6 +258,6 @@ def emotional_tracker_page():
     if not df_history.empty:
         st.subheader("History & Trends")
         chart_df = df_history.set_index('Date')[['Mood', 'Activity']]
-        st.line_chart(chart_df, color=[ACCENT_CYAN, ACCENT_ORANGE])
+        st.line_chart(chart_df, color=[ACCENT_ORANGE, ACCENT_GOLD])
 
 emotional_tracker_page()
