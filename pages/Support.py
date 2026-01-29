@@ -114,6 +114,11 @@ try:
 except:
     supabase = None
 
+# --- INSERT FIX HERE ---
+if st.button("← Back to Main Page"):
+    st.session_state.current_page = "Main Page"
+    st.switch_page("Main_Page.py")
+
 # Main Logo
 st.markdown("""
 <div style="text-align: center; margin: 10px 0;">
@@ -125,11 +130,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("---")
-
-# --- INSERT FIX HERE ---
-if st.button("← Back to Main Page"):
-    st.session_state.current_page = "Main Page"
-    st.switch_page("Main_Page.py")
 
 # --- HEADER ---
 st.markdown("""
