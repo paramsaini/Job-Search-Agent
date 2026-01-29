@@ -10,14 +10,117 @@ import re
 import numpy as np
 import time
 
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Feedback Loop - Job-Search-Agent", page_icon="🔄", layout="wide")
+
+# --- NEW ORANGE + GOLD NEON UI STYLING (HIDE SIDEBAR) ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    
+    .stApp {
+        background: #0a0a0f !important;
+        color: #e2e8f0;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    /* HIDE SIDEBAR */
+    [data-testid="stSidebar"] { display: none !important; }
+    button[kind="header"] { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
+    
+    div[data-testid="stVerticalBlockBorderWrapper"],
+    div[data-testid="stMetric"],
+    div[data-testid="stExpanderDetails"],
+    div[data-testid="stForm"] {
+        background: rgba(255, 107, 53, 0.05) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 107, 53, 0.15) !important;
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        padding: 15px;
+    }
+    
+    h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { 
+        color: #e2e8f0 !important;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    h1 {
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+    
+    p, label, .stMarkdown { color: #e2e8f0 !important; }
+    
+    div[data-testid="stMetricValue"] { 
+        color: #ff6b35 !important; 
+        text-shadow: 0 0 20px rgba(255, 107, 53, 0.6);
+        font-weight: 700;
+    }
+    
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stButton>button {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+        color: #000 !important;
+        border: none !important;
+        font-weight: 700 !important;
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+        border-radius: 10px;
+    }
+    
+    .stButton>button:hover {
+        box-shadow: 0 0 35px rgba(255, 107, 53, 0.6);
+    }
+    
+    .stSelectbox>div>div, .stFileUploader>div {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stProgress>div>div>div {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+    }
+    
+    hr { border-color: rgba(255, 107, 53, 0.2) !important; }
+    
+    /* Custom styles for feedback loop */
+    .probability-circle {
+        width: 150px; height: 150px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.5rem; font-weight: bold; margin: 20px auto;
+        background: rgba(0,0,0,0.3);
+    }
+    .scan-area { padding: 15px; border-radius: 10px; margin: 10px 0; }
+    .scan-high { background: rgba(16, 185, 129, 0.15); border-left: 4px solid #10B981; }
+    .scan-medium { background: rgba(245, 158, 11, 0.15); border-left: 4px solid #F59E0B; }
+    .scan-low { background: rgba(239, 68, 68, 0.15); border-left: 4px solid #EF4444; }
+    .rejection-card { padding: 15px; border-radius: 10px; margin: 10px 0; }
+    .rejection-high { background: rgba(239, 68, 68, 0.15); border-left: 4px solid #EF4444; }
+    .rejection-medium { background: rgba(245, 158, 11, 0.15); border-left: 4px solid #F59E0B; }
+    .rejection-low { background: rgba(16, 185, 129, 0.15); border-left: 4px solid #10B981; }
+    .persona-card { background: rgba(139, 92, 246, 0.1); border: 1px solid #8B5CF6; border-radius: 10px; padding: 20px; margin: 15px 0; }
+    .winner-badge { background: linear-gradient(90deg, #ff6b35, #f7c531); color: black; padding: 10px 25px; border-radius: 25px; font-weight: bold; font-size: 1.2rem; }
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- Configuration ---
-BG_DARK = "#0f172a"
-ACCENT_CYAN = "#00E0FF"
-ACCENT_ORANGE = "#FF8C00"
+ACCENT_ORANGE = "#ff6b35"
+ACCENT_GOLD = "#f7c531"
 ACCENT_GREEN = "#10B981"
 ACCENT_YELLOW = "#F59E0B"
 ACCENT_RED = "#EF4444"
 ACCENT_PURPLE = "#8B5CF6"
+ACCENT_CYAN = "#00E0FF"
 
 # --- Supabase & Groq Init ---
 @st.cache_resource
@@ -86,27 +189,20 @@ def simulate_6_second_scan(cv_text, jd_text):
     cv_lower = cv_text.lower()
     jd_lower = jd_text.lower()
     
-    # Extract key JD requirements
     jd_keywords = set(re.findall(r'\b\w{4,}\b', jd_lower))
     stop_words = {'with', 'have', 'that', 'this', 'will', 'your', 'from', 'they', 'been', 'were', 'their', 'what', 'when', 'where', 'which', 'while', 'about', 'after', 'before', 'being', 'between', 'both', 'each', 'would', 'could', 'should', 'through'}
     jd_keywords = jd_keywords - stop_words
     
-    # First 200 chars (name, title area)
     first_impression = cv_text[:200]
-    
-    # Skills section detection
     skills_match = re.search(r'skills?[:\s]+(.*?)(?:\n\n|\Z)', cv_text, re.IGNORECASE | re.DOTALL)
     skills_text = skills_match.group(1)[:300] if skills_match else ""
-    
-    # Recent experience (first job)
     exp_match = re.search(r'experience[:\s]+(.*?)(?:\n\n|\Z)', cv_text, re.IGNORECASE | re.DOTALL)
     recent_exp = exp_match.group(1)[:400] if exp_match else ""
     
-    # Calculate attention scores
     attention_areas = {
         "header": {
             "text": first_impression,
-            "attention": 95,  # Always looked at
+            "attention": 95,
             "time_spent": "1.5s",
             "keywords_found": len([k for k in list(jd_keywords)[:10] if k in first_impression.lower()])
         },
@@ -135,11 +231,9 @@ def simulate_6_second_scan(cv_text, jd_text):
 def generate_rejection_reasons(cv_text, jd_text):
     """Predict specific rejection reasons"""
     reasons = []
-    
     cv_lower = cv_text.lower()
     jd_lower = jd_text.lower()
     
-    # 1. Check for quantified achievements
     metrics = re.findall(r'\d+%|\$\d+|\d+\s*(?:years?|months?|projects?|team|people|clients?)', cv_lower)
     if len(metrics) < 3:
         reasons.append({
@@ -148,7 +242,6 @@ def generate_rejection_reasons(cv_text, jd_text):
             "fix": "Add metrics like '25% increase' or 'managed team of 8'"
         })
     
-    # 2. Check years of experience
     years_required = re.findall(r'(\d+)\+?\s*years?', jd_lower)
     years_have = re.findall(r'(\d{4})\s*[-–]\s*(\d{4}|present)', cv_lower, re.IGNORECASE)
     
@@ -159,7 +252,6 @@ def generate_rejection_reasons(cv_text, jd_text):
             "fix": "Add clear date ranges to your work history"
         })
     
-    # 3. Check for required skills
     required_skills = re.findall(r'required[:\s]+([^.]+)', jd_lower)
     if required_skills:
         req_text = required_skills[0]
@@ -171,7 +263,6 @@ def generate_rejection_reasons(cv_text, jd_text):
                 "fix": "Add missing keywords from 'Required' section to your skills"
             })
     
-    # 4. Job title mismatch
     jd_titles = re.findall(r'(?:senior|junior|lead|principal|staff|manager|director|engineer|developer|analyst|specialist)\s+\w+', jd_lower)
     if jd_titles:
         title_match = any(title in cv_lower for title in jd_titles[:3])
@@ -182,7 +273,6 @@ def generate_rejection_reasons(cv_text, jd_text):
                 "fix": f"Consider aligning your title closer to: {jd_titles[0].title()}"
             })
     
-    # 5. Education check
     if 'degree' in jd_lower or 'bachelor' in jd_lower or 'master' in jd_lower:
         if 'degree' not in cv_lower and 'bachelor' not in cv_lower and 'university' not in cv_lower:
             reasons.append({
@@ -190,23 +280,6 @@ def generate_rejection_reasons(cv_text, jd_text):
                 "severity": "medium",
                 "fix": "Clearly list your educational qualifications"
             })
-    
-    # 6. Employment gaps
-    # Simplified check
-    if 'gap' in cv_lower or len(years_have) > 0:
-        for i in range(len(years_have) - 1):
-            try:
-                end_year = int(years_have[i][1]) if years_have[i][1].lower() != 'present' else 2026
-                start_next = int(years_have[i+1][0])
-                if start_next - end_year > 1:
-                    reasons.append({
-                        "reason": f"Employment gap detected (~{start_next - end_year} years)",
-                        "severity": "medium",
-                        "fix": "Add explanation for career breaks (education, freelance, etc.)"
-                    })
-                    break
-            except:
-                pass
     
     if not reasons:
         reasons.append({
@@ -219,45 +292,66 @@ def generate_rejection_reasons(cv_text, jd_text):
 
 def calculate_success_probability(cv_text, jd_text):
     """Calculate interview callback probability"""
-    score = 50  # Base score
-    
+    score = 50
     cv_lower = cv_text.lower()
     jd_lower = jd_text.lower()
     
-    # Keyword match
     jd_words = set(re.findall(r'\b\w{4,}\b', jd_lower))
     cv_words = set(re.findall(r'\b\w{4,}\b', cv_lower))
     overlap = len(jd_words.intersection(cv_words)) / len(jd_words) if jd_words else 0
     score += int(overlap * 30)
     
-    # Metrics presence
     metrics = len(re.findall(r'\d+%|\$\d+[KMB]?|\d+\s*(?:years?|projects?)', cv_lower))
     score += min(10, metrics * 2)
     
-    # Section completeness
     sections = analyze_cv_sections(cv_text)
     complete_sections = sum(1 for s in sections.values() if s['found'])
     score += complete_sections * 2
     
-    # Length check (not too short, not too long)
     word_count = len(cv_text.split())
     if 300 <= word_count <= 800:
         score += 5
     
     return min(95, max(25, score))
 
-def predict_interview_questions(cv_text, jd_text, groq_client):
-    """Predict likely interview questions based on gaps"""
-    if not groq_client:
-        return None
+def get_recruiter_persona_feedback(cv_text, jd_text, persona, groq_client):
+    """Get feedback from different recruiter personas"""
+    if not groq_client: return None
+    
+    persona_prompts = {
+        'corporate_hr': "You are a strict Corporate HR manager at a Fortune 500 company. Focus on compliance, culture fit, and formal qualifications.",
+        'startup_founder': "You are a fast-moving startup founder. Focus on adaptability, passion, and ability to wear multiple hats.",
+        'ats_bot': "You are an ATS (Applicant Tracking System). Focus ONLY on keyword matches and formatting. Be robotic and precise."
+    }
     
     try:
         prompt = f"""
-        Analyze this CV against the Job Description and predict 5 tough interview questions 
-        the recruiter will likely ask based on gaps or weak areas.
+        {persona_prompts[persona]}
+        
+        Review this CV for this job:
+        CV: {cv_text[:1500]}
+        Job: {jd_text[:1000]}
+        
+        Give your honest feedback in 3-4 bullet points. Be specific.
+        """
+        
+        completion = groq_client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.1-8b-instant"
+        )
+        return completion.choices[0].message.content
+    except:
+        return None
+
+def predict_interview_questions(cv_text, jd_text, groq_client):
+    """Predict likely interview questions based on gaps"""
+    if not groq_client: return None
+    
+    try:
+        prompt = f"""
+        Analyze this CV against the Job Description and predict 5 tough interview questions.
         
         CV Summary: {cv_text[:2000]}
-        
         Job Description: {jd_text[:1500]}
         
         Return as JSON:
@@ -285,20 +379,8 @@ def predict_interview_questions(cv_text, jd_text, groq_client):
 def compare_cv_versions(cv1_text, cv2_text, jd_text):
     """A/B test two CV versions"""
     results = {
-        "cv1": {
-            "keyword_match": 0,
-            "metrics_count": 0,
-            "word_count": 0,
-            "clarity_score": 0,
-            "overall": 0
-        },
-        "cv2": {
-            "keyword_match": 0,
-            "metrics_count": 0,
-            "word_count": 0,
-            "clarity_score": 0,
-            "overall": 0
-        },
+        "cv1": {"keyword_match": 0, "metrics_count": 0, "word_count": 0, "clarity_score": 0, "overall": 0},
+        "cv2": {"keyword_match": 0, "metrics_count": 0, "word_count": 0, "clarity_score": 0, "overall": 0},
         "winner": "",
         "reasons": []
     }
@@ -309,38 +391,28 @@ def compare_cv_versions(cv1_text, cv2_text, jd_text):
         cv_lower = cv_text.lower()
         cv_words = set(re.findall(r'\b\w{4,}\b', cv_lower))
         
-        # Keyword match
         overlap = len(jd_words.intersection(cv_words))
         results[cv_key]["keyword_match"] = overlap
         
-        # Metrics
         metrics = len(re.findall(r'\d+%|\$\d+|\d+\s*(?:years?|projects?|team)', cv_lower))
         results[cv_key]["metrics_count"] = metrics
-        
-        # Word count
         results[cv_key]["word_count"] = len(cv_text.split())
         
-        # Simple clarity (shorter sentences = clearer)
         sentences = re.split(r'[.!?]', cv_text)
         avg_len = np.mean([len(s.split()) for s in sentences if s.strip()])
         results[cv_key]["clarity_score"] = max(0, 100 - int(avg_len * 3))
         
-        # Overall
         results[cv_key]["overall"] = (
             results[cv_key]["keyword_match"] * 2 +
             results[cv_key]["metrics_count"] * 5 +
             results[cv_key]["clarity_score"]
         )
     
-    # Determine winner
     if results["cv1"]["overall"] > results["cv2"]["overall"]:
         results["winner"] = "Version A"
-        diff = results["cv1"]["overall"] - results["cv2"]["overall"]
     else:
         results["winner"] = "Version B"
-        diff = results["cv2"]["overall"] - results["cv1"]["overall"]
     
-    # Generate reasons
     if results["cv1"]["keyword_match"] != results["cv2"]["keyword_match"]:
         better = "A" if results["cv1"]["keyword_match"] > results["cv2"]["keyword_match"] else "B"
         results["reasons"].append(f"Version {better} has better keyword alignment")
@@ -349,174 +421,47 @@ def compare_cv_versions(cv1_text, cv2_text, jd_text):
         better = "A" if results["cv1"]["metrics_count"] > results["cv2"]["metrics_count"] else "B"
         results["reasons"].append(f"Version {better} has more quantified achievements")
     
-    if abs(results["cv1"]["clarity_score"] - results["cv2"]["clarity_score"]) > 10:
-        better = "A" if results["cv1"]["clarity_score"] > results["cv2"]["clarity_score"] else "B"
-        results["reasons"].append(f"Version {better} is more readable")
-    
     return results
 
-def get_recruiter_persona_feedback(cv_text, jd_text, persona, groq_client):
-    """Get feedback from different recruiter personas"""
-    if not groq_client:
-        return None
-    
-    persona_prompts = {
-        "corporate_hr": """
-            You are a Corporate HR Manager at a Fortune 500 company. You value:
-            - Structured career progression
-            - Formal qualifications and certifications
-            - Stable employment history
-            - Cultural fit indicators
-            Be formal and process-oriented in your feedback.
-        """,
-        "startup_founder": """
-            You are a Startup Founder/CEO. You value:
-            - Hustle and side projects
-            - Diverse skill sets
-            - Speed of learning
-            - Cultural energy and passion
-            Be casual, direct, and focus on potential over credentials.
-        """,
-        "ats_bot": """
-            You are an Applicant Tracking System (ATS). You ONLY care about:
-            - Exact keyword matches from the job description
-            - Standard formatting
-            - Specific technical skills mentioned
-            Be robotic and purely data-driven. List match percentages.
-        """
-    }
-    
-    try:
-        prompt = f"""
-        {persona_prompts.get(persona, persona_prompts['corporate_hr'])}
-        
-        Review this CV for the following role and provide your honest assessment.
-        
-        JOB: {jd_text[:1000]}
-        
-        CV: {cv_text[:2500]}
-        
-        Provide:
-        1. Your initial impression (2 sentences)
-        2. Top 3 strengths you noticed
-        3. Top 3 concerns/red flags
-        4. Would you move forward? (Yes/Maybe/No) and why
-        5. One specific tip to improve
-        
-        Stay in character throughout.
-        """
-        
-        completion = groq_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile"
-        )
-        
-        return completion.choices[0].message.content
-    except:
-        return None
-
-# --- Page Styling ---
-def inject_custom_css():
-    st.markdown(f"""
-    <style>
-    .scan-area {{
-        border: 2px solid {ACCENT_CYAN}40;
-        border-radius: 8px;
-        padding: 15px;
-        margin: 10px 0;
-        position: relative;
-    }}
-    .scan-high {{ border-color: {ACCENT_GREEN}; background: {ACCENT_GREEN}10; }}
-    .scan-medium {{ border-color: {ACCENT_YELLOW}; background: {ACCENT_YELLOW}10; }}
-    .scan-low {{ border-color: {ACCENT_RED}10; background: transparent; }}
-    .rejection-card {{
-        border-left: 4px solid;
-        border-radius: 8px;
-        padding: 15px;
-        margin: 10px 0;
-    }}
-    .rejection-high {{ border-color: {ACCENT_RED}; background: {ACCENT_RED}15; }}
-    .rejection-medium {{ border-color: {ACCENT_YELLOW}; background: {ACCENT_YELLOW}15; }}
-    .rejection-low {{ border-color: {ACCENT_GREEN}; background: {ACCENT_GREEN}15; }}
-    .probability-circle {{
-        width: 150px;
-        height: 150px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin: 0 auto;
-    }}
-    .persona-card {{
-        background: {BG_DARK};
-        border: 1px solid {ACCENT_PURPLE}40;
-        border-radius: 12px;
-        padding: 15px;
-        margin: 10px 0;
-    }}
-    .winner-badge {{
-        background: linear-gradient(135deg, {ACCENT_GREEN}, {ACCENT_CYAN});
-        color: black;
-        padding: 5px 20px;
-        border-radius: 20px;
-        font-weight: bold;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-
 # --- Main Page ---
+
 def feedback_loop_page():
-    inject_custom_css()
+    # Back to Main Page button
+    if st.button("← Back to Main Page", key="back_btn"):
+        st.switch_page("Main_Page.py")
     
-    st.markdown(f'<h1 style="color:{ACCENT_ORANGE}; text-align: center;">🔄 Predictive Feedback Loop</h1>', unsafe_allow_html=True)
-    st.markdown(f'<p style="text-align: center; color: {ACCENT_CYAN};">See Your CV Through a Recruiter\'s Eyes</p>', unsafe_allow_html=True)
     st.markdown("---")
-
-    # Auth Check
+    
+    st.markdown("""
+    <h1 style="text-align: center; font-size: 2.5rem;">
+        🔄 Recruiter Feedback Loop
+    </h1>
+    """, unsafe_allow_html=True)
+    st.caption("Understand exactly why recruiters pass or proceed with your application")
+    
     if not st.session_state.get('user_id'):
-        st.warning("🔒 Please log in to access the Feedback Loop.")
+        st.warning("🔒 Please log in to use Feedback Loop.")
         return
-
-    # =====================================================
-    # INPUT SECTION
-    # =====================================================
-    st.subheader("📄 Upload Your Documents")
     
-    col_cv, col_jd = st.columns(2)
-    
-    with col_cv:
-        uploaded_cv = st.file_uploader("Upload CV (PDF/TXT)", type=["pdf", "txt"], key="feedback_cv")
-        cv_text = ""
-        if uploaded_cv:
-            cv_text = extract_text_from_file(uploaded_cv)
-            st.session_state['feedback_cv_text'] = cv_text
-            st.success(f"✅ CV loaded ({len(cv_text.split())} words)")
-        elif 'feedback_cv_text' in st.session_state:
-            cv_text = st.session_state['feedback_cv_text']
-    
-    with col_jd:
-        jd_text = st.text_area("Paste Job Description", height=200, key="feedback_jd")
-        if jd_text:
-            st.session_state['feedback_jd_text'] = jd_text
-
-    if not cv_text or not jd_text:
-        st.info("👆 Upload your CV and paste a Job Description to begin analysis")
-        return
-
-    # Run Analysis Button
-    if st.button("🔍 Run Complete Analysis", type="primary", use_container_width=True):
-        st.session_state['run_feedback_analysis'] = True
-
-    if not st.session_state.get('run_feedback_analysis'):
-        return
-
     st.markdown("---")
-
-    # =====================================================
-    # SECTION 1: Success Probability
-    # =====================================================
+    
+    # File Uploads
+    col_cv, col_jd = st.columns(2)
+    with col_cv:
+        cv_file = st.file_uploader("📄 Upload your CV", type=['pdf', 'txt'], key="feedback_cv")
+    with col_jd:
+        jd_text = st.text_area("📋 Paste Job Description", height=150, key="feedback_jd")
+    
+    cv_text = ""
+    if cv_file:
+        cv_text = extract_text_from_file(cv_file)
+    
+    if not cv_text or not jd_text:
+        st.info("👆 Upload your CV and paste the job description to get detailed feedback")
+        return
+    
+    # SECTION 1: Interview Callback Probability
+    st.markdown("---")
     st.subheader("1️⃣ Interview Callback Probability")
     
     probability = calculate_success_probability(cv_text, jd_text)
@@ -529,7 +474,7 @@ def feedback_loop_page():
             status = "Strong Candidate"
         elif probability >= 50:
             color = ACCENT_YELLOW
-            status = "Competitive"
+            status = "Moderate Fit"
         else:
             color = ACCENT_RED
             status = "Needs Improvement"
@@ -544,7 +489,6 @@ def feedback_loop_page():
     with col_factors:
         st.markdown("**Scoring Factors:**")
         
-        # Calculate individual factors
         jd_words = set(re.findall(r'\b\w{4,}\b', jd_text.lower()))
         cv_words = set(re.findall(r'\b\w{4,}\b', cv_text.lower()))
         keyword_score = int(len(jd_words.intersection(cv_words)) / len(jd_words) * 100) if jd_words else 0
@@ -558,14 +502,11 @@ def feedback_loop_page():
         st.progress(min(100, metrics_count * 15) / 100, text=f"Quantified Achievements: {metrics_count} found")
         st.progress(section_score / 100, text=f"CV Completeness: {section_score}%")
 
-    # =====================================================
-    # SECTION 2: 6-Second Scan Simulation
-    # =====================================================
+    # SECTION 2: 6-Second Scan
     st.markdown("---")
     st.subheader("2️⃣ The 6-Second Scan Simulation")
-    st.caption("This is what a recruiter sees in their first pass of your CV")
+    st.caption("This is what a recruiter sees in their first pass")
     
-    # Animated countdown
     with st.empty():
         for i in range(6, 0, -1):
             st.markdown(f"<h3 style='text-align: center; color: {ACCENT_ORANGE};'>⏱️ {i} seconds...</h3>", unsafe_allow_html=True)
@@ -585,18 +526,15 @@ def feedback_loop_page():
                 <span>👁️ {attention}% attention | ⏱️ {data['time_spent']}</span>
             </div>
             <p style="font-size: 0.85rem; color: #888; margin: 10px 0;">
-                {data['text'][:150]}{'...' if len(str(data['text'])) > 150 else ''}
+                {str(data['text'])[:150]}{'...' if len(str(data['text'])) > 150 else ''}
             </p>
-            <span style="color: {ACCENT_CYAN};">🎯 Keywords spotted: {data['keywords_found']}</span>
+            <span style="color: {ACCENT_GOLD};">🎯 Keywords spotted: {data['keywords_found']}</span>
         </div>
         """, unsafe_allow_html=True)
 
-    # =====================================================
-    # SECTION 3: Rejection Reason Predictor
-    # =====================================================
+    # SECTION 3: Rejection Reasons
     st.markdown("---")
     st.subheader("3️⃣ Rejection Reason Predictor")
-    st.caption("Common reasons recruiters might pass on your application")
     
     reasons = generate_rejection_reasons(cv_text, jd_text)
     
@@ -607,16 +545,13 @@ def feedback_loop_page():
         st.markdown(f"""
         <div class="rejection-card {css_class}">
             <b>{icon} {reason['reason']}</b>
-            <p style="margin: 10px 0 0 0; color: {ACCENT_CYAN};">💡 Fix: {reason['fix']}</p>
+            <p style="margin: 10px 0 0 0; color: {ACCENT_GOLD};">💡 Fix: {reason['fix']}</p>
         </div>
         """, unsafe_allow_html=True)
 
-    # =====================================================
     # SECTION 4: AI Recruiter Personas
-    # =====================================================
     st.markdown("---")
     st.subheader("4️⃣ AI Recruiter Persona Simulator")
-    st.caption("Get feedback from different recruiter perspectives")
     
     col_p1, col_p2, col_p3 = st.columns(3)
     
@@ -649,17 +584,14 @@ def feedback_loop_page():
                 </div>
                 """, unsafe_allow_html=True)
 
-    # =====================================================
-    # SECTION 5: Interview Question Predictor
-    # =====================================================
+    # SECTION 5: Interview Questions
     st.markdown("---")
     st.subheader("5️⃣ Predicted Interview Questions")
-    st.caption("Based on gaps between your CV and the job requirements")
     
     if 'interview_questions' not in st.session_state:
         if st.button("🎯 Generate Predicted Questions", use_container_width=True):
             if groq_client:
-                with st.spinner("AI is analyzing potential interview questions..."):
+                with st.spinner("AI is analyzing..."):
                     questions = predict_interview_questions(cv_text, jd_text, groq_client)
                     if questions:
                         st.session_state['interview_questions'] = questions
@@ -670,51 +602,6 @@ def feedback_loop_page():
             with st.expander(f"❓ Question {i}: {q.get('question', 'N/A')}", expanded=(i==1)):
                 st.warning(f"**Why they'll ask:** {q.get('reason', 'N/A')}")
                 st.success(f"**Preparation tip:** {q.get('preparation_tip', 'N/A')}")
-
-    # =====================================================
-    # SECTION 6: A/B CV Tester
-    # =====================================================
-    st.markdown("---")
-    st.subheader("6️⃣ A/B CV Version Tester")
-    st.caption("Compare two versions of your CV to find the winner")
-    
-    with st.expander("📊 Open A/B Tester", expanded=False):
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            st.markdown("**Version A (Current)**")
-            cv_a = st.text_area("Paste CV Version A", value=cv_text[:1500], height=200, key="cv_version_a")
-        
-        with col_b:
-            st.markdown("**Version B (Alternative)**")
-            cv_b = st.text_area("Paste CV Version B", height=200, key="cv_version_b")
-        
-        if st.button("⚔️ Compare Versions", use_container_width=True):
-            if cv_a and cv_b:
-                comparison = compare_cv_versions(cv_a, cv_b, jd_text)
-                
-                st.markdown(f"""
-                <div style="text-align: center; margin: 20px 0;">
-                    <span class="winner-badge">🏆 Winner: {comparison['winner']}</span>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                col_res_a, col_res_b = st.columns(2)
-                
-                with col_res_a:
-                    st.metric("Version A Score", comparison['cv1']['overall'])
-                    st.caption(f"Keywords: {comparison['cv1']['keyword_match']} | Metrics: {comparison['cv1']['metrics_count']}")
-                
-                with col_res_b:
-                    st.metric("Version B Score", comparison['cv2']['overall'])
-                    st.caption(f"Keywords: {comparison['cv2']['keyword_match']} | Metrics: {comparison['cv2']['metrics_count']}")
-                
-                if comparison['reasons']:
-                    st.markdown("**Why this version won:**")
-                    for reason in comparison['reasons']:
-                        st.markdown(f"- {reason}")
-            else:
-                st.warning("Please paste both CV versions")
 
     st.markdown("---")
     st.caption("💡 Tip: Re-run analysis after making changes to track improvements")
