@@ -199,4 +199,4 @@ else:
     """)
     
     if st.button("← Go to Login Page", type="primary"):
-        st.switch_page("streamlit_app.py")
+        st.switch_page("Main_Page.py")
