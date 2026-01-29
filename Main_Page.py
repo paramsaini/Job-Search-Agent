@@ -1703,6 +1703,16 @@ def main():
     # Render top navigation
     render_top_nav()
     
+    # Main Logo - visible on all pages
+    st.markdown("""
+    <div style="text-align: center; margin: 20px 0 10px 0;">
+        <h1 style="background: linear-gradient(90deg, #ff6b35, #f7c531); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem; font-style: italic; margin: 0;">
+            🚀 Job-Search-Agent
+        </h1>
+        <p style="color: #888; margin: 5px 0 0 0;">AI-Powered Career Guidance</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # Render menu
     render_menu()
     
@@ -1746,10 +1756,10 @@ def main():
         st.switch_page("pages/2_Feedback_Loop.py")
         
     elif st.session_state.current_page == "Skill Migration":
-        page_skill_migration()
+        st.switch_page("pages/3_Skill_Migration.py")
         
     elif st.session_state.current_page == "CV Compiler":
-        page_cv_compiler()
+        st.switch_page("pages/4_CV_Compiler.py")
         
     elif st.session_state.current_page == "Privacy Policy":
         st.header("🔒 Privacy Policy")
