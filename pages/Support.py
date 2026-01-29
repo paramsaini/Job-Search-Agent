@@ -1,6 +1,30 @@
 import streamlit as st
+import os
+from supabase import create_client
 
 st.set_page_config(page_title="Support - Job-Search-Agent", page_icon="💬", layout="wide")
+
+# --- Supabase Init ---
+def get_secret(key):
+    if key in os.environ:
+        return os.environ[key]
+    try:
+        return st.secrets[key]
+    except:
+        return None
+
+@st.cache_resource
+def init_supabase():
+    url = get_secret("SUPABASE_URL")
+    key = get_secret("SUPABASE_KEY")
+    if not url or not key:
+        return None
+    return create_client(url, key)
+
+try:
+    supabase = init_supabase()
+except:
+    supabase = None
 
 # Apply consistent styling with main app
 st.markdown("""
@@ -241,7 +265,19 @@ with st.form("feedback_form"):
     
     if submitted:
         if feedback_message.strip():
-            st.success("✅ Thank you for your feedback! We'll review it and get back to you if needed.")
+            # Save to Supabase
+            if supabase:
+                try:
+                    supabase.table("feedback").insert({
+                        "feedback_type": feedback_type,
+                        "email": feedback_email if feedback_email.strip() else None,
+                        "message": feedback_message.strip()
+                    }).execute()
+                    st.success("✅ Thank you for your feedback! We'll review it and get back to you if needed.")
+                except Exception as e:
+                    st.error(f"Failed to submit feedback. Please try again or email us directly.")
+            else:
+                st.error("Database connection unavailable. Please email us at jobsearchagent26@gmail.com")
         else:
             st.warning("Please enter a message before submitting.")
 
