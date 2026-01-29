@@ -751,9 +751,9 @@ def fetch_latest_report():
 # --- Page Render ---
 def skill_migration_page():
     # Back to Main Page
-    # Back button using switch_page for proper navigation from pages/ folder
-    if st.button("🏠 ← Back to Main Page", key="back_to_main"):
-        st.switch_page("Main_Page.py")
+    if st.button("← Back to Main Page"):
+    st.session_state.current_page = "Main Page"
+    st.switch_page("Main_Page.py")
     
     # Main Logo
     st.markdown("""
