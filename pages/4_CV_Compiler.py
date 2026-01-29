@@ -224,22 +224,8 @@ def update_application_status(app_id, new_status):
 # --- Main Page ---
 
 def compiler_page():
-    # Back to Main Page - HTML link (most reliable method)
-    st.markdown("""
-    <a href="/" target="_self" style="
-        display: inline-block;
-        padding: 12px 24px;
-        background: linear-gradient(90deg, #ff6b35, #f7c531);
-        color: #000;
-        text-decoration: none;
-        border-radius: 10px;
-        font-weight: 700;
-        font-family: 'Outfit', sans-serif;
-        box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
-        margin-bottom: 15px;
-        transition: all 0.3s;
-    ">← Back to Main Page</a>
-    """, unsafe_allow_html=True)
+    # Back to Main Page
+    st.page_link("Main_Page.py", label="← Back to Main Page", icon="🏠")
     
     # Main Logo
     st.markdown("""
