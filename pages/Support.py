@@ -2,7 +2,95 @@ import streamlit as st
 import os
 from supabase import create_client
 
+# --- PAGE CONFIG ---
 st.set_page_config(page_title="Support - Job-Search-Agent", page_icon="💬", layout="wide")
+
+# --- NEW ORANGE + GOLD NEON UI STYLING (HIDE SIDEBAR) ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    
+    .stApp {
+        background: #0a0a0f !important;
+        color: #e2e8f0;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    /* HIDE SIDEBAR */
+    [data-testid="stSidebar"] { display: none !important; }
+    button[kind="header"] { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
+    
+    div[data-testid="stVerticalBlockBorderWrapper"],
+    div[data-testid="stMetric"],
+    div[data-testid="stExpanderDetails"],
+    div[data-testid="stForm"] {
+        background: rgba(255, 107, 53, 0.05) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 107, 53, 0.15) !important;
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        padding: 15px;
+    }
+    
+    h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { 
+        color: #e2e8f0 !important;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    h1 {
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+    
+    p, label, .stMarkdown { color: #e2e8f0 !important; }
+    
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stButton>button {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+        color: #000 !important;
+        border: none !important;
+        font-weight: 700 !important;
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+        border-radius: 10px;
+    }
+    
+    .stButton>button:hover {
+        box-shadow: 0 0 35px rgba(255, 107, 53, 0.6);
+    }
+    
+    .stSelectbox>div>div {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    hr { border-color: rgba(255, 107, 53, 0.2) !important; }
+    
+    .support-card {
+        background: rgba(255, 107, 53, 0.08);
+        border: 1px solid rgba(255, 107, 53, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 10px 0;
+    }
+    
+    .faq-item {
+        background: rgba(255, 107, 53, 0.05);
+        border-radius: 8px;
+        padding: 15px;
+        margin: 8px 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- Supabase Init ---
 def get_secret(key):
@@ -26,57 +114,18 @@ try:
 except:
     supabase = None
 
-# Apply consistent styling with main app
-st.markdown("""
-    <style>
-    .stApp {
-        background: linear-gradient(to bottom right, #0f172a, #1e1b4b);
-        background-attachment: fixed;
-        color: #e2e8f0;
-    }
-    div[data-testid="stVerticalBlockBorderWrapper"],
-    div[data-testid="stMetric"],
-    div[data-testid="stExpanderDetails"],
-    div[data-testid="stForm"],
-    [data-testid="stSidebar"] > div {
-        background-color: rgba(15, 23, 42, 0.6) !important;
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(88, 116, 176, 0.2) !important;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        padding: 15px;
-    }
-    h1, h2, h3, p, label, .stMarkdown { color: #e2e8f0 !important; }
-    div[data-testid="stMetricValue"] { color: #00e0ff !important; text-shadow: 0 0 10px rgba(0, 224, 255, 0.6); }
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        background-color: rgba(30, 41, 59, 0.8) !important;
-        color: white !important;
-        border: 1px solid rgba(88, 116, 176, 0.3) !important;
-    }
-    .stButton>button {
-        background: linear-gradient(90deg, #0062ff, #00c6ff);
-        color: white !important;
-        border: none;
-        box-shadow: 0 0 10px rgba(0, 98, 255, 0.5);
-    }
-    .support-card {
-        background: rgba(15, 23, 42, 0.8);
-        border: 1px solid rgba(88, 116, 176, 0.3);
-        border-radius: 12px;
-        padding: 20px;
-        margin: 10px 0;
-    }
-    .faq-item {
-        background: rgba(30, 41, 59, 0.6);
-        border-radius: 8px;
-        padding: 15px;
-        margin: 8px 0;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# --- Back Button ---
+if st.button("← Back to Main Page", key="back_btn"):
+    st.switch_page("Main_Page.py")
+
+st.markdown("---")
 
 # --- HEADER ---
-st.title("💬 Job-Search-Agent Support Center")
+st.markdown("""
+<h1 style="text-align: center; font-size: 2.5rem;">
+    💬 Support Center
+</h1>
+""", unsafe_allow_html=True)
 st.caption("Get help with your career journey")
 
 st.markdown("---")
@@ -128,7 +177,7 @@ with st.expander("How does the Voice Interview Simulator work?"):
     3. **Record your answer** - Use your microphone to practice your response
     4. **Get instant feedback** - AI analyzes your answer and provides improvement tips
     
-    **Note:** Microphone access is required for this feature. Your voice recordings are processed in real-time and are not stored permanently.
+    **Note:** Microphone access is required for this feature.
     """)
 
 with st.expander("Why does the app need microphone access?"):
@@ -140,8 +189,6 @@ with st.expander("Why does the app need microphone access?"):
     - The audio is sent to our AI for transcription
     - You receive feedback on your interview answers
     - Recordings are processed in real-time and not stored
-    
-    You can use all other features of Job-Search-Agent without enabling microphone access.
     """)
 
 with st.expander("How do I delete my account?"):
@@ -154,13 +201,7 @@ with st.expander("How do I delete my account?"):
     4. Type "DELETE" to confirm
     5. Click the delete button
     
-    **Warning:** This action permanently deletes all your data including:
-    - Your profile information
-    - Saved analyses and reports
-    - Application tracking history
-    - Mood/emotional tracking logs
-    
-    This cannot be undone.
+    **Warning:** This action permanently deletes all your data.
     """)
 
 with st.expander("How do I reset my password?"):
@@ -172,14 +213,10 @@ with st.expander("How do I reset my password?"):
     3. Enter your email address
     4. Check your inbox for a reset link
     5. Click the link and enter your new password
-    
-    If you don't receive the email, check your spam folder.
     """)
 
 with st.expander("What data does Job-Search-Agent collect?"):
     st.write("""
-    Job-Search-Agent collects only the data necessary to provide our services:
-    
     **Account Data:**
     - Email address (for login)
     - Username (optional display name)
@@ -192,7 +229,7 @@ with st.expander("What data does Job-Search-Agent collect?"):
     **Temporary Data:**
     - Voice recordings (processed in real-time, not stored)
     
-    We do not sell your data to third parties. See our Privacy Policy for full details.
+    We do not sell your data to third parties.
     """)
 
 with st.expander("The app isn't working. What should I do?"):
@@ -205,10 +242,7 @@ with st.expander("The app isn't working. What should I do?"):
     4. **Clear cache** - In your device settings, clear the app cache
     5. **Restart your device** - Sometimes a simple restart helps
     
-    If problems persist, email us at jobsearchagent26@gmail.com with:
-    - Your device type (iPhone/iPad/Android)
-    - A description of the issue
-    - Screenshots if possible
+    If problems persist, email us at jobsearchagent26@gmail.com
     """)
 
 st.markdown("---")
@@ -218,14 +252,14 @@ st.subheader("🔒 Privacy Policy Summary")
 
 st.markdown("""
 <div class="support-card">
-    <h4>Your Privacy Matters</h4>
-    <p>Job-Search-Agent is committed to protecting your personal information. Here's what you need to know:</p>
+    <h4 style="color: #f7c531;">Your Privacy Matters</h4>
+    <p>Job-Search-Agent is committed to protecting your personal information:</p>
     <ul>
         <li><strong>Data Collection:</strong> We collect only what's necessary to provide our services</li>
         <li><strong>Data Security:</strong> Your information is encrypted and stored securely</li>
         <li><strong>No Selling:</strong> We never sell your personal data to third parties</li>
         <li><strong>Your Control:</strong> You can delete your account and all data at any time</li>
-        <li><strong>Microphone:</strong> Voice recordings are processed in real-time and not permanently stored</li>
+        <li><strong>Microphone:</strong> Voice recordings are processed in real-time and not stored</li>
     </ul>
     <p style="color: #94a3b8; font-size: 0.9em;">Last updated: January 2026</p>
 </div>
@@ -238,7 +272,7 @@ st.subheader("📜 Terms of Service Summary")
 
 st.markdown("""
 <div class="support-card">
-    <h4>Using Job-Search-Agent</h4>
+    <h4 style="color: #f7c531;">Using Job-Search-Agent</h4>
     <p>By using Job-Search-Agent, you agree to:</p>
     <ul>
         <li>Use the app for legitimate job search and career development purposes</li>
@@ -246,7 +280,7 @@ st.markdown("""
         <li>Not misuse the AI features or attempt to circumvent security measures</li>
         <li>Respect intellectual property rights</li>
     </ul>
-    <p><strong>AI-Generated Content:</strong> Job recommendations and interview feedback are AI-generated suggestions. Always verify information and use your own judgment when making career decisions.</p>
+    <p><strong>AI-Generated Content:</strong> Job recommendations and interview feedback are AI-generated suggestions. Always verify information and use your own judgment.</p>
     <p style="color: #94a3b8; font-size: 0.9em;">Last updated: January 2026</p>
 </div>
 """, unsafe_allow_html=True)
@@ -265,7 +299,6 @@ with st.form("feedback_form"):
     
     if submitted:
         if feedback_message.strip():
-            # Save to Supabase
             if supabase:
                 try:
                     supabase.table("feedback").insert({
@@ -273,9 +306,9 @@ with st.form("feedback_form"):
                         "email": feedback_email if feedback_email.strip() else None,
                         "message": feedback_message.strip()
                     }).execute()
-                    st.success("✅ Thank you for your feedback! We'll review it and get back to you if needed.")
+                    st.success("✅ Thank you for your feedback!")
                 except Exception as e:
-                    st.error(f"Failed to submit feedback. Please try again or email us directly.")
+                    st.error(f"Failed to submit feedback. Please email us directly.")
             else:
                 st.error("Database connection unavailable. Please email us at jobsearchagent26@gmail.com")
         else:
@@ -286,7 +319,7 @@ st.markdown("---")
 # --- FOOTER ---
 st.markdown("""
 <div style="text-align: center; color: #94a3b8; padding: 20px;">
-    <p><strong>Job-Search-Agent</strong> - AI-Powered Career Guidance</p>
+    <p><strong style="background: linear-gradient(90deg, #ff6b35, #f7c531); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Job-Search-Agent</strong> - AI-Powered Career Guidance</p>
     <p>Version 1.0 | © 2026 Job-Search-Agent</p>
     <p>📧 jobsearchagent26@gmail.com</p>
 </div>
