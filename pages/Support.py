@@ -98,9 +98,9 @@ with col2:
     st.subheader("🔗 Quick Links")
     st.markdown("""
     <div class="support-card">
-        <p>📋 <a href="#faq" style="color: #00c6ff;">Frequently Asked Questions</a></p>
-        <p>🔒 <a href="#privacy" style="color: #00c6ff;">Privacy Policy</a></p>
-        <p>📜 <a href="#terms" style="color: #00c6ff;">Terms of Service</a></p>
+        <p>📋 Frequently Asked Questions - <em>See below</em></p>
+        <p>🔒 Privacy Policy - <em>See below</em></p>
+        <p>📜 Terms of Service - <em>See below</em></p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -258,7 +258,7 @@ st.subheader("📝 Send Us Feedback")
 
 with st.form("feedback_form"):
     feedback_type = st.selectbox("Feedback Type", ["Bug Report", "Feature Request", "General Feedback", "Other"])
-    feedback_email = st.text_input("Your Email (optional)")
+    feedback_email = st.text_input("Your Email")
     feedback_message = st.text_area("Your Message", height=150)
     
     submitted = st.form_submit_button("Submit Feedback", type="primary", use_container_width=True)
