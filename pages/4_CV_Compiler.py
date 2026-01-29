@@ -225,7 +225,9 @@ def update_application_status(app_id, new_status):
 
 def compiler_page():
     # Back to Main Page
-    st.page_link("Main_Page.py", label="← Back to Main Page", icon="🏠")
+    # Back button using switch_page for proper navigation from pages/ folder
+    if st.button("🏠 ← Back to Main Page", key="back_to_main"):
+        st.switch_page("Main_Page.py")
     
     # Main Logo
     st.markdown("""
