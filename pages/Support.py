@@ -149,7 +149,7 @@ with col1:
     st.markdown("""
     <div class="support-card">
         <p><strong>Email Support:</strong></p>
-        <p>📩 jobsearchagent26@gmail.com</p>
+        <p>📩 support@job-search-agent.com</p>
         <p style="color: #94a3b8; font-size: 0.9em;">Response time: Within 24-48 hours</p>
     </div>
     """, unsafe_allow_html=True)
@@ -253,7 +253,7 @@ with st.expander("The app isn't working. What should I do?"):
     4. **Clear cache** - In your device settings, clear the app cache
     5. **Restart your device** - Sometimes a simple restart helps
     
-    If problems persist, email us at jobsearchagent26@gmail.com
+    If problems persist, email us at support@job-search-agent.com
     """)
 
 st.markdown("---")
@@ -321,7 +321,7 @@ with st.form("feedback_form"):
                 except Exception as e:
                     st.error(f"Failed to submit feedback. Please email us directly.")
             else:
-                st.error("Database connection unavailable. Please email us at jobsearchagent26@gmail.com")
+                st.error("Database connection unavailable. Please email us at support@job-search-agent.com")
         else:
             st.warning("Please enter a message before submitting.")
 
@@ -332,6 +332,6 @@ st.markdown("""
 <div style="text-align: center; color: #94a3b8; padding: 20px;">
     <p><strong style="background: linear-gradient(90deg, #ff6b35, #f7c531); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Job-Search-Agent</strong> - AI-Powered Career Guidance</p>
     <p>Version 1.0 | © 2026 Job-Search-Agent</p>
-    <p>📧 jobsearchagent26@gmail.com</p>
+    <p>📧 support@job-search-agent.com</p>
 </div>
 """, unsafe_allow_html=True)
