@@ -1792,7 +1792,7 @@ def main():
         - Opt-out of non-essential data collection
         
         ### Contact
-        For privacy inquiries: jobsearchagent26@gmail.com
+        For privacy inquiries: support@job-search-agent.com
         """)
         
     elif st.session_state.current_page == "Reset Password":
