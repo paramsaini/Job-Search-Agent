@@ -2,40 +2,134 @@ import streamlit as st
 import os
 from supabase import create_client
 
-st.set_page_config(page_title="Reset Password - Aequor", page_icon="🔐", layout="wide")
+st.set_page_config(page_title="Reset Password - Job-Search-Agent", page_icon="🔐", layout="wide")
 
-# Apply same styling as main app
+# --- NEW ORANGE + GOLD NEON UI STYLING (MATCHING MAIN APP) ---
 st.markdown("""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+    
     .stApp {
-        background: linear-gradient(to bottom right, #0f172a, #1e1b4b);
+        background: #0a0a0f !important;
         background-attachment: fixed;
         color: #e2e8f0;
+        font-family: 'Outfit', sans-serif;
     }
+    
+    /* HIDE SIDEBAR */
+    [data-testid="stSidebar"] {
+        display: none !important;
+    }
+    
+    /* HIDE SIDEBAR BUTTON */
+    button[kind="header"] {
+        display: none !important;
+    }
+    
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+    
+    /* Card styles */
     div[data-testid="stVerticalBlockBorderWrapper"],
     div[data-testid="stMetric"],
     div[data-testid="stExpanderDetails"],
-    div[data-testid="stForm"],
-    [data-testid="stSidebar"] > div {
-        background-color: rgba(15, 23, 42, 0.6) !important;
+    div[data-testid="stForm"] {
+        background: rgba(255, 107, 53, 0.05) !important;
         backdrop-filter: blur(12px);
-        border: 1px solid rgba(88, 116, 176, 0.2) !important;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 107, 53, 0.15) !important;
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
         padding: 15px;
     }
-    h1, h2, h3, p, label, .stMarkdown { color: #e2e8f0 !important; }
-    div[data-testid="stMetricValue"] { color: #00e0ff !important; text-shadow: 0 0 10px rgba(0, 224, 255, 0.6); }
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        background-color: rgba(30, 41, 59, 0.8) !important;
-        color: white !important;
-        border: 1px solid rgba(88, 116, 176, 0.3) !important;
+    
+    h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { 
+        color: #e2e8f0 !important;
+        font-family: 'Outfit', sans-serif;
     }
-    .stButton>button {
-        background: linear-gradient(90deg, #0062ff, #00c6ff);
+    
+    h1 {
+        background: linear-gradient(90deg, #ff6b35, #f7c531);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+    
+    p, label, .stMarkdown { color: #e2e8f0 !important; }
+    
+    div[data-testid="stMetricValue"] { 
+        color: #ff6b35 !important; 
+        text-shadow: 0 0 20px rgba(255, 107, 53, 0.6);
+        font-weight: 700;
+    }
+    
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        background-color: rgba(255, 107, 53, 0.08) !important;
         color: white !important;
-        border: none;
-        box-shadow: 0 0 10px rgba(0, 98, 255, 0.5);
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+        border-color: #ff6b35 !important;
+        box-shadow: 0 0 15px rgba(255, 107, 53, 0.3) !important;
+    }
+    
+    .stButton>button {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+        color: #000 !important;
+        border: none !important;
+        font-weight: 700 !important;
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton>button:hover {
+        box-shadow: 0 0 35px rgba(255, 107, 53, 0.6);
+        transform: translateY(-2px);
+    }
+    
+    .stSelectbox>div>div {
+        background-color: rgba(255, 107, 53, 0.08) !important;
+        border: 1px solid rgba(255, 107, 53, 0.25) !important;
+        border-radius: 10px;
+    }
+    
+    .stProgress>div>div>div {
+        background: linear-gradient(90deg, #ff6b35, #f7c531) !important;
+    }
+    
+    hr {
+        border-color: rgba(255, 107, 53, 0.2) !important;
+    }
+    
+    /* Success message styling */
+    .stSuccess {
+        background-color: rgba(16, 185, 129, 0.1) !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        border-radius: 10px;
+    }
+    
+    /* Error message styling */
+    .stError {
+        background-color: rgba(239, 68, 68, 0.1) !important;
+        border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        border-radius: 10px;
+    }
+    
+    /* Warning message styling */
+    .stWarning {
+        background-color: rgba(245, 158, 11, 0.1) !important;
+        border: 1px solid rgba(245, 158, 11, 0.3) !important;
+        border-radius: 10px;
+    }
+    
+    /* Info message styling */
+    .stInfo {
+        background-color: rgba(59, 130, 246, 0.1) !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        border-radius: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -114,8 +208,24 @@ def update_password_with_token(new_password, token_hash, email=None):
             return False, "Invalid or expired token. Please request a new password reset link."
         return False, f"Failed to update password: {e}"
 
+# Main Logo
+st.markdown("""
+<div style="text-align: center; margin: 30px 0;">
+    <h1 style="background: linear-gradient(90deg, #ff6b35, #f7c531); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem; font-style: italic; margin: 0;">
+        🚀 Job-Search-Agent
+    </h1>
+    <p style="color: #888; margin: 5px 0 0 0;">AI-Powered Career Guidance</p>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("---")
+
 # Main Page Content
-st.title("🔐 Reset Your Password")
+st.markdown("""
+<h1 style="text-align: center; font-size: 2rem;">
+    🔐 Reset Your Password
+</h1>
+""", unsafe_allow_html=True)
 
 # Check for tokens in URL query parameters
 query_params = st.query_params
@@ -128,75 +238,79 @@ token_type = query_params.get("type", "")
 query_params = st.query_params
 has_token = "access_token" in query_params and query_params.get("type") == "recovery"
 
-if st.session_state.password_updated:
-    st.success("✅ Your password has been updated successfully!")
-    st.info("You can now close this page and login with your new password.")
-    if st.button("← Go to Login Page", type="primary"):
-        st.switch_page("Main_Page.py")
+# Center the content
+col1, col2, col3 = st.columns([1, 2, 1])
 
-elif has_token or st.session_state.reset_token_set:
-    # Token detected - show the password reset form
-    st.caption("Enter your new password below.")
-    
-    with st.form("reset_password_form"):
-        new_password = st.text_input("New Password", type="password", key="new_pwd")
-        confirm_password = st.text_input("Confirm Password", type="password", key="confirm_pwd")
+with col2:
+    if st.session_state.password_updated:
+        st.success("✅ Your password has been updated successfully!")
+        st.info("You can now close this page and login with your new password.")
+        if st.button("← Go to Login Page", type="primary", use_container_width=True):
+            st.switch_page("Main_Page.py")
+
+    elif has_token or st.session_state.reset_token_set:
+        # Token detected - show the password reset form
+        st.caption("Enter your new password below.")
         
-        submitted = st.form_submit_button("✅ Update Password", type="primary", use_container_width=True)
-        
-        if submitted:
-            if new_password != confirm_password:
-                st.error("❌ Passwords do not match!")
-            elif len(new_password) < 6:
-                st.error("❌ Password must be at least 6 characters long.")
-            else:
-                # Use the access_token as token_hash for verify_otp
-                success, message = update_password_with_token(new_password, access_token)
-                if success:
-                    st.session_state.password_updated = True
-                    st.query_params.clear()
-                    st.rerun()
+        with st.form("reset_password_form"):
+            new_password = st.text_input("New Password", type="password", key="new_pwd")
+            confirm_password = st.text_input("Confirm Password", type="password", key="confirm_pwd")
+            
+            submitted = st.form_submit_button("✅ Update Password", type="primary", use_container_width=True)
+            
+            if submitted:
+                if new_password != confirm_password:
+                    st.error("❌ Passwords do not match!")
+                elif len(new_password) < 6:
+                    st.error("❌ Password must be at least 6 characters long.")
                 else:
-                    st.error(f"❌ {message}")
-    
-    st.markdown("---")
-    if st.button("← Back to Login"):
-        st.query_params.clear()
-        st.switch_page("streamlit_app.py")
-
-else:
-    st.warning("⚠️ No valid password reset token found in URL.")
-    
-    st.markdown("---")
-    st.subheader("🔧 Manual Token Entry")
-    st.caption("If you clicked the reset link but see this message, please copy the token from your URL and paste it below.")
-    
-    st.markdown("""
-    **How to find your token:**
-    1. Look at your browser's address bar
-    2. Find `access_token=` followed by a long string
-    3. Copy that entire string (the token)
-    4. Paste it below
-    """)
-    
-    with st.form("manual_token_form"):
-        manual_token = st.text_input("Paste your access_token here:", key="manual_token")
-        token_submitted = st.form_submit_button("🔓 Verify Token", type="primary", use_container_width=True)
+                    # Use the access_token as token_hash for verify_otp
+                    success, message = update_password_with_token(new_password, access_token)
+                    if success:
+                        st.session_state.password_updated = True
+                        st.query_params.clear()
+                        st.rerun()
+                    else:
+                        st.error(f"❌ {message}")
         
-        if token_submitted and manual_token:
-            # Redirect with the token as query parameter
-            st.query_params["access_token"] = manual_token
-            st.query_params["type"] = "recovery"
-            st.rerun()
-    
-    st.markdown("---")
-    st.markdown("""
-    **Or request a new reset link:**
-    1. Go to the login page
-    2. Click "Forgot Password?"
-    3. Enter your email address
-    4. Check your email for a new reset link
-    """)
-    
-    if st.button("← Go to Login Page", type="primary"):
-        st.switch_page("Main_Page.py")
+        st.markdown("---")
+        if st.button("← Back to Login", use_container_width=True):
+            st.query_params.clear()
+            st.switch_page("Main_Page.py")
+
+    else:
+        st.warning("⚠️ No valid password reset token found in URL.")
+        
+        st.markdown("---")
+        st.subheader("📧 Manual Token Entry")
+        st.caption("If you clicked the reset link but see this message, please copy the token from your URL and paste it below.")
+        
+        st.markdown("""
+        **How to find your token:**
+        1. Look at your browser's address bar
+        2. Find `access_token=` followed by a long string
+        3. Copy that entire string (the token)
+        4. Paste it below
+        """)
+        
+        with st.form("manual_token_form"):
+            manual_token = st.text_input("Paste your access_token here:", key="manual_token")
+            token_submitted = st.form_submit_button("🔓 Verify Token", type="primary", use_container_width=True)
+            
+            if token_submitted and manual_token:
+                # Redirect with the token as query parameter
+                st.query_params["access_token"] = manual_token
+                st.query_params["type"] = "recovery"
+                st.rerun()
+        
+        st.markdown("---")
+        st.markdown("""
+        **Or request a new reset link:**
+        1. Go to the login page
+        2. Click "Forgot Password?"
+        3. Enter your email address
+        4. Check your email for a new reset link
+        """)
+        
+        if st.button("← Go to Login Page", type="primary", use_container_width=True):
+            st.switch_page("Main_Page.py")
