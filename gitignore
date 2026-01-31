@@ -1,12 +1,43 @@
-Environment files (never commit secrets)
-
+# Environment files (never commit secrets)
 .env
+.env.local
+.env.production
+*.env
 
-Python Virtual Environment
-
+# Python Virtual Environment
 venv/
-pycache/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 
-Document and Data Directories (do not commit 2,484 resumes!)
+# IDE settings
+.idea/
+.vscode/
+*.swp
+*.swo
 
+# Document and Data Directories
 resumes_data/
+data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
