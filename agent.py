@@ -12,7 +12,7 @@ class JobSearchAgent:
         self.collection_name = collection_name
         
         # --- UPDATE: USING THE STRONGEST STABLE MODEL ---
-        # gemini-1.5-pro is the industry standard for high-reasoning tasks.
+        # gemini-2.5-flash-preview-09-2025 is the industry standard for high-reasoning tasks.
         # It follows formatting instructions (tables) better than Flash.
         self.gen_model = "gemini-2.5-flash-preview-09-2025" 
         self.embedding_model = "text-embedding-004"
@@ -94,8 +94,8 @@ class JobSearchAgent:
         {cv_text}
         
         TASK:
-        1. Search Google for 10 LIVE domestic job openings matching this CV.
-        2. Search Google for 10 LIVE international visa-sponsoring companies matching this CV.
+        1. Search Google for 20 LIVE domestic job openings matching this CV.
+        2. Search Google for 20 LIVE international visa-sponsoring companies matching this CV.
         3. Output the results in the EXACT tables below. Do not add conversational text.
 
         CRITICAL INSTRUCTION FOR APPLICATION LINKS:
@@ -111,13 +111,13 @@ class JobSearchAgent:
         | Company | Role | Match Reason | Application Link |
         | :--- | :--- | :--- | :--- |
         | Company Name | Job Title | Brief reason why candidate matches | [Apply Here](https://company-careers-url.com) |
-        (10 rows)
+        (20 rows)
 
         ### 🌍 International Sponsorship Targets
         | Company | Location | Visa Path | Application Link |
         | :--- | :--- | :--- | :--- |
         | Company Name | Country/Region | Visa Type | [Apply Here](https://company-careers-url.com) |
-        (10 rows)
+        (20 rows)
 
         ### 🚀 Execution Plan
         * **Step 1:** [Actionable Step]
