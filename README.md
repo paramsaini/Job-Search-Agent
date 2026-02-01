@@ -1,5 +1,8 @@
 Job-Search-Agent - AI-Powered Career Development Platform with the power of RAG tool.
 
+💻 AI-powered job search assistant (source-available, BUSL licensed)
+
+
 ⚠️ License Notice  
 This repository is source-available under the Business Source License (BUSL).
 Commercial use is not permitted without a separate license agreement.
@@ -206,12 +209,26 @@ commercial use, even if no revenue is generated.
 
 📌 See [LICENSING_FAQ.md](./LICENSING_FAQ.md) for common licensing questions.
 
+## Project Identity
+
+**Job Search Agent** is an independent software project
+created and maintained by Paramjeet Singh Saini.
+
+Project website: https://job-search-agent.com
+
+All intellectual property is owned by the author unless
+otherwise stated in a separate written agreement.
+
+
 For commercial licensing inquiries, contact the author.
 
 © 2026 Paramjeet Singh Saini. All rights reserved.
+
+“Job Search Agent” is a project name and not a registered trademark.
 
 Maintained by :
 
 👨‍💻 AI Developer
 
 Paramjeet Singh Saini
+
