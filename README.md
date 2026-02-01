@@ -1,6 +1,8 @@
 Job-Search-Agent - AI-Powered Career Development Platform
+
 📋 Executive Summary
-This app is a comprehensive, AI-powered career development application built with Streamlit and Supabase. The platform helps job seekers optimize their career journey through intelligent CV analysis, personalized career path recommendations, emotional wellness tracking, and interview preparation tools.
+
+This app is a comprehensive, AI-powered career development application built with Railway and Supabase. The platform helps job seekers optimize their career journey through intelligent CV analysis, personalized career path recommendations, emotional wellness tracking, and interview preparation tools.
 
 🚀 Key Features
 1. Smart Dashboard
@@ -51,10 +53,8 @@ Token Verification: Secure OTP-based authentication
 Manual Token Entry: Fallback option for token input
 
 
-🛠 Technology Stack
-ComponentTechnology Frontend Railway, Backend/Database Supabase (PostgreSQL), Authentication Supabase, AuthAI/ML Engine Google Gemini 2.5 Flash, NLP Processing Groq (LLaMA 3.3 70B)Vector Database Qdrant, PDF Processing PyPDF, FPDFDeploymentRailway, Mobile Apps Median.co (iOS/Android wrapper)
-
 📊 Database Schema
+
 TablePurposeprofilesUser profile informationanalysesCV analysis reports and strategiesmood_logsEmotional tracking dataapplicationsJob application history
 
 🔐 Security Features
