@@ -3,7 +3,7 @@ Job-Search-Agent - AI-Powered Career Development Platform
 This app is a comprehensive, AI-powered career development application built with Streamlit and Supabase. The platform helps job seekers optimize their career journey through intelligent CV analysis, personalized career path recommendations, emotional wellness tracking, and interview preparation tools.
 
 🚀 Key Features
-1. Smart Dashboard (streamlit_app.py)
+1. Smart Dashboard
 
 AI-Powered CV Analysis: Upload your CV and receive instant strategic insights
 Predictive Match Scoring: Get a compatibility score for your target roles
@@ -52,7 +52,7 @@ Manual Token Entry: Fallback option for token input
 
 
 🛠 Technology Stack
-ComponentTechnologyFrontendStreamlitBackend/DatabaseSupabase (PostgreSQL)AuthenticationSupabase AuthAI/ML EngineGoogle Gemini 2.5 FlashNLP ProcessingGroq (LLaMA 3.3 70B)Vector DatabaseQdrantPDF ProcessingPyPDF, FPDFDeploymentRailwayMobile AppsMedian.co (iOS/Android wrapper)
+ComponentTechnology Frontend Railway, Backend/Database Supabase (PostgreSQL), Authentication Supabase, AuthAI/ML Engine Google Gemini 2.5 Flash, NLP Processing Groq (LLaMA 3.3 70B)Vector Database Qdrant, PDF Processing PyPDF, FPDFDeploymentRailway, Mobile Apps Median.co (iOS/Android wrapper)
 
 📊 Database Schema
 TablePurposeprofilesUser profile informationanalysesCV analysis reports and strategiesmood_logsEmotional tracking dataapplicationsJob application history
@@ -64,9 +64,6 @@ Password Reset: Secure token-based recovery via email
 Account Deletion: Full GDPR-compliant data removal
 Session Management: Secure session handling with Supabase Auth
 
-
-📱 Platform Availability
-PlatformStatusWeb App✅ LiveiOS App🔄 In ReviewAndroid App🔄 Ready for Deployment
 
 🎯 Target Users
 
@@ -105,7 +102,7 @@ Play Store: Coming Soon
 
 
 📄 License
-© 2026 job-search-agent. All rights reserved.
+© 2026 paramjeet singh saini. All rights reserved.
 
 👨‍💻 Developer
 Paramjeet Singh Saini
