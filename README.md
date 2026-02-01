@@ -201,6 +201,9 @@ explicit commercial license.
 Violation of these terms may result in termination of rights and
 pursuit of legal remedies under applicable law.
 
+Internal use by companies, startups, or organizations is considered
+commercial use, even if no revenue is generated.
+
 For commercial licensing inquiries, contact the author.
 
 © 2026 Paramjeet Singh Saini. All rights reserved.
