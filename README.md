@@ -1,4 +1,9 @@
-Job-Search-Agent - AI-Powered Career Development Platform
+Job-Search-Agent - AI-Powered Career Development Platform with the power of RAG tool.
+
+⚠️ License Notice  
+This repository is source-available under the Business Source License (BUSL).
+Commercial use is not permitted without a separate license agreement.
+
 
 📋 Executive Summary
 
@@ -149,9 +154,26 @@ IOS App Store: Coming Soon
 
 GOOGLE Play Store: Coming Soon
 
+> Note: This application is not licensed for commercial reuse or deployment
+> without explicit written permission from the author.
+
+
 
 📄 License
-© 2026 paramjeet singh saini. All rights reserved.
+
+This project is licensed under the **Business Source License (BUSL 1.1)**.
+
+You are permitted to view, clone, and evaluate the source code for
+**non-commercial and educational purposes only**.
+
+❌ Commercial use, production deployment, SaaS usage, redistribution,
+or modification is **strictly prohibited** without a separate written
+commercial license agreement.
+
+For commercial licensing inquiries, contact the author.
+
+© 2026 Paramjeet Singh Saini. All rights reserved.
+
 
 👨‍💻 Developer
 Paramjeet Singh Saini
