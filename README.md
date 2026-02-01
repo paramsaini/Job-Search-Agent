@@ -5,6 +5,52 @@ Job-Search-Agent - AI-Powered Career Development Platform
 This app is a comprehensive, AI-powered career development application built with Railway and Supabase. The platform helps job seekers optimize their career journey through intelligent CV analysis, personalized career path recommendations, emotional wellness tracking, and interview preparation tools.
 
 🚀 Key Features
+
+Main Brain of this application
+
+🧠 RAG (Retrieval-Augmented Generation) Architecture
+This project utilizes a Retrieval-Augmented Generation (RAG) system to provide personalized and context-aware career strategies. By combining a vector database with a Large Language Model (LLM), the agent retrieves relevant resume data to "augment" its generation process, ensuring advice is grounded in specific knowledge rather than just general training data.
+
+How It Works
+
+The JobSearchAgent class implements a complete RAG pipeline:
+
+1. Retrieval (The "R")
+
+Vector Database: We use Qdrant to store and manage a "resume knowledge base."
+
+Embeddings: Input text (such as a user's CV) is converted into high-dimensional vector embeddings using Google's text-embedding-004 model.
+
+Semantic Search: The system performs a vector similarity search to find the most relevant resume segments and role-specific data from the Qdrant collection.
+
+2. Augmentation (The "A")
+
+Context Injection: The retrieved documents are dynamically injected into the LLM's system prompt. This gives the AI immediate access to relevant "memories" or knowledge that it wasn't originally trained on.
+
+Role Filtering: The search can be filtered by specific roles (e.g., "Sales", "Engineering") to ensure the context is domain-specific.
+
+3. Generation (The "G")
+
+LLM Reasoning: We utilize Google's Gemini 2.5 Flash (gemini-2.5-flash-preview-09-2025) for high-reasoning tasks.
+
+Output: The model uses both the user's CV and the retrieved context to generate:
+
+A structured skill gap report (JSON).
+
+A comprehensive career strategy with live job search links (Markdown tables).
+
+Tech Stack
+
+LLM: Google Gemini 2.5 Flash
+
+Embeddings: Google text-embedding-004
+
+Vector DB: Qdrant
+
+Orchestration: Python (Custom JobSearchAgent class)
+
+Others Keys Features
+
 1. Smart Dashboard
 
 AI-Powered CV Analysis: Upload your CV and receive instant strategic insights
