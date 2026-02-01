@@ -204,6 +204,8 @@ pursuit of legal remedies under applicable law.
 Internal use by companies, startups, or organizations is considered
 commercial use, even if no revenue is generated.
 
+📌 See [LICENSING_FAQ.md](./LICENSING_FAQ.md) for common licensing questions.
+
 For commercial licensing inquiries, contact the author.
 
 © 2026 Paramjeet Singh Saini. All rights reserved.
