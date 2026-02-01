@@ -54,7 +54,7 @@ Vector DB: Qdrant
 
 Orchestration: Python (Custom JobSearchAgent class)
 
-Others Keys Features
+Others smart Keys Features
 
 1. Smart Dashboard
 
@@ -169,6 +169,34 @@ You are permitted to view, clone, and evaluate the source code for
 ❌ Commercial use, production deployment, SaaS usage, redistribution,
 or modification is **strictly prohibited** without a separate written
 commercial license agreement.
+
+## 🔐 AI / RAG / SaaS Usage Restrictions
+
+This project includes software components, architectures, and workflows
+designed for AI, machine learning, retrieval-augmented generation (RAG),
+and related systems.
+
+The following uses are **explicitly prohibited** without a separate
+written commercial license agreement:
+
+- Using this project (in whole or in part) to build, power, or support
+  any commercial AI system, ML pipeline, or RAG-based application
+- Hosting this project as a SaaS, API, platform, or managed service
+- Exposing functionality via public or private APIs
+- Using the code for internal business tools, proof-of-concepts,
+  pilots, or client demonstrations
+- Fine-tuning, training, benchmarking, or evaluating machine learning
+  models using this code or its outputs
+- Extracting prompts, embeddings, pipelines, or system designs for use
+  in other AI systems
+- Using the project as reference or baseline for competing AI products
+
+Permitted use is limited strictly to **non-commercial evaluation,
+research, and educational review**.
+
+Any AI-driven, automated, hosted, revenue-generating, or business-facing
+use of this project is considered **commercial use** and requires an
+explicit commercial license.
 
 For commercial licensing inquiries, contact the author.
 
