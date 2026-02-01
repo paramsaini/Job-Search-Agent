@@ -210,6 +210,7 @@ For commercial licensing inquiries, contact the author.
 
 © 2026 Paramjeet Singh Saini. All rights reserved.
 
+Maintained by :
 
-👨‍💻 Developer
+👨‍💻 AI Developer
 Paramjeet Singh Saini
