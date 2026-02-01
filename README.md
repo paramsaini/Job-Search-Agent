@@ -98,14 +98,14 @@ End-to-End Tracking: From CV optimization to application tracking to interview p
 
 🔗 Links
 
-Live App: https://job-search-agent-production-d3dd.up.railway.app
+Live App: https://job-search-agent.com
 GitHub: [Your Repository URL]
 App Store: Coming Soon
 Play Store: Coming Soon
 
 
 📄 License
-© 2026 Aequor. All rights reserved.
+© 2026 job-search-agent. All rights reserved.
 
 👨‍💻 Developer
 Paramjeet Singh Saini
