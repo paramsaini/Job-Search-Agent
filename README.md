@@ -96,9 +96,11 @@ End-to-End Tracking: From CV optimization to application tracking to interview p
 🔗 Links
 
 Live App: https://job-search-agent.com
-GitHub: [Your Repository URL]
-App Store: Coming Soon
-Play Store: Coming Soon
+GitHub: https://github.com/paramsaini/Job-Search-Agent
+
+IOS App Store: Coming Soon
+
+GOOGLE Play Store: Coming Soon
 
 
 📄 License
