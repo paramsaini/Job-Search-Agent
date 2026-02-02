@@ -79,8 +79,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- BACK BUTTON ---
-if st.button("← Back to Dashboard", type="secondary"):
-    st.switch_page("Main_Page.py")
+import streamlit.components.v1 as components
+
+col1, col2, col3 = st.columns([1, 3, 1])
+with col1:
+    if st.button("← Back to Dashboard", type="secondary", use_container_width=True):
+        st.session_state.current_page = "Main Page"
+        # Use JavaScript redirect as fallback
+        components.html(
+            """
+            <script>
+                window.parent.location.href = '/';
+            </script>
+            """,
+            height=0
+        )
 
 st.markdown("---")
 
