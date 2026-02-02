@@ -1514,6 +1514,7 @@ def render_menu():
         ("🔄", "Feedback Loop"),
         ("📈", "Skill Migration"),
         ("🤖", "CV Compiler"),
+        ("📝", "Blog"),
         ("🔒", "Privacy Policy"),
         ("🔑", "Reset Password"),
         ("💬", "Support"),
@@ -1760,6 +1761,9 @@ def main():
         
     elif st.session_state.current_page == "CV Compiler":
         st.switch_page("pages/4_CV_Compiler.py")
+    
+    elif st.session_state.current_page == "Blog":
+        st.switch_page("pages/Blog.py")
         
     elif st.session_state.current_page == "Privacy Policy":
         st.header("🔒 Privacy Policy")
