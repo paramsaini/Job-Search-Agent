@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import requests
 from supabase import create_client
 
 # --- PAGE CONFIG ---
@@ -113,6 +114,57 @@ try:
     supabase = init_supabase()
 except:
     supabase = None
+
+# --- EMAIL NOTIFICATION FUNCTION ---
+def send_feedback_email(feedback_type, user_email, message):
+    """Send email notification for new feedback using Resend API"""
+    resend_api_key = get_secret("RESEND_API_KEY")
+    
+    if not resend_api_key:
+        return False, "Email service not configured"
+    
+    # Email content
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(90deg, #ff6b35, #f7c531); padding: 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: #000; margin: 0;">🚀 New Feedback Received</h1>
+        </div>
+        <div style="background: #1a1a2e; padding: 20px; border-radius: 0 0 10px 10px; color: #e2e8f0;">
+            <p><strong style="color: #f7c531;">Feedback Type:</strong> {feedback_type}</p>
+            <p><strong style="color: #f7c531;">User Email:</strong> {user_email if user_email else 'Not provided'}</p>
+            <hr style="border-color: rgba(255, 107, 53, 0.3);">
+            <p><strong style="color: #f7c531;">Message:</strong></p>
+            <div style="background: rgba(255, 107, 53, 0.1); padding: 15px; border-radius: 8px; margin-top: 10px;">
+                <p style="white-space: pre-wrap;">{message}</p>
+            </div>
+            <hr style="border-color: rgba(255, 107, 53, 0.3);">
+            <p style="color: #94a3b8; font-size: 0.9em;">This email was sent from Job-Search-Agent feedback form.</p>
+        </div>
+    </div>
+    """
+    
+    try:
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {resend_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": "Job-Search-Agent <noreply@job-search-agent.com>",
+                "to": ["support@job-search-agent.com"],
+                "subject": f"[{feedback_type}] New Feedback from Job-Search-Agent",
+                "html": html_content,
+                "reply_to": user_email if user_email else None
+            }
+        )
+        
+        if response.status_code == 200:
+            return True, "Email sent successfully"
+        else:
+            return False, f"Email failed: {response.text}"
+    except Exception as e:
+        return False, str(e)
 
 # --- INSERT FIX HERE ---
 if st.button("← Back to Main Page"):
@@ -312,14 +364,29 @@ with st.form("feedback_form"):
         if feedback_message.strip():
             if supabase:
                 try:
+                    # Save to database
                     supabase.table("feedback").insert({
                         "feedback_type": feedback_type,
                         "email": feedback_email if feedback_email.strip() else None,
                         "message": feedback_message.strip()
                     }).execute()
-                    st.success("✅ Thank you for your feedback!")
+                    
+                    # Send email notification
+                    email_sent, email_msg = send_feedback_email(
+                        feedback_type, 
+                        feedback_email.strip() if feedback_email.strip() else None,
+                        feedback_message.strip()
+                    )
+                    
+                    if email_sent:
+                        st.success("✅ Thank you for your feedback! We'll get back to you soon.")
+                    else:
+                        # Still show success since data was saved to database
+                        st.success("✅ Thank you for your feedback!")
+                        # Log email error silently (don't show to user)
+                        
                 except Exception as e:
-                    st.error(f"Failed to submit feedback. Please email us directly.")
+                    st.error(f"Failed to submit feedback. Please email us directly at support@job-search-agent.com")
             else:
                 st.error("Database connection unavailable. Please email us at support@job-search-agent.com")
         else:
